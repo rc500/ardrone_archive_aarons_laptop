@@ -41,6 +41,37 @@ def ref(emergency = False, take_off = False):
 		v |= (1 << 9)
 	return _at('REF', v)
 
+def ftrim():
+	"""Generate the FTRIM AT command.
+
+	>>> reset_sequence()
+	>>> ftrim()
+	'AT*FTRIM=1\\n'
+	>>> ftrim()
+	'AT*FTRIM=2\\n'
+
+	"""
+	return _at('FTRIM')
+
+def config(key, value):
+	"""Generate the CONFIG AT command.
+
+	>>> reset_sequence()
+	>>> config('GENERAL:num_version_config', 1)
+	'AT*CONFIG=1,"GENERAL:num_version_config","1"\\n'
+	>>> config('GENERAL:vision_enable', True)
+	'AT*CONFIG=2,"GENERAL:vision_enable","TRUE"\\n'
+	>>> config('GENERAL:gyros_gains', '{ 6.9026551e-03 -6.9553638e-03 -3.8592720e-03 }')
+	'AT*CONFIG=3,"GENERAL:gyros_gains","{ 6.9026551e-03 -6.9553638e-03 -3.8592720e-03 }"\\n'
+
+	"""
+	if isinstance(value, bool):
+		if value:
+			value = 'TRUE'
+		else:
+			value = 'FALSE'
+	return _at('CONFIG', str(key), str(value))
+
 def __next_sequence():
 	"""Return the next sequence number for the AT command.
 
