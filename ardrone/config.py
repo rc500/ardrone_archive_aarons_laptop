@@ -15,8 +15,12 @@ def parse(config):
 	...		'VIDEO:be_clever = TRUE',
 	...		'AUDIO:listen = -4',
 	... ])
-	>>> parse(cfg)
-	{'AUDIO': {'listen': '-4'}, 'VIDEO': {'enable': '1', 'be_clever': 'TRUE'}, 'GENERAL': {'foo': 'bar', 'buzz': 'quux'}}
+	>>> parse(cfg) == { \
+				'AUDIO': {'listen': '-4'}, \
+				'VIDEO': {'enable': '1', 'be_clever': 'TRUE'}, \
+				'GENERAL': {'foo': 'bar', 'buzz': 'quux'} \
+			}
+	True
 
 	"""
 	lines = config.splitlines()
