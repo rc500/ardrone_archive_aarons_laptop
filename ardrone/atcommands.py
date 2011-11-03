@@ -1,9 +1,20 @@
-"""
+"""Functions to generate AT commands for the A.R. Drone.
+
+This module provides various API functions to generate AT commands for sending
+to an A.R. drone. For example, to lift off and set hover mode:
+
+>>> reset_sequence()
+>>> ''.join([ref(reset = True), pcmd(False), ref(take_off = True)])
+'AT*REF=1,290717952\\nAT*PCMD=2,0,0,0,0,0\\nAT*REF=3,290718208\\n'
+
 """
 
 import numpy as np
 
+# The common prefix for all AT commands
 __prefix = 'AT*'
+
+# The <LF> (line feed) string.
 __lf = '\x0a'
 
 __sequence = 0
@@ -18,7 +29,7 @@ def reset_sequence():
 	global __sequence
 	__sequence = 0
 
-def ref(emergency = False, take_off = False):
+def ref(reset = False, take_off = False):
 	"""Generate the (take off/land) (emergency/reset) AT*REF command.
 
 	>>> reset_sequence()
@@ -28,18 +39,62 @@ def ref(emergency = False, take_off = False):
 	'AT*REF=2,290717952\\n'
 	>>> ref(False, True)
 	'AT*REF=3,290718208\\n'
-	>>> ref(emergency = True)
+	>>> ref(reset = True)
 	'AT*REF=4,290717952\\n'
 	>>> ref(take_off = True)
 	'AT*REF=5,290718208\\n'
 
 	"""
 	v = 0x11540000 # randomly a few bits need to be set
-	if emergency:
+	if reset:
 		v |= (1 << 8)
 	if take_off:
 		v |= (1 << 9)
 	return __at('REF', v)
+
+def pcmd(progressive_commands = True, combined_yaw = False,
+		left_right_tilt = 0.0, front_back_tilt = 0.0,
+		vertical_speed = 0.0, angular_speed = 0.0):
+	"""Generate a PCMD AT Command sequence.
+
+	>>> reset_sequence()
+	>>> pcmd()
+	'AT*PCMD=1,1,0,0,0,0\\n'
+	>>> pcmd(False, True)
+	'AT*PCMD=2,2,0,0,0,0\\n'
+	>>> pcmd(left_right_tilt = -0.5)
+	'AT*PCMD=3,1,-1090519040,0,0,0\\n'
+	>>> pcmd(left_right_tilt = 1.0)
+	'AT*PCMD=4,1,1065353216,0,0,0\\n'
+	>>> pcmd(left_right_tilt = 2.0)
+	'AT*PCMD=5,1,1065353216,0,0,0\\n'
+	>>> pcmd(front_back_tilt = -0.8)
+	'AT*PCMD=6,1,0,-1085485875,0,0\\n'
+	>>> pcmd(front_back_tilt = -1.0)
+	'AT*PCMD=7,1,0,-1082130432,0,0\\n'
+	>>> pcmd(vertical_speed = -0.8)
+	'AT*PCMD=8,1,0,0,-1085485875,0\\n'
+	>>> pcmd(angular_speed = -0.8)
+	'AT*PCMD=9,1,0,0,0,-1085485875\\n'
+
+	"""
+
+	flag = 0
+	if progressive_commands:
+		flag |= (1 << 0)
+	if combined_yaw:
+		flag |= (1 << 1)
+	
+	left_right_tilt = min(1.0, max(-1.0, left_right_tilt))
+	front_back_tilt = min(1.0, max(-1.0, front_back_tilt))
+	vertical_speed = min(1.0, max(-1.0, vertical_speed))
+	angular_speed = min(1.0, max(-1.0, angular_speed))
+
+	return __at('PCMD', int(flag),
+			float(left_right_tilt),
+			float(front_back_tilt),
+			float(vertical_speed),
+			float(angular_speed))
 
 def ftrim():
 	"""Generate the FTRIM AT command.
@@ -71,6 +126,26 @@ def config(key, value):
 		else:
 			value = 'FALSE'
 	return __at('CONFIG', str(key), str(value))
+
+def config_ids(session_id, user_id, application_id):
+	"""Generate the CONFIG_IDS AT command.
+
+	>>> reset_sequence()
+	>>> config_ids('session_id', 'user_id', 'application_id')
+	'AT*CONFIG_IDS=1,"session_id","user_id","application_id"\\n'
+
+	"""
+	return __at('CONFIG_IDS', str(session_id), str(user_id), str(application_id))
+
+def comwdg():
+	"""Generate the COMWGD AT command to reset the watchdog.
+
+	>>> reset_sequence()
+	>>> comwdg()
+	'AT*COMWDG=1\\n'
+
+	"""
+	return __at('COMWDG')
 
 def __next_sequence():
 	"""Return the next sequence number for the AT command.
