@@ -147,6 +147,16 @@ def comwdg():
 	"""
 	return __at('COMWDG')
 
+def ctrl(mode):
+	"""Generate the CTRL AT command.
+
+	>>> reset_sequence()
+	>>> ctrl(4)
+	'AT*CTRL=1,4\\n'
+
+	"""
+	return __at('CTRL', int(mode))
+
 def __next_sequence():
 	"""Return the next sequence number for the AT command.
 
