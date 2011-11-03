@@ -39,7 +39,7 @@ def ref(emergency = False, take_off = False):
 		v |= (1 << 8)
 	if take_off:
 		v |= (1 << 9)
-	return _at('REF', v)
+	return __at('REF', v)
 
 def ftrim():
 	"""Generate the FTRIM AT command.
@@ -51,7 +51,7 @@ def ftrim():
 	'AT*FTRIM=2\\n'
 
 	"""
-	return _at('FTRIM')
+	return __at('FTRIM')
 
 def config(key, value):
 	"""Generate the CONFIG AT command.
@@ -70,7 +70,7 @@ def config(key, value):
 			value = 'TRUE'
 		else:
 			value = 'FALSE'
-	return _at('CONFIG', str(key), str(value))
+	return __at('CONFIG', str(key), str(value))
 
 def __next_sequence():
 	"""Return the next sequence number for the AT command.
@@ -91,43 +91,43 @@ def __next_sequence():
 	__sequence += 1
 	return __sequence
 
-def _at(name, *args):
+def __at(name, *args):
 	"""Format an entire AT string.
 
 	>>> reset_sequence()
-	>>> _at('PCMD', 1, 0, 0, 0, 0)
+	>>> __at('PCMD', 1, 0, 0, 0, 0)
 	'AT*PCMD=1,1,0,0,0,0\\n'
-	>>> _at('PCMD', 1, 0, 0, 0, 0)
+	>>> __at('PCMD', 1, 0, 0, 0, 0)
 	'AT*PCMD=2,1,0,0,0,0\\n'
 	>>> reset_sequence()
-	>>> _at('PCMD', 1, 0, 0, 0, 0)
+	>>> __at('PCMD', 1, 0, 0, 0, 0)
 	'AT*PCMD=1,1,0,0,0,0\\n'
-	>>> _at('PCMD')
+	>>> __at('PCMD')
 	'AT*PCMD=2\\n'
 
 	"""
-	return '%s%s=%s%s' % (__prefix, name, _format_arg([__next_sequence()] + list(args)), __lf)
+	return '%s%s=%s%s' % (__prefix, name, __format_arg([__next_sequence()] + list(args)), __lf)
 
-def _format_arg(a):
+def __format_arg(a):
 	"""Format an argument suitably for embedding in an AT command.
 
-	>>> _format_arg(4)
+	>>> __format_arg(4)
 	'4'
-	>>> _format_arg('hello')
+	>>> __format_arg('hello')
 	'"hello"'
-	>>> _format_arg(-0.8)
+	>>> __format_arg(-0.8)
 	'-1085485875'
-	>>> _format_arg(-1.0)
+	>>> __format_arg(-1.0)
 	'-1082130432'
-	>>> _format_arg([1,2,3])
+	>>> __format_arg([1,2,3])
 	'1,2,3'
-	>>> _format_arg((1,2,3))
+	>>> __format_arg((1,2,3))
 	'1,2,3'
-	>>> _format_arg((1,))
+	>>> __format_arg((1,))
 	'1'
-	>>> _format_arg([1,'hello',-0.8])
+	>>> __format_arg([1,'hello',-0.8])
 	'1,"hello",-1085485875'
-	>>> _format_arg(np)
+	>>> __format_arg(np)
 	Traceback (most recent call last):
 	  File "<stdin>", line 1, in ?
 	TypeError: Argument must be a sequence, string, integer or float
@@ -141,7 +141,7 @@ def _format_arg(a):
 	# try a floating point
 	if isinstance(a, float):
 		bs = np.array([a], dtype=np.float32).data
-		return _format_arg(int(np.frombuffer(bs, dtype=np.int32)[0]))
+		return __format_arg(int(np.frombuffer(bs, dtype=np.int32)[0]))
 
 	# try an integer
 	try:
@@ -152,7 +152,7 @@ def _format_arg(a):
 
 	# last hope, sequence
 	try:
-		return ','.join([_format_arg(x) for x in a])
+		return ','.join([__format_arg(x) for x in a])
 	except TypeError:
 		pass
 
