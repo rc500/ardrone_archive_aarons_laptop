@@ -1,4 +1,6 @@
-"""Module defining an abstract base class object providing connection support."""
+"""Base classes for platform-specific functionality.
+
+"""
 
 class Connection(object):
 	"""Sub classes should override the put method at a minimum. Usually the
@@ -45,7 +47,7 @@ class Connection(object):
 		is called when a navdata packet arrives.
 		
 		>>> Connection() # doctest: +ELLIPSIS
-		<connection.Connection object at 0x...>
+		<platform.Connection object at 0x...>
 
 		"""
 		self.navdata_cb = navdata_cb
