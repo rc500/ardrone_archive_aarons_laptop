@@ -9,7 +9,7 @@ to an A.R. drone. For example, to lift off and set hover mode:
 
 """
 
-import numpy as np
+import ctypes as ct
 
 # The common prefix for all AT commands
 __prefix = 'AT*'
@@ -50,7 +50,7 @@ def ref(reset = False, take_off = False):
 		v |= (1 << 8)
 	if take_off:
 		v |= (1 << 9)
-	return __at('REF', v)
+	return __at('REF', ct.c_int32(v))
 
 def pcmd(progressive_commands = True, combined_yaw = False,
 		left_right_tilt = 0.0, front_back_tilt = 0.0,
@@ -90,11 +90,11 @@ def pcmd(progressive_commands = True, combined_yaw = False,
 	vertical_speed = min(1.0, max(-1.0, vertical_speed))
 	angular_speed = min(1.0, max(-1.0, angular_speed))
 
-	return __at('PCMD', int(flag),
-			float(left_right_tilt),
-			float(front_back_tilt),
-			float(vertical_speed),
-			float(angular_speed))
+	return __at('PCMD', ct.c_int32(flag),
+			ct.c_float(left_right_tilt),
+			ct.c_float(front_back_tilt),
+			ct.c_float(vertical_speed),
+			ct.c_float(angular_speed))
 
 def ftrim():
 	"""Generate the FTRIM AT command.
@@ -155,37 +155,43 @@ def ctrl(mode):
 	'AT*CTRL=1,4\\n'
 
 	"""
-	return __at('CTRL', int(mode))
+	return __at('CTRL', ct.c_int32(mode))
 
 def __next_sequence():
 	"""Return the next sequence number for the AT command.
 
 	>>> reset_sequence()
-	>>> __next_sequence()
+	>>> __next_sequence().value
 	1
-	>>> __next_sequence()
+	>>> __next_sequence().value
 	2
-	>>> __next_sequence()
+	>>> __next_sequence().value
 	3
 	>>> reset_sequence()
-	>>> __next_sequence()
+	>>> __next_sequence().value
 	1
+	>>> import ctypes as ct
+	>>> isinstance(__next_sequence(), ct.c_int32)
+	True
 
 	"""
 	global __sequence
 	__sequence += 1
-	return __sequence
+	return ct.c_int32(__sequence)
 
 def __at(name, *args):
 	"""Format an entire AT string.
 
+	>>> import ctypes
+	>>> def i(x):
+	...	return ct.c_int32(x)
 	>>> reset_sequence()
-	>>> __at('PCMD', 1, 0, 0, 0, 0)
+	>>> __at('PCMD', i(1), i(0), i(0), i(0), i(0))
 	'AT*PCMD=1,1,0,0,0,0\\n'
-	>>> __at('PCMD', 1, 0, 0, 0, 0)
+	>>> __at('PCMD', i(1), i(0), i(0), i(0), i(0))
 	'AT*PCMD=2,1,0,0,0,0\\n'
 	>>> reset_sequence()
-	>>> __at('PCMD', 1, 0, 0, 0, 0)
+	>>> __at('PCMD', i(1), i(0), i(0), i(0), i(0))
 	'AT*PCMD=1,1,0,0,0,0\\n'
 	>>> __at('PCMD')
 	'AT*PCMD=2\\n'
@@ -196,52 +202,56 @@ def __at(name, *args):
 def __format_arg(a):
 	"""Format an argument suitably for embedding in an AT command.
 
-	>>> __format_arg(4)
+	The argument must be a string, ct.c_int32, ct.c_float or a
+	sequence of any valid argument to __format_arg(). A sequence will be
+	flattened into a comma-semarated list of the elements which have each
+	been formatted by __format_arg().
+
+	>>> import ctypes as ct
+	>>> __format_arg(ct.c_int32(4))
 	'4'
 	>>> __format_arg('hello')
 	'"hello"'
-	>>> __format_arg(-0.8)
+	>>> __format_arg(ct.c_float(-0.8))
 	'-1085485875'
-	>>> __format_arg(-1.0)
+	>>> __format_arg(ct.c_float(-1.0))
 	'-1082130432'
-	>>> __format_arg([1,2,3])
+	>>> __format_arg([ct.c_int32(x) for x in [1,2,3]])
 	'1,2,3'
-	>>> __format_arg((1,2,3))
-	'1,2,3'
-	>>> __format_arg((1,))
+	>>> __format_arg((ct.c_int32(1),ct.c_int32(4)))
+	'1,4'
+	>>> __format_arg((ct.c_int32(1),))
 	'1'
-	>>> __format_arg([1,'hello',-0.8])
+	>>> __format_arg([ct.c_int32(1),'hello',ct.c_float(-0.8)])
 	'1,"hello",-1085485875'
-	>>> __format_arg(np)
+	>>> import re
+	>>> __format_arg(re) # doctest: +ELLIPSIS
 	Traceback (most recent call last):
 	  File "<stdin>", line 1, in ?
-	TypeError: Argument must be a sequence, string, integer or float
+	TypeError: Argument must be a sequence, string, c_int32 or c_float (got ...
 
 	"""
 
 	# stringy
 	if isinstance(a, str):
-		return '"%s"' % (a,)
+		return '"'+a+'"'
 
 	# try a floating point
-	if isinstance(a, float):
-		bs = np.array([a], dtype=np.float32).data
-		return __format_arg(int(np.frombuffer(bs, dtype=np.int32)[0]))
+	if isinstance(a, ct.c_float):
+		# These are some dirty tricks using the ctypes pointer munging abilities
+		pcf = ct.byref(a)
+		pci = ct.cast(pcf, ct.POINTER(ct.c_int32))
+		return '%d' % (pci[0],)
 
 	# try an integer
-	try:
-		if int(a) == a:
-			return '%d' % (a,)
-	except TypeError:
-		pass
+	if isinstance(a, ct.c_int32):
+		return '%d' % (a.value,)
 
 	# last hope, sequence
-	try:
+	if hasattr(a, '__iter__'):
 		return ','.join([__format_arg(x) for x in a])
-	except TypeError:
-		pass
 
-	raise TypeError('Argument must be a sequence, string, integer or float')
+	raise TypeError('Argument must be a sequence, string, c_int32 or c_float (got %s)' % (repr(a),))
 
 if __name__ == "__main__":
     import doctest
