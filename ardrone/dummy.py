@@ -16,7 +16,7 @@ class Connection(connection.Connection):
 
 	For example:
 
-	>>> import atcommands as at
+	>>> import ardrone.atcommands as at
 	>>> at.reset_sequence()
 	>>> a = Connection()
 	>>> a.put(at.ref())
@@ -24,6 +24,8 @@ class Connection(connection.Connection):
 	>>> def f(x):
 	...	print('Log: %s' % (repr(x),))
 	>>> b = Connection(log_cb = f)
+	>>> b.log_cb is f
+	True
 	>>> b.put(at.ref())
 	Log: 'AT*REF=2,290717696\n'
 
@@ -35,7 +37,7 @@ class Connection(connection.Connection):
 		data_cb is a callable which will periodically be sent fake navdata packets.
 
 		>>> a = Connection()
-		>>> a._data_cb is None
+		>>> a.navdata_cb is None
 		True
 		>>> p = None
 		>>> def foo(packet):
@@ -43,27 +45,28 @@ class Connection(connection.Connection):
 		...		p = packet
 		>>> p is None
 		True
-		>>> b = Connection(data_cb = foo)
-		>>> b._data_cb is None
+		>>> b = Connection(navdata_cb = foo)
+		>>> b.connect()
+		True
+		>>> b.navdata_cb is None
 		False
-		>>> b._data_cb is foo
+		>>> b.navdata_cb is foo
 		True
 		>>> import time
 		>>> time.sleep(2)
 		>>> p is None
 		False
+		>>> b.disconnect()
 
 		"""
 		connection.Connection.__init__(self, *args, **kwargs)
-
-		self._data_cb = data_cb
-		self._log_cb = log_cb
+		self.log_cb = log_cb
 		self._schedule_cb('Hello')
 
 	def put(self, command_string):
 		r""" Send the command string to the drone over the network.
 
-		>>> import atcommands as at
+		>>> import ardrone.atcommands as at
 		>>> t = Connection()
 		>>> t.put('Foo\nBar')
 		OUTPUT: 'Foo\nBar'
@@ -74,17 +77,11 @@ class Connection(connection.Connection):
 		OUTPUT: 'AT*REF=2,290717696\n'
 		"""
 
-		if self._log_cb is None:
+		if self.log_cb is None:
 			print('OUTPUT: %s' % (repr(str(command_string)),))
 		else:
-			self._log_cb(str(command_string))
+			self.log_cb(str(command_string))
 	
 	def _schedule_cb(self, data):
-		if self._data_cb is None:
-			return
-		t = threading.Timer(random.random() + 0.05, lambda: self._data_cb(data))
+		t = threading.Timer(random.random() + 0.05, lambda: self.got_navdata(data))
 		t.start()
-
-if __name__ == '__main__':
-	import doctest
-	doctest.testmod()
