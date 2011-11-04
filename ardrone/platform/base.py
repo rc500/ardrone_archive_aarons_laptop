@@ -47,7 +47,7 @@ class Connection(object):
     is called when a navdata packet arrives.
     
     >>> Connection() # doctest: +ELLIPSIS
-    <platform.Connection object at 0x...>
+    <ardrone.platform.base.Connection object at 0x...>
 
     """
     self.navdata_cb = navdata_cb

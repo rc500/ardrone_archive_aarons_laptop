@@ -4,9 +4,9 @@
 import random
 import threading
 
-import ardrone.core.platform as plat
+from . import base
 
-class Connection(plat.Connection):
+class Connection(base.Connection):
   r""" A simple test connection which can be used to develop applications.
 
   This connection object doesn't actually connect to the drone. Instead it can
@@ -15,7 +15,7 @@ class Connection(plat.Connection):
 
   For example:
 
-  >>> import atcommands as at
+  >>> from ..core import atcommands as at
   >>> at.reset_sequence()
   >>> a = Connection()
   >>> a.put(at.ref())
@@ -52,20 +52,20 @@ class Connection(plat.Connection):
     >>> b.navdata_cb is foo
     True
     >>> import time
-    >>> time.sleep(2)
+    >>> time.sleep(0.2)
     >>> p is None
     False
     >>> b.disconnect()
 
     """
-    plat.Connection.__init__(self, *args, **kwargs)
+    base.Connection.__init__(self, *args, **kwargs)
     self.log_cb = log_cb
     self._schedule_cb('Hello')
 
   def put(self, command_string):
     r""" Send the command string to the drone over the network.
 
-    >>> import atcommands as at
+    >>> from ..core import atcommands as at
     >>> t = Connection()
     >>> t.put('Foo\nBar')
     OUTPUT: 'Foo\nBar'
@@ -82,5 +82,5 @@ class Connection(plat.Connection):
       self.log_cb(str(command_string))
   
   def _schedule_cb(self, data):
-    t = threading.Timer(random.random() + 0.05, lambda: self.got_navdata(data))
+    t = threading.Timer(0.05 * random.random() + 0.05, lambda: self.got_navdata(data))
     t.start()

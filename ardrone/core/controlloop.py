@@ -2,7 +2,7 @@
 
 """
 
-import atcommands as at
+from . import atcommands as at
 
 class ConnectionError(Exception):
   """A class used to represent a connection error to the drone.
@@ -21,13 +21,13 @@ class ControlLoop(object):
     You must call the connect and disconnect methods on the control loop before
     trying any control methods.
 
-    >>> import ardrone.core.dummy as dummy
+    >>> from ..platform import dummy
     >>> con = dummy.Connection()
     >>> cl = ControlLoop(con)
     >>> cl.disconnect()
     Traceback (most recent call last):
       File "<stdin>", line 1, in ?
-    controlloop.ConnectionError: Not connected to drone.
+    ardrone.core.controlloop.ConnectionError: Not connected to drone.
     >>> cl.connected
     False
     >>> cl.connect()
@@ -54,7 +54,7 @@ class ControlLoop(object):
   def reset(self):
     r"""Send a reset command to the drone.
 
-    >>> import ardrone.core.dummy as dummy
+    >>> from ..platform import dummy
     >>> con = dummy.Connection()
     >>> cl = ControlLoop(con)
     >>> cl.connect()
