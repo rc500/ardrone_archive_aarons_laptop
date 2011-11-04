@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import argui.app
+import ardrone.qtgui.app as app
 
 if __name__ == '__main__':
-	argui.app.main()
+	app.main()
