@@ -5,7 +5,9 @@
 import random
 import threading
 
-class Connection(object):
+import connection
+
+class Connection(connection.Connection):
 	r""" A simple test connection which can be used to develop applications.
 
 	This connection object doesn't actually connect to the drone. Instead it can
@@ -25,7 +27,9 @@ class Connection(object):
 
 	"""
 
-	def __init__(self, log_cb = None, data_cb = None):
+	def __init__(self, log_cb = None, data_cb = None, *args, **kwargs):
+		connection.Connection.__init__(self, *args, **kwargs)
+
 		""" Create the dummy connection object.
 
 		data_cb is a callable which will periodically be sent fake navdata packets.
