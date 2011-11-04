@@ -46,6 +46,13 @@
        </widget>
       </item>
       <item>
+       <widget class="QPushButton" name="pushButton_5">
+        <property name="text">
+         <string>Hover</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <spacer name="horizontalSpacer">
         <property name="orientation">
          <enum>Qt::Horizontal</enum>
@@ -162,11 +169,28 @@
     </hint>
    </hints>
   </connection>
+  <connection>
+   <sender>pushButton_5</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>hover()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>398</x>
+     <y>56</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>560</x>
+     <y>54</y>
+    </hint>
+   </hints>
+  </connection>
  </connections>
  <slots>
   <slot>flatTrim()</slot>
   <slot>reset()</slot>
   <slot>takeOff()</slot>
   <slot>land()</slot>
+  <slot>hover()</slot>
  </slots>
 </ui>

@@ -33,6 +33,9 @@ class MainWindow(QtGui.QMainWindow):
   def reset(self):
     self._control.reset()
 
+  def hover(self):
+    self._control.hover()
+
   def flatTrim(self):
     self._control.flat_trim()
 

@@ -93,6 +93,20 @@ class ControlLoop(object):
 
     """
     self._send(at.ref(take_off = False, reset = False))
+ 
+  def hover(self):
+    r"""Send a hover command.
+
+    >>> from ..platform import dummy
+    >>> con = dummy.Connection()
+    >>> cl = ControlLoop(con)
+    >>> cl.connect()
+    >>> cl.hover()
+    OUTPUT: 'AT*PCMD=1,1,0,0,0,0\n'
+    >>> cl.disconnect()
+
+    """
+    self._send(at.pcmd())
 
   def reset(self):
     r"""Send a reset command to the drone.
