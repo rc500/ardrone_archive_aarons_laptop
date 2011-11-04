@@ -39,6 +39,13 @@
        </widget>
       </item>
       <item>
+       <widget class="QPushButton" name="pushButton_4">
+        <property name="text">
+         <string>Land</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <spacer name="horizontalSpacer">
         <property name="orientation">
          <enum>Qt::Horizontal</enum>
@@ -139,10 +146,27 @@
     </hint>
    </hints>
   </connection>
+  <connection>
+   <sender>pushButton_4</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>land()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>335</x>
+     <y>55</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>410</x>
+     <y>56</y>
+    </hint>
+   </hints>
+  </connection>
  </connections>
  <slots>
   <slot>flatTrim()</slot>
   <slot>reset()</slot>
   <slot>takeOff()</slot>
+  <slot>land()</slot>
  </slots>
 </ui>

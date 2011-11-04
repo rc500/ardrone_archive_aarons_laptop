@@ -27,6 +27,9 @@ class MainWindow(QtGui.QMainWindow):
   def takeOff(self):
     self._control.take_off()
 
+  def land(self):
+    self._control.land()
+
   def reset(self):
     self._control.reset()
 

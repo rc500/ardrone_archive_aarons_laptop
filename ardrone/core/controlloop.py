@@ -80,6 +80,20 @@ class ControlLoop(object):
     """
     self._send(at.ref(take_off = True))
   
+  def land(self):
+    r"""Send a land command.
+
+    >>> from ..platform import dummy
+    >>> con = dummy.Connection()
+    >>> cl = ControlLoop(con)
+    >>> cl.connect()
+    >>> cl.land()
+    OUTPUT: 'AT*REF=1,290717696\n'
+    >>> cl.disconnect()
+
+    """
+    self._send(at.ref(take_off = False, reset = False))
+
   def reset(self):
     r"""Send a reset command to the drone.
 
