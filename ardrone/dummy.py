@@ -1,13 +1,13 @@
 """A dummy connection for testing.
 
 """
-
 import random
 import threading
 
-import connection
+# Local modules
+import platform
 
-class Connection(connection.Connection):
+class Connection(platform.Connection):
 	r""" A simple test connection which can be used to develop applications.
 
 	This connection object doesn't actually connect to the drone. Instead it can
@@ -59,7 +59,7 @@ class Connection(connection.Connection):
 		>>> b.disconnect()
 
 		"""
-		connection.Connection.__init__(self, *args, **kwargs)
+		platform.Connection.__init__(self, *args, **kwargs)
 		self.log_cb = log_cb
 		self._schedule_cb('Hello')
 
