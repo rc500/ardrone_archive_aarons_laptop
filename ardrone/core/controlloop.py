@@ -51,6 +51,34 @@ class ControlLoop(object):
     self._assert_connected()
     self._connection.disconnect()
     self.connected = False
+
+  def flat_trim(self):
+    r"""Send a take off command.
+
+    >>> from ..platform import dummy
+    >>> con = dummy.Connection()
+    >>> cl = ControlLoop(con)
+    >>> cl.connect()
+    >>> cl.flat_trim()
+    OUTPUT: 'AT*FTRIM=1\n'
+    >>> cl.disconnect()
+
+    """
+    self._send(at.ftrim())
+
+  def take_off(self):
+    r"""Send a take off command.
+
+    >>> from ..platform import dummy
+    >>> con = dummy.Connection()
+    >>> cl = ControlLoop(con)
+    >>> cl.connect()
+    >>> cl.take_off()
+    OUTPUT: 'AT*REF=1,290718208\n'
+    >>> cl.disconnect()
+
+    """
+    self._send(at.ref(take_off = True))
   
   def reset(self):
     r"""Send a reset command to the drone.

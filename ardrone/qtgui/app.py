@@ -24,11 +24,14 @@ class MainWindow(QtGui.QMainWindow):
     self._control = ControlLoop(connection)
     self._control.connect()
 
+  def takeOff(self):
+    self._control.take_off()
+
   def reset(self):
     self._control.reset()
 
   def flatTrim(self):
-    print('ping')
+    self._control.flat_trim()
 
 def main():
 	app = QtGui.QApplication(sys.argv)

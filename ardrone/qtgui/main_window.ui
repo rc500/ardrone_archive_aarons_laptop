@@ -123,9 +123,26 @@
     </hint>
    </hints>
   </connection>
+  <connection>
+   <sender>pushButton_3</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>takeOff()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>243</x>
+     <y>54</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>485</x>
+     <y>48</y>
+    </hint>
+   </hints>
+  </connection>
  </connections>
  <slots>
   <slot>flatTrim()</slot>
   <slot>reset()</slot>
+  <slot>takeOff()</slot>
  </slots>
 </ui>
