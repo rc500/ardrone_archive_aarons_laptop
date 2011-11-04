@@ -4,10 +4,9 @@
 import random
 import threading
 
-# Local modules
-import platform
+import ardrone.platform as plat
 
-class Connection(platform.Connection):
+class Connection(plat.Connection):
 	r""" A simple test connection which can be used to develop applications.
 
 	This connection object doesn't actually connect to the drone. Instead it can
@@ -59,7 +58,7 @@ class Connection(platform.Connection):
 		>>> b.disconnect()
 
 		"""
-		platform.Connection.__init__(self, *args, **kwargs)
+		plat.Connection.__init__(self, *args, **kwargs)
 		self.log_cb = log_cb
 		self._schedule_cb('Hello')
 
