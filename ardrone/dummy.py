@@ -30,8 +30,6 @@ class Connection(connection.Connection):
 	"""
 
 	def __init__(self, log_cb = None, data_cb = None, *args, **kwargs):
-		connection.Connection.__init__(self, *args, **kwargs)
-
 		""" Create the dummy connection object.
 
 		data_cb is a callable which will periodically be sent fake navdata packets.
@@ -56,6 +54,8 @@ class Connection(connection.Connection):
 		False
 
 		"""
+		connection.Connection.__init__(self, *args, **kwargs)
+
 		self._data_cb = data_cb
 		self._log_cb = log_cb
 		self._schedule_cb('Hello')
