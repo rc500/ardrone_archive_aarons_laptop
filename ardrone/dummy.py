@@ -19,7 +19,9 @@ class Connection(object):
 	>>> a = Connection()
 	>>> a.put(at.ref())
 	OUTPUT: 'AT*REF=1,290717696\n'
-	>>> b = Connection(log_cb = lambda x: print('Log: %s' % (repr(x),)))
+	>>> def f(x):
+	...	print('Log: %s' % (repr(x),))
+	>>> b = Connection(log_cb = f)
 	>>> b.put(at.ref())
 	Log: 'AT*REF=2,290717696\n'
 
