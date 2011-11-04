@@ -9,7 +9,7 @@ to an A.R. drone. For example, to lift off and set hover mode:
 
 """
 
-import numpy as np
+import ctypes
 
 # The common prefix for all AT commands
 __prefix = 'AT*'
@@ -212,7 +212,8 @@ def __format_arg(a):
 	'1'
 	>>> __format_arg([1,'hello',-0.8])
 	'1,"hello",-1085485875'
-	>>> __format_arg(np)
+	>>> import re
+	>>> __format_arg(re)
 	Traceback (most recent call last):
 	  File "<stdin>", line 1, in ?
 	TypeError: Argument must be a sequence, string, integer or float
@@ -225,8 +226,10 @@ def __format_arg(a):
 
 	# try a floating point
 	if isinstance(a, float):
-		bs = np.array([a], dtype=np.float32).data
-		return __format_arg(int(np.frombuffer(bs, dtype=np.int32)[0]))
+		# These are some dirty tricks using the ctypes pointer munging abilities
+		pcf = ctypes.byref(ctypes.c_float(a))
+		pci = ctypes.cast(pcf, ctypes.POINTER(ctypes.c_int32))
+		return __format_arg(pci[0])
 
 	# try an integer
 	try:
