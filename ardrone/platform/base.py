@@ -2,6 +2,13 @@
 
 """
 
+class ConnectionError(Exception):
+  def __init__(self, msg):
+    self.msg = msg
+
+  def __str__(self):
+    return self.msg
+
 class Connection(object):
   """Sub classes should override the put method at a minimum. Usually the
   connect method will be overridden as well. Optionally the disconnect method
@@ -12,6 +19,9 @@ class Connection(object):
 
   The navdata_cb attribute of the object gives the current navdata callable
   which will be called when a packet arrives.
+
+  All connection methods may raise a ConnectionError if there is some problem
+  sending the data.
 
   >>> p = None
   >>> def f(packet):

@@ -24,10 +24,11 @@ class ControlLoop(object):
     >>> from ..platform import dummy
     >>> con = dummy.Connection()
     >>> cl = ControlLoop(con)
-    >>> cl.disconnect()
-    Traceback (most recent call last):
-      File "<stdin>", line 1, in ?
-    ardrone.core.controlloop.ConnectionError: Not connected to drone.
+    >>> try:
+    ...   cl.disconnect()
+    ... except ConnectionError:
+    ...   print('Not connected')
+    Not connected
     >>> cl.connected
     False
     >>> cl.connect()
