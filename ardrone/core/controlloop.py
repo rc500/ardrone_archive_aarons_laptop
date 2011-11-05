@@ -74,11 +74,11 @@ class ControlLoop(object):
     >>> cl = ControlLoop(con)
     >>> cl.connect()
     >>> cl.take_off()
-    OUTPUT: 'AT*REF=1,290718208\n'
+    OUTPUT: 'AT*CONFIG=1,"CONTROL:outdoor","FALSE"\nAT*REF=2,290718208\n'
     >>> cl.disconnect()
 
     """
-    self._send(at.ref(take_off = True))
+    self._send(''.join([at.config('CONTROL:outdoor', False), at.ref(take_off = True)]))
   
   def land(self):
     r"""Send a land command.
