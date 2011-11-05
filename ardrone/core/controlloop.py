@@ -2,6 +2,9 @@
 
 """
 
+import logging
+log = logging.getLogger()
+
 from . import atcommands as at
 
 class ConnectionError(Exception):
@@ -127,6 +130,7 @@ class ControlLoop(object):
 
   def _send(self, cmd):
     self._assert_connected()
+    log.debug('Sending: %r' % (cmd,))
     self._connection.put(cmd)
 
   def _assert_connected(self):
