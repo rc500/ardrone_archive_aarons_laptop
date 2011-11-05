@@ -25,8 +25,8 @@
         <rect>
          <x>0</x>
          <y>0</y>
-         <width>534</width>
-         <height>374</height>
+         <width>540</width>
+         <height>360</height>
         </rect>
        </property>
        <layout class="QGridLayout" name="gridLayout">
@@ -45,7 +45,7 @@
      <x>0</x>
      <y>0</y>
      <width>560</width>
-     <height>22</height>
+     <height>29</height>
     </rect>
    </property>
   </widget>
@@ -96,7 +96,7 @@
   <customwidget>
    <class>MainWidget</class>
    <extends>QWidget</extends>
-   <header>mainwidget.h</header>
+   <header>ardrone.qtgui.app</header>
    <container>1</container>
    <slots>
     <slot>flatTrim()</slot>
