@@ -13,7 +13,7 @@ class DroneUDPHandler(socketserver.BaseRequestHandler):
     data = self.request[0].strip()
     socket = self.request[1]
 
-    logging.info("{} wrote:".format(self.client_address[0]))
+    logging.info("%s wrote:" % (str(self.client_address[0]),))
     logging.info(data)
 
     socket.sendto(data.upper(), self.client_address)
