@@ -22,12 +22,12 @@ from . import base
 class Connection(base.Connection):
   """A Qt implementation of the UDP connection to the drone.
 
-  Firstly, start a dummy drone server.
+  Firstly, start a dummy UDP server.
 
   >>> import multiprocessing as mp
   >>> import socket
-  >>> from .. import dummydrone
-  >>> p = mp.Process(target=dummydrone.serve)
+  >>> from .. import udpechoserver
+  >>> p = mp.Process(target=udpechoserver.serve)
   >>> p.start()
 
   Create a Qt event loop.
@@ -46,7 +46,7 @@ class Connection(base.Connection):
   ...   drone_host='127.0.0.1',
   ...   at_bind_port=5555, navdata_bind_port=5556)
 
-  Connect to the drone/
+  Connect to the server.
 
   >>> c.connect()
   True

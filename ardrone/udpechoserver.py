@@ -8,7 +8,7 @@ import logging
 import sys
 import threading
 
-class DroneUDPHandler(socketserver.BaseRequestHandler):
+class EchoUDPHandler(socketserver.BaseRequestHandler):
   def handle(self):
     data = self.request[0].strip()
     socket = self.request[1]
@@ -21,7 +21,7 @@ class DroneUDPHandler(socketserver.BaseRequestHandler):
 class ServeThread(threading.Thread):
   def run(self):
     HOST, PORT = 'localhost', 5556
-    server = socketserver.UDPServer((HOST, PORT), DroneUDPHandler)
+    server = socketserver.UDPServer((HOST, PORT), EchoUDPHandler)
     server.serve_forever()
 
 def serve():
