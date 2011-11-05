@@ -2,8 +2,20 @@
 
 """
 import logging
-from PyQt4.QtCore import QObject, SIGNAL
-from PyQt4.QtNetwork import QUdpSocket, QHostAddress
+
+from ..util import qtcompat as qt
+
+try:
+  QtCore = qt.import_module('QtCore')
+  QtNetwork = qt.import_module('QtNetwork')
+
+  # Since we only use a few classes, extract them for convenience
+  QObject = QtCore.QObject
+  SIGNAL = QtCore.SIGNAL
+  QHostAddress = QtNetwork.QHostAddress
+  QUdpSocket = QtNetwork.QUdpSocket
+except Exception as e:
+  raise ImportError(str(e))
 
 from . import base
 
@@ -20,8 +32,9 @@ class Connection(base.Connection):
 
   Create a Qt event loop.
 
-  >>> from PyQt4.QtCore import QCoreApplication, QEventLoop, QTimer
-  >>> app = QCoreApplication([])
+  >>> from ..util import qtcompat as qt
+  >>> QtCore = qt.import_module('QtCore')
+  >>> app = QtCore.QCoreApplication([])
 
   Here we use the bind port of 5555 since the drone server binds to 5556.
   Furthermore, we set the navdata_bind_port to 5556 so that we see the replies
@@ -51,7 +64,7 @@ class Connection(base.Connection):
 
   Wait for the event loop to finish.
 
-  >>> QTimer.singleShot(500, app.quit)
+  >>> QtCore.QTimer.singleShot(500, app.quit)
   >>> app.exec_()
   0
 
@@ -106,4 +119,8 @@ class Connection(base.Connection):
   def _navDataReadyRead(self):
     sz = self._navdata_socket.pendingDatagramSize()
     (data, host, port) = self._navdata_socket.readDatagram(sz)
-    self.got_navdata(bytes.decode(data))
+    if qt.USES_PYSIDE:
+      # PySide returns a QByteArray
+      self.got_navdata(data.data())
+    else:
+      self.got_navdata(bytes.decode(data))
