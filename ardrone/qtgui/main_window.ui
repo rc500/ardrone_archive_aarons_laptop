@@ -6,67 +6,15 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>561</width>
-    <height>434</height>
+    <width>560</width>
+    <height>468</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>A.R. Drone GUI Example</string>
   </property>
-  <widget class="QWidget" name="centralwidget">
+  <widget class="MainWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout">
-    <item>
-     <layout class="QHBoxLayout" name="horizontalLayout">
-      <item>
-       <widget class="QPushButton" name="pushButton">
-        <property name="text">
-         <string>Flat Trim</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="pushButton_2">
-        <property name="text">
-         <string>Reset</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="pushButton_3">
-        <property name="text">
-         <string>Take Off</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="pushButton_4">
-        <property name="text">
-         <string>Land</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="pushButton_5">
-        <property name="text">
-         <string>Hover</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <spacer name="horizontalSpacer">
-        <property name="orientation">
-         <enum>Qt::Horizontal</enum>
-        </property>
-        <property name="sizeHint" stdset="0">
-         <size>
-          <width>40</width>
-          <height>20</height>
-         </size>
-        </property>
-       </spacer>
-      </item>
-     </layout>
-    </item>
     <item>
      <widget class="QScrollArea" name="scrollArea">
       <property name="widgetResizable">
@@ -77,8 +25,8 @@
         <rect>
          <x>0</x>
          <y>0</y>
-         <width>541</width>
-         <height>320</height>
+         <width>534</width>
+         <height>374</height>
         </rect>
        </property>
        <layout class="QGridLayout" name="gridLayout">
@@ -96,101 +44,150 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>561</width>
-     <height>29</height>
+     <width>560</width>
+     <height>22</height>
     </rect>
    </property>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
+  <widget class="QToolBar" name="toolBar">
+   <property name="windowTitle">
+    <string>toolBar</string>
+   </property>
+   <attribute name="toolBarArea">
+    <enum>TopToolBarArea</enum>
+   </attribute>
+   <attribute name="toolBarBreak">
+    <bool>false</bool>
+   </attribute>
+   <addaction name="actionFlatTrim"/>
+   <addaction name="actionReset"/>
+   <addaction name="actionTakeOff"/>
+   <addaction name="actionLand"/>
+   <addaction name="actionHover"/>
+  </widget>
+  <action name="actionFlatTrim">
+   <property name="text">
+    <string>Flat Trim</string>
+   </property>
+  </action>
+  <action name="actionReset">
+   <property name="text">
+    <string>Reset</string>
+   </property>
+  </action>
+  <action name="actionTakeOff">
+   <property name="text">
+    <string>Take Off</string>
+   </property>
+  </action>
+  <action name="actionLand">
+   <property name="text">
+    <string>Land</string>
+   </property>
+  </action>
+  <action name="actionHover">
+   <property name="text">
+    <string>Hover</string>
+   </property>
+  </action>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>MainWidget</class>
+   <extends>QWidget</extends>
+   <header>mainwidget.h</header>
+   <container>1</container>
+   <slots>
+    <slot>flatTrim()</slot>
+    <slot>reset()</slot>
+    <slot>takeOff()</slot>
+    <slot>land()</slot>
+    <slot>hover()</slot>
+   </slots>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections>
   <connection>
-   <sender>pushButton</sender>
-   <signal>clicked()</signal>
-   <receiver>MainWindow</receiver>
+   <sender>actionFlatTrim</sender>
+   <signal>triggered()</signal>
+   <receiver>centralwidget</receiver>
    <slot>flatTrim()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>77</x>
-     <y>60</y>
+     <x>-1</x>
+     <y>-1</y>
     </hint>
     <hint type="destinationlabel">
-     <x>190</x>
-     <y>-11</y>
+     <x>279</x>
+     <y>246</y>
     </hint>
    </hints>
   </connection>
   <connection>
-   <sender>pushButton_2</sender>
-   <signal>clicked()</signal>
-   <receiver>MainWindow</receiver>
-   <slot>reset()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>165</x>
-     <y>50</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>370</x>
-     <y>30</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>pushButton_3</sender>
-   <signal>clicked()</signal>
-   <receiver>MainWindow</receiver>
-   <slot>takeOff()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>243</x>
-     <y>54</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>485</x>
-     <y>48</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>pushButton_4</sender>
-   <signal>clicked()</signal>
-   <receiver>MainWindow</receiver>
-   <slot>land()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>335</x>
-     <y>55</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>410</x>
-     <y>56</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>pushButton_5</sender>
-   <signal>clicked()</signal>
-   <receiver>MainWindow</receiver>
+   <sender>actionHover</sender>
+   <signal>triggered()</signal>
+   <receiver>centralwidget</receiver>
    <slot>hover()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>398</x>
-     <y>56</y>
+     <x>-1</x>
+     <y>-1</y>
     </hint>
     <hint type="destinationlabel">
-     <x>560</x>
-     <y>54</y>
+     <x>279</x>
+     <y>246</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionLand</sender>
+   <signal>triggered()</signal>
+   <receiver>centralwidget</receiver>
+   <slot>land()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>279</x>
+     <y>246</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionReset</sender>
+   <signal>triggered()</signal>
+   <receiver>centralwidget</receiver>
+   <slot>reset()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>279</x>
+     <y>246</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionTakeOff</sender>
+   <signal>triggered()</signal>
+   <receiver>centralwidget</receiver>
+   <slot>takeOff()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>279</x>
+     <y>246</y>
     </hint>
    </hints>
   </connection>
  </connections>
- <slots>
-  <slot>flatTrim()</slot>
-  <slot>reset()</slot>
-  <slot>takeOff()</slot>
-  <slot>land()</slot>
-  <slot>hover()</slot>
- </slots>
 </ui>
