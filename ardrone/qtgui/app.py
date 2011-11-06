@@ -19,6 +19,7 @@ except ImportError as e:
   raise ImportError('Qt appears not to be installed: %s' % (str(e),))
 
 # Extract the various Qt modules we want to use
+QtCore = qt.import_module('QtCore')
 QtGui = qt.import_module('QtGui')
 
 # Annoyingly PySide and PyQt4 have different ways of dealing with .ui files at
@@ -39,7 +40,7 @@ class Application(QtGui.QApplication):
   __resource_dir = os.path.join(os.path.dirname(__file__), 'res')
 
   def __init__(self):
-    super(QtGui.QApplication, self).__init__(sys.argv)
+    super(Application, self).__init__(sys.argv)
 
     # Load the UI from the .ui file.
     self.load_ui()
@@ -61,7 +62,6 @@ class Application(QtGui.QApplication):
 
     if qt.USES_PYSIDE:
       loader = QUiLoader()
-      loader.registerCustomWidget(MainWidget)
       self._main_window = loader.load(ui_file)
     else:
       self._main_window = uic.loadUi(ui_file)

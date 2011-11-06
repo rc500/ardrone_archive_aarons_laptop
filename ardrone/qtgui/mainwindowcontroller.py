@@ -35,7 +35,7 @@ class MainWindowController(QtCore.QObject):
 
   """
   def __init__(self, widget):
-    super(QtCore.QObject, self).__init__()
+    super(MainWindowController, self).__init__()
 
     # Record the widget we're controlling.
     self._widget = widget
