@@ -29,15 +29,6 @@ class MainWindowController(QtCore.QObject):
     # Record the widget we're controlling.
     self._widget = widget
 
-    # Initialise the drone control loop and attempt to open a connection.
-    log.info('Initialising control loop.')
-    host, port = '192.168.1.1', 5556
-    if 'DRONEDEBUG' in os.environ:
-      host, port = '127.0.0.1', 5555
-    connection = platform.Connection(drone_host=host, at_bind_port=port)
-    self._control = ControlLoop(connection)
-    self._control.connect()
-
     # Find the log area and wire in our custom log handler
     log_view = self._widget.findChild(qtlog.LogView, 'logView')
     if log_view is not None:
@@ -46,6 +37,15 @@ class MainWindowController(QtCore.QObject):
       log.addHandler(log_model)
     else:
       log.error('Could not find log widget as child of widget passed to controller.')
+
+    # Initialise the drone control loop and attempt to open a connection.
+    log.info('Initialising control loop.')
+    host, port = '192.168.1.1', 5556
+    if 'DRONEDEBUG' in os.environ:
+      host, port = '127.0.0.1', 5555
+    connection = platform.Connection(drone_host=host, at_bind_port=port)
+    self._control = ControlLoop(connection)
+    self._control.connect()
 
     # Create a drone connection statusbar widget
     status_bar = self._widget.statusBar()
