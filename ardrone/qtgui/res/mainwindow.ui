@@ -18,7 +18,7 @@
     <item>
      <widget class="QTextEdit" name="logTextEdit">
       <property name="styleSheet">
-       <string notr="true">font-size: 80%</string>
+       <string notr="true"/>
       </property>
       <property name="readOnly">
        <bool>true</bool>

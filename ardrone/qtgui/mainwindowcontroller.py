@@ -8,9 +8,11 @@ from cgi import escape as html_escape
 from ..core.controlloop import ControlLoop
 from ..platform import qt as platform
 
+# Utility widgets
+from .dronedetection import *
+
 QtCore = qt.import_module('QtCore')
 QtGui = qt.import_module('QtGui')
-QtNetwork = qt.import_module('QtNetwork')
 
 log = logging.getLogger()
 
@@ -34,11 +36,15 @@ class MainWindowController(QtCore.QObject):
   drone control loop.
 
   """
+
   def __init__(self, widget):
     super(MainWindowController, self).__init__()
 
     # Record the widget we're controlling.
     self._widget = widget
+
+    # Set up drone detection.
+    self._drone_detector = DroneDetector()
 
     # Find the log widget and wire in our custom log handler
     log_widget = self._widget.findChild(QtGui.QTextEdit, 'logTextEdit')
@@ -51,6 +57,17 @@ class MainWindowController(QtCore.QObject):
       log.addHandler(log_handler)
     else:
       log.error('Could not find log widget as child of widget passed to controller.')
+
+    # Create a drone connection statusbar widget
+    status_bar = self._widget.statusBar()
+    if status_bar is not None:
+      self._drone_detect_label = DroneDetectionStateLabel()
+      status_bar.addPermanentWidget(self._drone_detect_label)
+
+      # Wire the drone detector into the label
+      self._drone_detector.droneDetectionStateChanged.connect(self._drone_detect_label.setState)
+    else:
+      log.error('No status bar found on QMainWindow.')
 
     # Initialise the drone control loop and attempt to open a connection.
     log.info('Initialising control loop.')
@@ -68,20 +85,6 @@ class MainWindowController(QtCore.QObject):
     self._connect_action('actionReset', self.reset)
     self._connect_action('actionLand', self.land)
 
-    # Set up a timer to try to detect the drone every 10 seconds
-    self._detect_timer = QtCore.QTimer()
-    self._detect_timer.setInterval(10000)
-    self._detect_timer.timeout.connect(self._detectDrone)
-    self._detect_timer.start()
-
-    # Attempt to detect the drone for the first time
-    self._detectDrone()
-
-  def _detectDrone(self):
-    manager = QtNetwork.QNetworkAccessManager(self)
-    manager.finished[QtNetwork.QNetworkReply].connect(self.detectDroneReplyFinished)
-    self._drone_request = manager.get(QtNetwork.QNetworkRequest(QtCore.QUrl('ftp://192.168.1.1/version.txt')))
-
   def _connect_action(self, name, cb):
     # Find the action.
     action = self._widget.findChild(QtGui.QAction, name)
@@ -91,12 +94,6 @@ class MainWindowController(QtCore.QObject):
     
     # Connect it.
     action.triggered.connect(cb)
-
-  @qt.Slot()
-  def detectDroneReplyFinished(self):
-    log.debug('Drone detection via FTP returned: %s' % (str(self._drone_request.error()),))
-    self._drone_detected = (self._drone_request.error() == QtNetwork.QNetworkReply.NoError)
-    log.info('Drone present: %s' % (self._drone_detected,))
 
   @qt.Slot()
   def take_off(self):
