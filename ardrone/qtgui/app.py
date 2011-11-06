@@ -9,6 +9,8 @@ import sys
 # Get a reference to an appropriate global logger.
 log = logging.getLogger()
 
+from .log import LogView
+
 # We support both the PyQt4 (prevalent on Linux) and PySide (OS X) bindings for
 # Qt. The qtcompat module provides the various shenanigans that are required to
 # load one or the other. In this case if neither Qt bindings could be loaded,
@@ -75,6 +77,7 @@ class Application(QtGui.QApplication):
 
     if qt.USES_PYSIDE:
       loader = QUiLoader()
+      loader.registerCustomWidget(LogView)
       self._main_window = loader.load(ui_file)
     else:
       self._main_window = uic.loadUi(ui_file)

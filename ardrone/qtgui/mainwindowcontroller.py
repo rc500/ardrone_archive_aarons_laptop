@@ -10,7 +10,8 @@ from ..platform import qt as platform
 
 # Utility widgets
 from .dronedetection import *
-from . import logging as qtlog
+from . import log as qtlog
+from .log import LogView
 
 QtCore = qt.import_module('QtCore')
 QtGui = qt.import_module('QtGui')
