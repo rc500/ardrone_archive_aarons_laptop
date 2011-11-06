@@ -16,14 +16,7 @@
   <widget class="QWidget" name="mainWidget">
    <layout class="QVBoxLayout" name="verticalLayout">
     <item>
-     <widget class="QTextEdit" name="logTextEdit">
-      <property name="styleSheet">
-       <string notr="true"/>
-      </property>
-      <property name="readOnly">
-       <bool>true</bool>
-      </property>
-     </widget>
+     <widget class="LogView" name="logView" native="true"/>
     </item>
    </layout>
   </widget>
@@ -95,6 +88,14 @@
    </property>
   </action>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>LogView</class>
+   <extends>QWidget</extends>
+   <header>ardrone.qtgui.logging</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>

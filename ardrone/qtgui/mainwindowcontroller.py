@@ -10,26 +10,12 @@ from ..platform import qt as platform
 
 # Utility widgets
 from .dronedetection import *
+from . import logging as qtlog
 
 QtCore = qt.import_module('QtCore')
 QtGui = qt.import_module('QtGui')
 
 log = logging.getLogger()
-
-class TextEditLogHandler(logging.Handler):
-  """A simple logging.Handler sub-class which logs to a QTextEdit.
-
-  """
-  def __init__(self, widget):
-    logging.Handler.__init__(self)
-    self._widget = widget
-
-  def emit(self, record):
-    if self._widget is None:
-      return
-    msg = html_escape(self.format(record))
-    self._widget.insertHtml('<pre>' + msg + '<br></pre>')
-    self._widget.ensureCursorVisible()
 
 class MainWindowController(QtCore.QObject):
   """A class which takes care of connecting the GUI actions and widgets to the
@@ -43,18 +29,21 @@ class MainWindowController(QtCore.QObject):
     # Record the widget we're controlling.
     self._widget = widget
 
-    # Set up drone detection.
-    self._drone_detector = DroneDetector()
+    # Initialise the drone control loop and attempt to open a connection.
+    log.info('Initialising control loop.')
+    host, port = '192.168.1.1', 5556
+    if 'DRONEDEBUG' in os.environ:
+      host, port = '127.0.0.1', 5555
+    connection = platform.Connection(drone_host=host, at_bind_port=port)
+    self._control = ControlLoop(connection)
+    self._control.connect()
 
-    # Find the log widget and wire in our custom log handler
-    log_widget = self._widget.findChild(QtGui.QTextEdit, 'logTextEdit')
-    if log_widget is not None:
-      log_handler = TextEditLogHandler(log_widget)
-      log_handler.setFormatter(logging.Formatter(
-        fmt = '%(asctime)s:%(levelname)s:%(message)s',
-        datefmt = '%Y/%d/%m:%H:%M:%S'
-      ))
-      log.addHandler(log_handler)
+    # Find the log area and wire in our custom log handler
+    log_view = self._widget.findChild(qtlog.LogView, 'logView')
+    if log_view is not None:
+      log_model = qtlog.LogModel()
+      log_view.setModel(log_model)
+      log.addHandler(log_model)
     else:
       log.error('Could not find log widget as child of widget passed to controller.')
 
@@ -64,19 +53,14 @@ class MainWindowController(QtCore.QObject):
       self._drone_detect_label = DroneDetectionStateLabel()
       status_bar.addPermanentWidget(self._drone_detect_label)
 
+      # Set up drone detection.
+      self._drone_detector = DroneDetector()
+
       # Wire the drone detector into the label
       self._drone_detector.droneDetectionStateChanged.connect(self._drone_detect_label.setState)
+      self._drone_detect_label.setState(self._drone_detector.droneDetectionState)
     else:
       log.error('No status bar found on QMainWindow.')
-
-    # Initialise the drone control loop and attempt to open a connection.
-    log.info('Initialising control loop.')
-    host, port = '192.168.1.1', 5556
-    if 'DRONEDEBUG' in os.environ:
-      host, port = '127.0.0.1', 5555
-    connection = platform.Connection(drone_host=host, at_bind_port=port)
-    self._control = ControlLoop(connection)
-    self._control.connect()
 
     # Wire up our actions
     self._connect_action('actionFlatTrim', self.flat_trim)

@@ -31,6 +31,9 @@ class DroneDetector(QtCore.QObject):
   def __init__(self, poll_interval=5000):
     super(DroneDetector, self).__init__()
 
+    # Initially no drone is detected
+    self.droneDetectionState = False
+
     # Set up a timer to try to detect the drone every 10 seconds
     self._detect_timer = QtCore.QTimer()
     self._detect_timer.setInterval(poll_interval)
