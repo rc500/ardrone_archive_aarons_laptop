@@ -2,12 +2,16 @@
 
 """
 
+import logging
 import os
 import sys
 
+# Get a reference to an appropriate global logger.
+log = logging.getLogger()
+
 # We support both the PyQt4 (prevalent on Linux) and PySide (OS X) bindings for
 # Qt. The qtcompat module provides the various shenanigans that are required to
-# load one or the other. In this case if neight Qt bindings could be loaded,
+# load one or the other. In this case if neither Qt bindings could be loaded,
 # present a friendly error.
 try:
   from ..util import qtcompat as qt
@@ -24,35 +28,39 @@ if qt.USES_PYSIDE:
 else:
   from PyQt4 import uic
 
-# Support for logging.
-import logging
+from .mainwindowcontroller import MainWindowController
 
-from .mainwidget import MainWidget
+class Application(QtGui.QApplication):
+  # Should make use of the real resource manager for this(!)
+  __resource_dir = os.path.dirname(__file__)
 
-# Should make use of the real resource manager for this(!)
-__resource_dir = os.path.dirname(__file__)
+  def __init__(self):
+    super(QtGui.QApplication, self).__init__(sys.argv)
 
-log = logging.getLogger()
+    # Load the UI from the .ui file.
+    self.load_ui()
 
-def load_ui():
-  """This function performs the required magic to load the .ui file for the
-  main window using the appropriate method in PySide and PyQt4. After loading,
-  we also call the postUiInit() method on the MainWidget so that further setup
-  can take place there.
+    # Create a controller for the main window.
+    self._main_window_controller = MainWindowController(self._main_window)
 
-  """
-  ui_file = os.path.join(__resource_dir, 'main_window.ui')
+    # Show the main window.
+    self._main_window.show()
 
-  if qt.USES_PYSIDE:
-    loader = QUiLoader()
-    loader.registerCustomWidget(MainWidget)
-    window = loader.load(ui_file)
-  else:
-    window = uic.loadUi(ui_file)
+  def load_ui(self):
+    """This method performs the required magic to load the .ui file for the
+    main window using the appropriate method in PySide and PyQt4. After loading,
+    we also call the postUiInit() method on the MainWidget so that further setup
+    can take place there.
 
-  window.findChild(MainWidget, 'mainWidget').postUiInit()
+    """
+    ui_file = os.path.join(Application.__resource_dir, 'main_window.ui')
 
-  return window
+    if qt.USES_PYSIDE:
+      loader = QUiLoader()
+      loader.registerCustomWidget(MainWidget)
+      self._main_window = loader.load(ui_file)
+    else:
+      self._main_window = uic.loadUi(ui_file)
 
 def main():
   """The main entry point for the application. Call this from your script to
@@ -63,13 +71,7 @@ def main():
   log.setLevel(logging.DEBUG)
 
   # Create the main application
-  app = QtGui.QApplication(sys.argv)
+  app = Application()
 
-  # Load and show the QMainWindow for this application.
-  # (NB: we need to keep it in the symbol table so that the widget doesn't get
-  # garbage collected under us. Don't you love Python!)
-  main_window = load_ui()
-  main_window.show()
-  
   # Enter the application main loop
   sys.exit(app.exec_())
