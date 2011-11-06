@@ -27,7 +27,7 @@ else:
 # Support for logging.
 import logging
 
-from mainwidget import MainWidget
+from .mainwidget import MainWidget
 
 # Should make use of the real resource manager for this(!)
 __resource_dir = os.path.dirname(__file__)
