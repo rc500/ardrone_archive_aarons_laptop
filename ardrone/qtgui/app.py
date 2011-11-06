@@ -31,8 +31,12 @@ else:
 from .mainwindowcontroller import MainWindowController
 
 class Application(QtGui.QApplication):
+  """A sub-class of QApplication which loads the main .ui file and creates a
+  controller for it.
+
+  """
   # Should make use of the real resource manager for this(!)
-  __resource_dir = os.path.dirname(__file__)
+  __resource_dir = os.path.join(os.path.dirname(__file__), 'res')
 
   def __init__(self):
     super(QtGui.QApplication, self).__init__(sys.argv)
@@ -53,7 +57,7 @@ class Application(QtGui.QApplication):
     can take place there.
 
     """
-    ui_file = os.path.join(Application.__resource_dir, 'main_window.ui')
+    ui_file = os.path.join(Application.__resource_dir, 'mainwindow.ui')
 
     if qt.USES_PYSIDE:
       loader = QUiLoader()
