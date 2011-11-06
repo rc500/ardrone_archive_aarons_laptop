@@ -13,7 +13,7 @@
   <property name="windowTitle">
    <string>A.R. Drone GUI Example</string>
   </property>
-  <widget class="MainWidget" name="centralwidget">
+  <widget class="MainWidget" name="mainWidget">
    <layout class="QVBoxLayout" name="verticalLayout">
     <item>
      <widget class="QTextEdit" name="logTextEdit">
@@ -112,7 +112,7 @@
   <connection>
    <sender>actionFlatTrim</sender>
    <signal>triggered()</signal>
-   <receiver>centralwidget</receiver>
+   <receiver>mainWidget</receiver>
    <slot>flatTrim()</slot>
    <hints>
     <hint type="sourcelabel">
@@ -128,7 +128,7 @@
   <connection>
    <sender>actionHover</sender>
    <signal>triggered()</signal>
-   <receiver>centralwidget</receiver>
+   <receiver>mainWidget</receiver>
    <slot>hover()</slot>
    <hints>
     <hint type="sourcelabel">
@@ -144,7 +144,7 @@
   <connection>
    <sender>actionLand</sender>
    <signal>triggered()</signal>
-   <receiver>centralwidget</receiver>
+   <receiver>mainWidget</receiver>
    <slot>land()</slot>
    <hints>
     <hint type="sourcelabel">
@@ -160,7 +160,7 @@
   <connection>
    <sender>actionReset</sender>
    <signal>triggered()</signal>
-   <receiver>centralwidget</receiver>
+   <receiver>mainWidget</receiver>
    <slot>reset()</slot>
    <hints>
     <hint type="sourcelabel">
@@ -176,7 +176,7 @@
   <connection>
    <sender>actionTakeOff</sender>
    <signal>triggered()</signal>
-   <receiver>centralwidget</receiver>
+   <receiver>mainWidget</receiver>
    <slot>takeOff()</slot>
    <hints>
     <hint type="sourcelabel">
