@@ -67,7 +67,7 @@ class MainWidget(QtGui.QWidget):
 
   @qt.Slot()
   def detectDroneReplyFinished(self, p):
-    log.info('Drone detection via FTP returned: %s' % (str(p.error()),))
+    log.debug('Drone detection via FTP returned: %s' % (str(p.error()),))
     self._drone_detected = (p.error() == QtNetwork.QNetworkReply.NoError)
     log.info('Drone present: %s' % (self._drone_detected,))
 
