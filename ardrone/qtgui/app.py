@@ -76,6 +76,13 @@ class MainWidget(QtGui.QWidget):
     self._control = ControlLoop(connection)
     self._control.connect()
 
+    # Set up a timer to try to detect the drone every 10 seconds
+    self._detect_timer = QtCore.QTimer()
+    self._detect_timer.setInterval(10000)
+    self._detect_timer.timeout.connect(self.detectDrone)
+    self._detect_timer.start()
+
+    # Attempt to detect the drone for the first time
     self.detectDrone()
 
   def detectDrone(self):
