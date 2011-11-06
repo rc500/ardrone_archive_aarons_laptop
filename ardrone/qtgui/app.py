@@ -35,6 +35,19 @@ class Application(QtGui.QApplication):
   """A sub-class of QApplication which loads the main .ui file and creates a
   controller for it.
 
+  Create an application:
+
+  >>> a = Application()
+  
+  Add a timer so that it will exit after a second.
+  
+  >>> QtCore.QTimer.singleShot(1000, a.quit)
+
+  Run it.
+
+  >>> a.exec_()
+  0
+
   """
   # Should make use of the real resource manager for this(!)
   __resource_dir = os.path.join(os.path.dirname(__file__), 'res')
