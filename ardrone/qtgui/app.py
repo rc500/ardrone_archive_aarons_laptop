@@ -79,3 +79,7 @@ def main():
 
   # Enter the application main loop
   sys.exit(app.exec_())
+
+# Allow module to be run directly
+if __name__ == '__main__':
+  main()
