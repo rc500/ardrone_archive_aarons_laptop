@@ -18,7 +18,7 @@ import ctypes as ct
 __prefix = 'AT*'
 
 # The <LF> (line feed) string.
-__lf = '\x0a'
+__lf = '\r'
 
 __sequence = 0
 
