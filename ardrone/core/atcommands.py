@@ -164,7 +164,7 @@ def comwdg():
   """
   return __at('COMWDG')
 
-def ctrl(mode):
+def ctrl(mode, filesize=0):
   """Generate the CTRL AT command.
 
   >>> reset_sequence()
@@ -172,7 +172,7 @@ def ctrl(mode):
   'AT*CTRL=1,4\\n'
 
   """
-  return __at('CTRL', ct.c_int32(mode))
+  return __at('CTRL', ct.c_int32(mode), ct.c_int32(filesize))
 
 def __next_sequence():
   """Return the next sequence number for the AT command.
