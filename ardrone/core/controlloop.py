@@ -1,11 +1,11 @@
 """An implementation of the control loop.
 
 """
-
 import logging
 log = logging.getLogger()
 
 from . import atcommands as at
+from . import navdata
 from . import videopacket
 
 class ConnectionError(Exception):
@@ -51,6 +51,11 @@ class ControlLoop(object):
     self._reset_sequence()
     self._vid_decoder = videopacket.Decoder()
     self.video_cb = video_cb
+
+    self._connection.navdata_cb = self._got_navdata
+
+    # State for navdata
+    self._last_navdata_sequence = 0
   
   def connect(self):
     self.connected = self._connection.connect()
@@ -135,6 +140,59 @@ class ControlLoop(object):
     self._connection.viddata_cb = self._vid_decoder.decode
     self._vid_decoder.vid_cb = self.video_cb
     self._connection.put_video_packet('one')
+
+  def start_navdata(self):
+    log.info('starting navdata streaming')
+    log.debug('Navdata booststrap stage 1');
+
+    # See Dev. guide 7.1.2 pp. 40
+    self._last_navdata_sequence = 0
+    self._connection.put_navdata_packet('one')
+    self._send(at.config('general:navdata_demo', True))
+
+  def _got_navdata(self, data):
+    ndh, packets = navdata.split(data)
+
+    if not ndh.valid():
+      log.error('Got invalid navdata packet')
+      return
+
+    # Dev. guide pp. 40: watchdog state
+    watchdog_state = (ndh.state & navdata.ARDRONE_COM_WATCHDOG_MASK) != 0
+    if watchdog_state:
+      # this is a case where the sequence counter should be reset
+      self._last_navdata_sequence = 0
+      self._connection.put(at.comwdg())
+
+    # Dev. guide pp. 40: lost communication
+    lost_com = (ndh.state & navdata.ARDRONE_COM_LOST_MASK) != 0
+    if lost_com:
+      log.warning('Lost connection, re-establishing navdata connection.')
+      self._last_navdata_sequence = 0
+      self.start_navdata()
+
+    if ndh.sequence <= self._last_navdata_sequence:
+      log.error('Dropping out of sequence navdata packet: %s' % (ndh.sequence,))
+      return
+
+    # Record the sequence number
+    self._last_navdata_sequence = ndh.sequence
+
+    # Is the AR_DRONE_NAVDATA_BOOSTRAP status bit set (Dev. guide fig 7.1)
+    if (ndh.state & navdata.ARDRONE_NAVDATA_BOOTSTRAP) != 0:
+      log.debug('Navdata booststrap stage 2');
+      self._send(at.config('general:navdata_demo', True))
+      return
+
+    # Is the ARDRONE_COMMAND_MASK bit set (Dev. guide fig 7.1)
+    if (ndh.state & navdata.ARDRONE_COMMAND_MASK) != 0:
+      # Send ACK
+      log.debug('Navdata booststrap stage 3');
+      self._send(at.ctrl(5))
+      return
+
+    print('state: %s' % (ndh.state,))
+    print('Got data len: %s' % (len(data),))
 
   def _reset_sequence(self):
     at.reset_sequence()
