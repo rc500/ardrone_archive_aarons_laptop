@@ -6,6 +6,7 @@ import logging
 log = logging.getLogger()
 
 from . import atcommands as at
+from . import videopacket
 
 class ConnectionError(Exception):
   """A class used to represent a connection error to the drone.
@@ -18,11 +19,14 @@ class ConnectionError(Exception):
     return str(self.value)
 
 class ControlLoop(object):
-  def __init__(self, connection):
+  def __init__(self, connection, video_cb=None):
     """Initialse the control loop with a connection.
 
     You must call the connect and disconnect methods on the control loop before
     trying any control methods.
+
+    Set video_cb to a callable which will be passed a sequence of bytes in
+    RGB565 (==RGB16) format for each video frame.
 
     >>> from ..platform import dummy
     >>> con = dummy.Connection()
@@ -45,6 +49,8 @@ class ControlLoop(object):
     self.connected = False
     self._connection = connection
     self._reset_sequence()
+    self._vid_decoder = videopacket.Decoder()
+    self.video_cb = video_cb
   
   def connect(self):
     self.connected = self._connection.connect()
@@ -119,11 +125,16 @@ class ControlLoop(object):
     >>> cl = ControlLoop(con)
     >>> cl.connect()
     >>> cl.reset()
-    OUTPUT: 'AT*REF=1,290717952\n'
+    OUTPUT: 'AT*REF=1,290717952\r'
     >>> cl.disconnect()
 
     """
     self._send(at.ref(reset = True))
+
+  def start_video(self):
+    self._connection.viddata_cb = self._vid_decoder.decode
+    self._vid_decoder.vid_cb = self.video_cb
+    self._connection.put_video_packet('one')
 
   def _reset_sequence(self):
     at.reset_sequence()
