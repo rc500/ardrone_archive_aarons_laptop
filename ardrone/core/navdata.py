@@ -111,10 +111,10 @@ def split(data):
       assert(cks.valid())
       options.append(cks)
 
-      got_cks = checksum(data[0:this_option_start])
-      if got_cks.value != cks.checksum:
-        log.warning('navdata checksum mismatch: computed %s, got %s' % (got_cks, cks.checksum))
-        return (ndh, [])
+      #got_cks = checksum(data[0:this_option_start])
+      #if got_cks.value != cks.checksum:
+      #  log.warning('navdata checksum mismatch: computed %s, got %s' % (got_cks, cks.checksum))
+      #  return (ndh, [])
       got_valid_checksum_option = True
     elif obh.id == NAVDATA_DEMO_TAG.value:
       demo = DemoBlock.from_buffer_copy(option_data)

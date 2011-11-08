@@ -11,8 +11,8 @@ from ..platform import qt as platform
 
 # Utility widgets
 from .dronedetection import *
-
 from .eventlog import create_event_log_dock_widget
+from .statusdisplay import StatusDisplay
 
 QtCore = qt.import_module('QtCore')
 QtGui = qt.import_module('QtGui')
@@ -92,6 +92,12 @@ class MainWindowController(QtCore.QObject):
     self._connect_action('actionStartVideo', self.start_video)
     self._connect_action('actionStartNavdata', self.start_navdata)
 
+    self._status_display = StatusDisplay()
+    self._widget.centralWidget().layout().addWidget(self._status_display.widget)
+    #for i in range(40):
+    #  self._status_display.new_pose(1,2,3,4)
+    #  self._status_display.new_pose(4,3,2,1)
+
   def _connect_action(self, name, cb):
     # Find the action.
     action = self._widget.findChild(QtGui.QAction, name)
@@ -105,11 +111,12 @@ class MainWindowController(QtCore.QObject):
   def _vid_cb(self, data):
     """Update the image in the camera window."""
     ba = QtCore.QByteArray.fromRawData(data[0:(320*240*2)])
-    self._cam_label.setPixmap(QtGui.QImage(ba, 320, 240, QtGui.QImage.Format_RGB16))
+    self._cam_label.setPixmap(QtGui.QPixmap(QtGui.QImage(ba, 320, 240, QtGui.QImage.Format_RGB16)))
 
   def _navdata_cb(self, block):
     if isinstance(block, navdata.DemoBlock):
       self.batteryPercentage = block.vbat_flying_percentage
+      self._status_display.new_pose(block.theta, block.psi, block.phi, block.altitude)
 
   @qt.Slot()
   def take_off(self):

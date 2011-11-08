@@ -76,6 +76,7 @@ class ControlLoop(object):
     """Initialise all the drone data streams."""
     log.info('Bootstrapping communication with the drone.')
     self.reset()
+    self.flat_trim()
     self.get_config()
     self.start_navdata()
     self.start_video()
