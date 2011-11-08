@@ -5,7 +5,7 @@ to an A.R. drone. For example, to lift off and set hover mode:
 
 >>> reset_sequence()
 >>> ''.join([ref(reset = True), pcmd(False), ref(take_off = True)])
-'AT*REF=1,290717952\\nAT*PCMD=2,0,0,0,0,0\\nAT*REF=3,290718208\\n'
+'AT*REF=1,290717952\\rAT*PCMD=2,0,0,0,0,0\\rAT*REF=3,290718208\\r'
 
 In general the sequence number will be incremented automatically for you
 although one can use reset_sequence to set it back to 1.
@@ -37,15 +37,15 @@ def ref(reset = False, take_off = False):
 
   >>> reset_sequence()
   >>> ref()
-  'AT*REF=1,290717696\\n'
+  'AT*REF=1,290717696\\r'
   >>> ref(True, False)
-  'AT*REF=2,290717952\\n'
+  'AT*REF=2,290717952\\r'
   >>> ref(False, True)
-  'AT*REF=3,290718208\\n'
+  'AT*REF=3,290718208\\r'
   >>> ref(reset = True)
-  'AT*REF=4,290717952\\n'
+  'AT*REF=4,290717952\\r'
   >>> ref(take_off = True)
-  'AT*REF=5,290718208\\n'
+  'AT*REF=5,290718208\\r'
 
   """
   v = 0x11540000 # randomly a few bits need to be set
@@ -62,23 +62,23 @@ def pcmd(progressive_commands = True, combined_yaw = False,
 
   >>> reset_sequence()
   >>> pcmd()
-  'AT*PCMD=1,1,0,0,0,0\\n'
+  'AT*PCMD=1,1,0,0,0,0\\r'
   >>> pcmd(False, True)
-  'AT*PCMD=2,2,0,0,0,0\\n'
+  'AT*PCMD=2,2,0,0,0,0\\r'
   >>> pcmd(left_right_tilt = -0.5)
-  'AT*PCMD=3,1,-1090519040,0,0,0\\n'
+  'AT*PCMD=3,1,-1090519040,0,0,0\\r'
   >>> pcmd(left_right_tilt = 1.0)
-  'AT*PCMD=4,1,1065353216,0,0,0\\n'
+  'AT*PCMD=4,1,1065353216,0,0,0\\r'
   >>> pcmd(left_right_tilt = 2.0)
-  'AT*PCMD=5,1,1065353216,0,0,0\\n'
+  'AT*PCMD=5,1,1065353216,0,0,0\\r'
   >>> pcmd(front_back_tilt = -0.8)
-  'AT*PCMD=6,1,0,-1085485875,0,0\\n'
+  'AT*PCMD=6,1,0,-1085485875,0,0\\r'
   >>> pcmd(front_back_tilt = -1.0)
-  'AT*PCMD=7,1,0,-1082130432,0,0\\n'
+  'AT*PCMD=7,1,0,-1082130432,0,0\\r'
   >>> pcmd(vertical_speed = -0.8)
-  'AT*PCMD=8,1,0,0,-1085485875,0\\n'
+  'AT*PCMD=8,1,0,0,-1085485875,0\\r'
   >>> pcmd(angular_speed = -0.8)
-  'AT*PCMD=9,1,0,0,0,-1085485875\\n'
+  'AT*PCMD=9,1,0,0,0,-1085485875\\r'
 
   """
 
@@ -104,9 +104,9 @@ def ftrim():
 
   >>> reset_sequence()
   >>> ftrim()
-  'AT*FTRIM=1\\n'
+  'AT*FTRIM=1\\r'
   >>> ftrim()
-  'AT*FTRIM=2\\n'
+  'AT*FTRIM=2\\r'
 
   """
   return __at('FTRIM')
@@ -116,9 +116,9 @@ def aflight(enable=True):
 
   >>> reset_sequence()
   >>> aflight()
-  'AT*AFLIGHT=1,1\\n'
-  >>> aflight(FALSE)
-  'AT*AFLIGHT=2,0\\n'
+  'AT*AFLIGHT=1,1\\r'
+  >>> aflight(False)
+  'AT*AFLIGHT=2,0\\r'
 
   """
   if enable:
@@ -130,11 +130,11 @@ def config(key, value):
 
   >>> reset_sequence()
   >>> config('GENERAL:num_version_config', 1)
-  'AT*CONFIG=1,"GENERAL:num_version_config","1"\\n'
+  'AT*CONFIG=1,"GENERAL:num_version_config","1"\\r'
   >>> config('GENERAL:vision_enable', True)
-  'AT*CONFIG=2,"GENERAL:vision_enable","TRUE"\\n'
+  'AT*CONFIG=2,"GENERAL:vision_enable","TRUE"\\r'
   >>> config('GENERAL:gyros_gains', '{ 6.9026551e-03 -6.9553638e-03 -3.8592720e-03 }')
-  'AT*CONFIG=3,"GENERAL:gyros_gains","{ 6.9026551e-03 -6.9553638e-03 -3.8592720e-03 }"\\n'
+  'AT*CONFIG=3,"GENERAL:gyros_gains","{ 6.9026551e-03 -6.9553638e-03 -3.8592720e-03 }"\\r'
 
   """
   if isinstance(value, bool):
@@ -149,7 +149,7 @@ def config_ids(session_id, user_id, application_id):
 
   >>> reset_sequence()
   >>> config_ids('session_id', 'user_id', 'application_id')
-  'AT*CONFIG_IDS=1,"session_id","user_id","application_id"\\n'
+  'AT*CONFIG_IDS=1,"session_id","user_id","application_id"\\r'
 
   """
   return __at('CONFIG_IDS', str(session_id), str(user_id), str(application_id))
@@ -159,7 +159,7 @@ def comwdg():
 
   >>> reset_sequence()
   >>> comwdg()
-  'AT*COMWDG=1\\n'
+  'AT*COMWDG=1\\r'
 
   """
   return __at('COMWDG')
@@ -169,7 +169,7 @@ def ctrl(mode, filesize=0):
 
   >>> reset_sequence()
   >>> ctrl(4)
-  'AT*CTRL=1,4\\n'
+  'AT*CTRL=1,4,0\\r'
 
   """
   return __at('CTRL', ct.c_int32(mode), ct.c_int32(filesize))
@@ -204,14 +204,14 @@ def __at(name, *args):
   ...   return ct.c_int32(x)
   >>> reset_sequence()
   >>> __at('PCMD', i(1), i(0), i(0), i(0), i(0))
-  'AT*PCMD=1,1,0,0,0,0\\n'
+  'AT*PCMD=1,1,0,0,0,0\\r'
   >>> __at('PCMD', i(1), i(0), i(0), i(0), i(0))
-  'AT*PCMD=2,1,0,0,0,0\\n'
+  'AT*PCMD=2,1,0,0,0,0\\r'
   >>> reset_sequence()
   >>> __at('PCMD', i(1), i(0), i(0), i(0), i(0))
-  'AT*PCMD=1,1,0,0,0,0\\n'
+  'AT*PCMD=1,1,0,0,0,0\\r'
   >>> __at('PCMD')
-  'AT*PCMD=2\\n'
+  'AT*PCMD=2\\r'
 
   """
   return '%s%s=%s%s' % (__prefix, name, __format_arg([__next_sequence()] + list(args)), __lf)
@@ -269,3 +269,4 @@ def __format_arg(a):
     return ','.join([__format_arg(x) for x in a])
 
   raise TypeError('Argument must be a sequence, string, c_int32 or c_float (got %s)' % (repr(a),))
+
