@@ -39,7 +39,7 @@ class MainWindowController(QtCore.QObject):
     if 'DRONEDEBUG' in os.environ:
       host, port = '127.0.0.1', 5555
     connection = platform.Connection(drone_host=host, at_bind_port=port)
-    self._control = ControlLoop(connection)
+    self._control = ControlLoop(connection, video_cb=self._vid_cb)
     self._control.connect()
 
     # Create a drone connection statusbar widget
@@ -59,7 +59,7 @@ class MainWindowController(QtCore.QObject):
 
     self._cam_label = self._widget.findChild(QtGui.QLabel, 'camLabel')
     if self._cam_label is not None:
-      self._cam_label.setPixmap(QtGui.QPixmap.fromImage(QtGui.QImage()))
+      self._cam_label.setPixmap(QtGui.QPixmap.fromImage(QtGui.QImage(320,240,QtGui.QImage.Format_RGB16)))
     else:
       log.error('No camera label found on QMainWindow.')
 
@@ -81,6 +81,11 @@ class MainWindowController(QtCore.QObject):
     
     # Connect it.
     action.triggered.connect(cb)
+
+  def _vid_cb(self, data):
+    """Update the image in the camera window."""
+    ba = QtCore.QByteArray.fromRawData(data[0:(320*240*2)])
+    self._cam_label.setPixmap(QtGui.QImage(ba, 320, 240, QtGui.QImage.Format_RGB16))
 
   @qt.Slot()
   def take_off(self):
@@ -114,7 +119,7 @@ class MainWindowController(QtCore.QObject):
   @qt.Slot()
   def start_video(self):
     log.info('Start video')
-    self._control.start_video(self._video_cb)
+    self._control.start_video()
 
   @qt.Slot()
   def start_navdata(self):
