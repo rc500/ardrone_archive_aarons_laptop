@@ -36,12 +36,19 @@ class LogView(QtGui.QTableView):
   def updateGeometries(self):
     super(LogView, self).updateGeometries()
 
+    if self.model() is None:
+      return
+
     # Resize all but the last column
-    if self.model() is not None:
-      col_count = self.model().columnCount(QtCore.QModelIndex())
-      if col_count > 1:
-        for col in range(col_count-1):
-          self.resizeColumnToContents(col)
+    col_count = self.model().columnCount(QtCore.QModelIndex())
+    row_count = self.model().rowCount(QtCore.QModelIndex())
+
+    if col_count > 1:
+      for col in range(col_count-1):
+        self.resizeColumnToContents(col)
+    
+    if row_count > 0:
+      self.scrollTo(self.model().index(row_count-1,0))
 
 def _level_to_pixmap(level):
   """A class method which converts a log level to a QPixmap.
