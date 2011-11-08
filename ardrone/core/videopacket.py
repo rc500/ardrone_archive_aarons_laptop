@@ -33,9 +33,5 @@ class Decoder(object):
     get_image_buffer.restype = ct.c_char_p
     self.data = get_image_buffer(self._handle)
 
-    #ba = QtCore.QByteArray.fromRawData(data[0:(320*240*2)])
-    #print('First byte %s vs %s' % (ord(ba[0]),data[0]))
-    #self.image = QtGui.QImage(ba, 320, 240, QtGui.QImage.Format_RGB16)
-    #print('Got data %s' % (self.image,))
     if self.vid_cb is not None:
       self.vid_cb(data)
