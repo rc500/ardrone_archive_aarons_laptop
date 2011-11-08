@@ -57,12 +57,20 @@ class MainWindowController(QtCore.QObject):
     else:
       log.error('No status bar found on QMainWindow.')
 
+    self._cam_label = self._widget.findChild(QtGui.QLabel, 'camLabel')
+    if self._cam_label is not None:
+      self._cam_label.setPixmap(QtGui.QPixmap.fromImage(QtGui.QImage()))
+    else:
+      log.error('No camera label found on QMainWindow.')
+
     # Wire up our actions
     self._connect_action('actionFlatTrim', self.flat_trim)
     self._connect_action('actionTakeOff', self.take_off)
     self._connect_action('actionHover', self.hover)
     self._connect_action('actionReset', self.reset)
     self._connect_action('actionLand', self.land)
+    self._connect_action('actionStartVideo', self.start_video)
+    self._connect_action('actionStartNavdata', self.start_navdata)
 
   def _connect_action(self, name, cb):
     # Find the action.
@@ -98,5 +106,19 @@ class MainWindowController(QtCore.QObject):
   def flat_trim(self):
     log.info('Flat trim')
     self._control.flat_trim()
+
+  def _video_cb(self, im):
+    print('Image: %s' % (str(im),))
+    self._cam_label.setPixmap(QtGui.QPixmap.fromImage(im))
+
+  @qt.Slot()
+  def start_video(self):
+    log.info('Start video')
+    self._control.start_video(self._video_cb)
+
+  @qt.Slot()
+  def start_navdata(self):
+    log.info('Start navdata')
+    self._control.start_navdata()
 
 
