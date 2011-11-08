@@ -19,14 +19,14 @@ class Connection(base.Connection):
   >>> at.reset_sequence()
   >>> a = Connection()
   >>> a.put(at.ref())
-  OUTPUT: 'AT*REF=1,290717696\n'
+  OUTPUT: 'AT*REF=1,290717696\r'
   >>> def f(x):
   ...   print('Log: %s' % (repr(x),))
   >>> b = Connection(log_cb = f)
   >>> b.log_cb is f
   True
   >>> b.put(at.ref())
-  Log: 'AT*REF=2,290717696\n'
+  Log: 'AT*REF=2,290717696\r'
 
   """
 
@@ -60,20 +60,20 @@ class Connection(base.Connection):
     """
     base.Connection.__init__(self, *args, **kwargs)
     self.log_cb = log_cb
-    self._schedule_cb('Hello')
+    self._schedule_cb(('A' * 200).encode())
 
   def put(self, command_string):
     r""" Send the command string to the drone over the network.
 
     >>> from ..core import atcommands as at
     >>> t = Connection()
-    >>> t.put('Foo\nBar')
-    OUTPUT: 'Foo\nBar'
+    >>> t.put('Foo\rBar')
+    OUTPUT: 'Foo\rBar'
     >>> at.reset_sequence()
     >>> t.put(at.ref())
-    OUTPUT: 'AT*REF=1,290717696\n'
+    OUTPUT: 'AT*REF=1,290717696\r'
     >>> t.put(at.ref())
-    OUTPUT: 'AT*REF=2,290717696\n'
+    OUTPUT: 'AT*REF=2,290717696\r'
     """
 
     if self.log_cb is None:

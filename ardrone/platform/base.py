@@ -52,15 +52,17 @@ class Connection(object):
 
   """
 
-  def __init__(self,  navdata_cb=None):
+  def __init__(self,  navdata_cb=None, viddata_cb=None, config_cb=None):
     """Initialise the connection. navdata_cb may optionally be a callable which
-    is called when a navdata packet arrives.
+    is called when a navdata, config or video packet arrives.
     
     >>> Connection() # doctest: +ELLIPSIS
     <ardrone.platform.base.Connection object at 0x...>
 
     """
     self.navdata_cb = navdata_cb
+    self.viddata_cb = viddata_cb
+    self.config_cb = config_cb
 
   def connect(self):
     """Optionally override this method to connect to the drone. Return True if
@@ -110,6 +112,16 @@ class Connection(object):
     """
     raise NotImplementedError('You must override the put method.')
 
+  def put_navdata_packet(self, packet):
+    """Override this method to send a packet to the navdata port on the device."""
+
+    raise NotImplementedError('You must override the put method.')
+
+  def put_video_packet(self, packet):
+    """Override this method to send a packet to the video port on the device."""
+
+    raise NotImplementedError('You must override the put method.')
+
   def got_navdata(self, packet):
     """Call this method when a navdata packet from the drone has arrived. Pass
     the raw packet in as a sequence of bytes.
@@ -132,3 +144,49 @@ class Connection(object):
     """
     if self.navdata_cb is not None:
       self.navdata_cb(packet)
+
+  def got_viddata(self, packet):
+    """Call this method when a video packet from the drone has arrived. Pass
+    the raw packet in as a sequence of bytes.
+
+    >>> p = None
+    >>> def f(packet):
+    ...   global p
+    ...   p = packet
+    >>> c = Connection(viddata_cb=f)
+    >>> c.connect()
+    True
+    >>> c.got_viddata('hello')
+    >>> p is 'hello'
+    True
+    >>> c.got_viddata('world')
+    >>> p is 'world'
+    True
+    >>> c.disconnect()
+
+    """
+    if self.viddata_cb is not None:
+      self.viddata_cb(packet)
+      
+  def got_config(self, packet):
+    """Call this method when a video packet from the drone has arrived. Pass
+    the raw packet in as a sequence of bytes.
+
+    >>> p = None
+    >>> def f(packet):
+    ...   global p
+    ...   p = packet
+    >>> c = Connection(config_cb=f)
+    >>> c.connect()
+    True
+    >>> c.got_config('hello')
+    >>> p is 'hello'
+    True
+    >>> c.got_config('world')
+    >>> p is 'world'
+    True
+    >>> c.disconnect()
+
+    """
+    if self.config_cb is not None:
+      self.config_cb(packet)
