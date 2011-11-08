@@ -1,13 +1,23 @@
-import logging as pylogging
+import logging
+import os
 import time
 
-from ..util import qtcompat as qt
 from cgi import escape as html_escape
+from ..util import qtcompat as qt
 
+# Get a reference to an appropriate global logger.
+log = logging.getLogger()
+
+# Extract the various Qt modules we want to use
 QtCore = qt.import_module('QtCore')
 QtGui = qt.import_module('QtGui')
 
-log = pylogging.getLogger()
+# Annoyingly PySide and PyQt4 have different ways of dealing with .ui files at
+# runtime.
+if qt.USES_PYSIDE:
+  from PySide.QtUiTools import QUiLoader
+else:
+  from PyQt4 import uic
 
 class LogView(QtGui.QTableView):
   """A view of log data represented in a LogModel.
@@ -36,34 +46,34 @@ class LogView(QtGui.QTableView):
 def _level_to_pixmap(level):
   """A class method which converts a log level to a QPixmap.
 
-  >>> _level_to_pixmap(pylogging.DEBUG) == QtGui.QStyle.SP_MessageBoxInformation
+  >>> _level_to_pixmap(logging.DEBUG) == QtGui.QStyle.SP_MessageBoxInformation
   True
-  >>> _level_to_pixmap(pylogging.INFO) == QtGui.QStyle.SP_MessageBoxInformation
+  >>> _level_to_pixmap(logging.INFO) == QtGui.QStyle.SP_MessageBoxInformation
   True
-  >>> _level_to_pixmap(pylogging.WARNING) == QtGui.QStyle.SP_MessageBoxWarning
+  >>> _level_to_pixmap(logging.WARNING) == QtGui.QStyle.SP_MessageBoxWarning
   True
-  >>> _level_to_pixmap(pylogging.ERROR) == QtGui.QStyle.SP_MessageBoxCritical
+  >>> _level_to_pixmap(logging.ERROR) == QtGui.QStyle.SP_MessageBoxCritical
   True
-  >>> _level_to_pixmap(pylogging.CRITICAL) == QtGui.QStyle.SP_MessageBoxCritical
+  >>> _level_to_pixmap(logging.CRITICAL) == QtGui.QStyle.SP_MessageBoxCritical
   True
   
   """
   icon = QtGui.QStyle.SP_MessageBoxInformation
-  if level == pylogging.WARNING:
+  if level == logging.WARNING:
     icon = QtGui.QStyle.SP_MessageBoxWarning
-  if level == pylogging.ERROR:
+  if level == logging.ERROR:
     icon = QtGui.QStyle.SP_MessageBoxCritical
-  if level == pylogging.CRITICAL:
+  if level == logging.CRITICAL:
     icon = QtGui.QStyle.SP_MessageBoxCritical
 
   return QtGui.QApplication.style().standardIcon(icon)
 
-class LogModel(QtCore.QAbstractTableModel, pylogging.Handler):
-  """A simple pylogging.Handler sub-class which logs to a QTextEdit.
+class LogModel(QtCore.QAbstractTableModel, logging.Handler):
+  """A simple logging.Handler sub-class which logs to a QTextEdit.
 
   """
   def __init__(self):
-    pylogging.Handler.__init__(self)
+    logging.Handler.__init__(self)
     QtCore.QAbstractTableModel.__init__(self)
 
     # The actual records stored in a list
@@ -110,3 +120,29 @@ class LogModel(QtCore.QAbstractTableModel, pylogging.Handler):
     self.beginInsertRows(QtCore.QModelIndex(), len(self._records), len(self._records))
     self._records.append(record)
     self.endInsertRows()
+
+def create_event_log_dock_widget():
+  """Create and return a new event log QDockWidget.
+
+  """
+  # We should make use of the real resource manager for this(!)
+  resource_dir = os.path.join(os.path.dirname(__file__), 'res')
+  ui_file = os.path.join(resource_dir, 'dock_eventlog.ui')
+
+  if qt.USES_PYSIDE:
+    loader = QUiLoader()
+    loader.registerCustomWidget(LogView)
+    dock_widget = loader.load(ui_file)
+  else:
+    dock_widget = uic.loadUi(ui_file)
+    
+  # Find the log area and wire in our custom log handler
+  log_view = dock_widget.findChild(LogView, 'logView')
+  if log_view is not None:
+    log_model = LogModel()
+    log_view.setModel(log_model)
+    log.addHandler(log_model)
+  else:
+    log.error('Could not find log widget as child of eventlog (looked for a LogView named logView).')
+
+  return dock_widget

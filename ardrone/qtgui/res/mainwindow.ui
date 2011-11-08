@@ -14,9 +14,13 @@
    <string>A.R. Drone GUI Example</string>
   </property>
   <widget class="QWidget" name="mainWidget">
-   <layout class="QVBoxLayout" name="verticalLayout">
+   <layout class="QHBoxLayout" name="horizontalLayout">
     <item>
-     <widget class="LogView" name="logView" native="true"/>
+     <widget class="QLabel" name="camLabel">
+      <property name="text">
+       <string/>
+      </property>
+     </widget>
     </item>
    </layout>
   </widget>
@@ -26,7 +30,7 @@
      <x>0</x>
      <y>0</y>
      <width>735</width>
-     <height>22</height>
+     <height>29</height>
     </rect>
    </property>
   </widget>
@@ -46,6 +50,8 @@
    <addaction name="actionTakeOff"/>
    <addaction name="actionLand"/>
    <addaction name="actionHover"/>
+   <addaction name="actionStartVideo"/>
+   <addaction name="actionStartNavdata"/>
   </widget>
   <action name="actionFlatTrim">
    <property name="text">
@@ -87,15 +93,23 @@
     <string>H</string>
    </property>
   </action>
+  <action name="actionStartVideo">
+   <property name="text">
+    <string>Start Video</string>
+   </property>
+   <property name="shortcut">
+    <string>V</string>
+   </property>
+  </action>
+  <action name="actionStartNavdata">
+   <property name="text">
+    <string>Stream Navdata</string>
+   </property>
+   <property name="shortcut">
+    <string>N</string>
+   </property>
+  </action>
  </widget>
- <customwidgets>
-  <customwidget>
-   <class>LogView</class>
-   <extends>QWidget</extends>
-   <header>ardrone.qtgui.log</header>
-   <container>1</container>
-  </customwidget>
- </customwidgets>
  <resources/>
  <connections/>
 </ui>

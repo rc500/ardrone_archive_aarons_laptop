@@ -10,8 +10,8 @@ from ..platform import qt as platform
 
 # Utility widgets
 from .dronedetection import *
-from . import log as qtlog
-from .log import LogView
+
+from .eventlog import create_event_log_dock_widget
 
 QtCore = qt.import_module('QtCore')
 QtGui = qt.import_module('QtGui')
@@ -30,6 +30,9 @@ class MainWindowController(QtCore.QObject):
     # Record the widget we're controlling.
     self._widget = widget
 
+    log_dock = create_event_log_dock_widget()
+    self._widget.addDockWidget(QtCore.Qt.BottomDockWidgetArea, log_dock)
+
     # Initialise the drone control loop and attempt to open a connection.
     log.info('Initialising control loop.')
     host, port = '192.168.1.1', 5556
@@ -38,15 +41,6 @@ class MainWindowController(QtCore.QObject):
     connection = platform.Connection(drone_host=host, at_bind_port=port)
     self._control = ControlLoop(connection)
     self._control.connect()
-
-    # Find the log area and wire in our custom log handler
-    log_view = self._widget.findChild(qtlog.LogView, 'logView')
-    if log_view is not None:
-      log_model = qtlog.LogModel()
-      log_view.setModel(log_model)
-      log.addHandler(log_model)
-    else:
-      log.error('Could not find log widget as child of widget passed to controller.')
 
     # Create a drone connection statusbar widget
     status_bar = self._widget.statusBar()
