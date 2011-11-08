@@ -6,6 +6,7 @@ from cgi import escape as html_escape
 
 # Import the actual drone control stuff.
 from ..core.controlloop import ControlLoop
+from ..core import navdata
 from ..platform import qt as platform
 
 # Utility widgets
@@ -24,8 +25,22 @@ class MainWindowController(QtCore.QObject):
 
   """
 
+  def _get_bat(self):
+    return self._drone_battery_percentage
+
+  def _set_bat(self, p):
+    self._drone_battery_percentage = p
+    self.batteryPercentageChanged.emit(p)
+
+  """A property giving the last known battery percentage of the drone."""
+  batteryPercentage = qt.Property(int, _get_bat, _set_bat)
+
+  batteryPercentageChanged = qt.Signal(int)
+
   def __init__(self, widget):
     super(MainWindowController, self).__init__()
+
+    self.batteryPercentage = 0;
 
     # Record the widget we're controlling.
     self._widget = widget
@@ -39,7 +54,7 @@ class MainWindowController(QtCore.QObject):
     if 'DRONEDEBUG' in os.environ:
       host, port = '127.0.0.1', 5555
     connection = platform.Connection(drone_host=host, at_bind_port=port)
-    self._control = ControlLoop(connection, video_cb=self._vid_cb)
+    self._control = ControlLoop(connection, video_cb=self._vid_cb, navdata_cb=self._navdata_cb)
     self._control.connect()
 
     # Create a drone connection statusbar widget
@@ -54,6 +69,11 @@ class MainWindowController(QtCore.QObject):
       # Wire the drone detector into the label
       self._drone_detector.droneDetectionStateChanged.connect(self._drone_detect_label.setState)
       self._drone_detect_label.setState(self._drone_detector.droneDetectionState)
+
+      # Battery label
+      bat_label = QtGui.QLabel()
+      status_bar.addPermanentWidget(bat_label)
+      self.batteryPercentageChanged.connect(lambda x: bat_label.setText('Bat: ' + str(x) + '%'))
     else:
       log.error('No status bar found on QMainWindow.')
 
@@ -87,6 +107,10 @@ class MainWindowController(QtCore.QObject):
     ba = QtCore.QByteArray.fromRawData(data[0:(320*240*2)])
     self._cam_label.setPixmap(QtGui.QImage(ba, 320, 240, QtGui.QImage.Format_RGB16))
 
+  def _navdata_cb(self, block):
+    if isinstance(block, navdata.DemoBlock):
+      self.batteryPercentage = block.vbat_flying_percentage
+
   @qt.Slot()
   def take_off(self):
     log.info('Taking off')
@@ -100,7 +124,7 @@ class MainWindowController(QtCore.QObject):
   @qt.Slot()
   def reset(self):
     log.info('Reset')
-    self._control.reset()
+    self._control.bootstrap()
 
   @qt.Slot()
   def hover(self):

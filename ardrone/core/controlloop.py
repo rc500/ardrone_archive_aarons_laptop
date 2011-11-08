@@ -19,7 +19,7 @@ class ConnectionError(Exception):
     return str(self.value)
 
 class ControlLoop(object):
-  def __init__(self, connection, video_cb=None):
+  def __init__(self, connection, video_cb=None, navdata_cb=None):
     """Initialse the control loop with a connection.
 
     You must call the connect and disconnect methods on the control loop before
@@ -27,6 +27,10 @@ class ControlLoop(object):
 
     Set video_cb to a callable which will be passed a sequence of bytes in
     RGB565 (==RGB16) format for each video frame.
+
+    If non-None, navdata_cb is a callable which will be passed a block as
+    defined in ardrone.core.navdata (e.g. DmoBlock, VisionDetectBlock, etc) as
+    and when verified navdata packets arrive.
 
     >>> from ..platform import dummy
     >>> con = dummy.Connection()
@@ -51,8 +55,10 @@ class ControlLoop(object):
     self._reset_sequence()
     self._vid_decoder = videopacket.Decoder()
     self.video_cb = video_cb
+    self.navdata_cb = navdata_cb
 
     self._connection.navdata_cb = self._got_navdata
+    self._connection.config_cb = self._got_config
 
     # State for navdata
     self._last_navdata_sequence = 0
@@ -65,6 +71,19 @@ class ControlLoop(object):
     self._assert_connected()
     self._connection.disconnect()
     self.connected = False
+
+  def bootstrap(self):
+    """Initialise all the drone data streams."""
+    log.info('Bootstrapping communication with the drone.')
+    self.reset()
+    self.get_config()
+    self.start_navdata()
+    self.start_video()
+
+  def get_config(self):
+    """Ask the drone for it's configuration."""
+    log.info('Requesting configuration from drone.')
+    self._send(at.ctrl(4))
 
   def flat_trim(self):
     r"""Send a take off command.
@@ -135,6 +154,9 @@ class ControlLoop(object):
 
     """
     self._send(at.ref(reset = True))
+    #self._send(at.config('video:video_bitrate_control_mode', '1'))
+    #self._send(at.config('video:video_bitrate', '2000'))
+    #self._send(at.config('video:video_codec', '32'))
 
   def start_video(self):
     self._connection.viddata_cb = self._vid_decoder.decode
@@ -149,6 +171,10 @@ class ControlLoop(object):
     self._last_navdata_sequence = 0
     self._connection.put_navdata_packet('one')
     self._send(at.config('general:navdata_demo', True))
+
+  def _got_config(self, data):
+    log.info('Got config packet len: %s' % (len(data),))
+    return
 
   def _got_navdata(self, data):
     ndh, packets = navdata.split(data)
@@ -191,8 +217,17 @@ class ControlLoop(object):
       self._send(at.ctrl(5))
       return
 
-    print('state: %s' % (ndh.state,))
-    print('Got data len: %s' % (len(data),))
+    for packet in packets:
+      if self.navdata_cb is not None:
+        self.navdata_cb(packet)
+
+      #if isinstance(packet, navdata.DemoBlock):
+      #  log.info('Battery: %i' % (packet.vbat_flying_percentage,))
+      #  log.info('Orientation: %f,%f,%f' % (packet.theta, packet.phi, packet.psi))
+      #  log.info('Altitude: %i' % (packet.altitude,))
+
+    #print('state: %s' % (ndh.state,))
+    #print('Got data len: %s' % (len(data),))
 
   def _reset_sequence(self):
     at.reset_sequence()

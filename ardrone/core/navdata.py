@@ -95,15 +95,47 @@ def split(data):
     log.error('Got invalid navdata packet')
     return (ndh, None)
 
-  got_checksum_option = False
+  got_valid_checksum_option = False
   next_option_start = ct.sizeof(NavDataHeader)
+  options = []
 
-  while not got_checksum_option and next_option_start < len(data):
+  while not got_valid_checksum_option and next_option_start < len(data):
     obh = OptionBlockHeader.from_buffer_copy(
         data[next_option_start:(next_option_start+ct.sizeof(OptionBlockHeader))])
+    option_data = data[next_option_start:(next_option_start+obh.size)]
+    this_option_start = next_option_start
     next_option_start += obh.size
 
-  return (ndh, [])
+    if obh.id == NAVDATA_CKS_TAG.value:
+      cks = ChecksumBlock.from_buffer_copy(option_data)
+      assert(cks.valid())
+      options.append(cks)
+
+      got_cks = checksum(data[0:this_option_start])
+      if got_cks.value != cks.checksum:
+        log.warning('navdata checksum mismatch: computed %s, got %s' % (got_cks, cks.checksum))
+        return (ndh, [])
+      got_valid_checksum_option = True
+    elif obh.id == NAVDATA_DEMO_TAG.value:
+      demo = DemoBlock.from_buffer_copy(option_data)
+      assert(demo.valid())
+      options.append(demo)
+    elif obh.id == NAVDATA_VISION_DETECT_TAG.value:
+      vd = VisionDetectBlock.from_buffer_copy(option_data)
+      assert(vd.valid())
+      options.append(vd)
+    elif obh.id == NAVDATA_IPHONE_ANGLES_TAG.value:
+      ipa = IPhoneAnglesBlock.from_buffer_copy(option_data)
+      assert(ipa.valid())
+      options.append(ipa)
+    else:
+      log.info('Unknown navdata option tag: %s' % (obh.id,))
+
+  if not got_valid_checksum_option:
+    log.error('Navdata packet did not have valid checksum.')
+    return (ndh, [])
+
+  return (ndh, options)
 
 def checksum(data):
   """Compute a checksum for the passed data. data should be a sequence of bytes.
@@ -268,14 +300,14 @@ class DemoBlock(ct.LittleEndianStructure):
       # index of the streamed (video?) frame
       ('num_frames', ct.c_uint32),
 
-      # camera parameters as computed by feature detection
-      ('detection_camera_rot', Matrix3x3),
-      ('detection_camera_homo', Matrix3x3),
-      ('detection_camera_trans', Vector3x1),
+      ## camera parameters as computed by feature detection
+      #('detection_camera_rot', Matrix3x3),
+      #('detection_camera_homo', Matrix3x3),
+      #('detection_camera_trans', Vector3x1),
 
-      # camera parameters as computed by the drone
-      ('drone_camera_rot', Matrix3x3),
-      ('drone_camera_trans', Vector3x1),
+      ## camera parameters as computed by the drone
+      #('drone_camera_rot', Matrix3x3),
+      #('drone_camera_trans', Vector3x1),
   ]
 
   def valid(self):
