@@ -122,8 +122,8 @@ def aflight(enable=True):
 
   """
   if enable:
-    return __at('AFLIGHT', 1)
-  return __at('AFLIGHT', 0)
+    return __at('AFLIGHT', ct.c_int32(1))
+  return __at('AFLIGHT', ct.c_int32(0))
 
 def config(key, value):
   """Generate the CONFIG AT command.
