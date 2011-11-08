@@ -63,7 +63,7 @@ class ControlLoop(object):
     >>> cl = ControlLoop(con)
     >>> cl.connect()
     >>> cl.flat_trim()
-    OUTPUT: 'AT*FTRIM=1\n'
+    OUTPUT: 'AT*FTRIM=1\r'
     >>> cl.disconnect()
 
     """
@@ -77,7 +77,7 @@ class ControlLoop(object):
     >>> cl = ControlLoop(con)
     >>> cl.connect()
     >>> cl.take_off()
-    OUTPUT: 'AT*CONFIG=1,"CONTROL:outdoor","FALSE"\nAT*REF=2,290718208\n'
+    OUTPUT: 'AT*CONFIG=1,"CONTROL:outdoor","FALSE"\rAT*REF=2,290718208\r'
     >>> cl.disconnect()
 
     """
@@ -91,7 +91,7 @@ class ControlLoop(object):
     >>> cl = ControlLoop(con)
     >>> cl.connect()
     >>> cl.land()
-    OUTPUT: 'AT*REF=1,290717696\n'
+    OUTPUT: 'AT*REF=1,290717696\r'
     >>> cl.disconnect()
 
     """
@@ -105,7 +105,7 @@ class ControlLoop(object):
     >>> cl = ControlLoop(con)
     >>> cl.connect()
     >>> cl.hover()
-    OUTPUT: 'AT*PCMD=1,1,0,0,0,0\n'
+    OUTPUT: 'AT*PCMD=1,1,0,0,0,0\r'
     >>> cl.disconnect()
 
     """
