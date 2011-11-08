@@ -1,3 +1,3 @@
-from . import atcommands, config, controlloop, navdata, videostream
+from . import atcommands, config, controlloop, navdata
 
-__all__ = ['atcommands', 'config', 'controlloop', 'navdata', 'videostream']
+__all__ = ['atcommands', 'config', 'controlloop', 'navdata']
