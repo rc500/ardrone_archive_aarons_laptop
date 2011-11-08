@@ -111,6 +111,20 @@ def ftrim():
   """
   return __at('FTRIM')
 
+def aflight(enable=True):
+  """Generate the automonous flight AFLIGH AT command.
+
+  >>> reset_sequence()
+  >>> aflight()
+  'AT*AFLIGHT=1,1\\n'
+  >>> aflight(FALSE)
+  'AT*AFLIGHT=2,0\\n'
+
+  """
+  if enable:
+    return __at('AFLIGHT', 1)
+  return __at('AFLIGHT', 0)
+
 def config(key, value):
   """Generate the CONFIG AT command.
 
