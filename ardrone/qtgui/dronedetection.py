@@ -12,7 +12,7 @@ class DroneDetector(QtCore.QObject):
   """An object which polls the drone and fixed intervals to see if it can be detected."""
 
   """Successfully getting this URL counts as detecting the drone."""
-  __detect_url = QtCore.QUrl('ftp://192.168.1.1/license.txt')
+  __detect_url = QtCore.QUrl('ftp://192.168.1.1/licenses.txt')
 
   def _get_drone_detected(self):
     return self._drone_detected
