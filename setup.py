@@ -7,11 +7,14 @@ setup(name='ardrone',
     author_email='rjw57@cantab.net',
     url='http://example.com/',
 
-    packages=['ardrone', 'ardrone.core', 'ardrone.util', 'ardrone.platform', 'ardrone.qtgui'],
+    packages=[
+      'ardrone', 'ardrone.core', 'ardrone.util', 'ardrone.platform', 'ardrone.qtgui',
+      'controllers', 'controllers.keyboard'
+    ],
 
     package_data = {
       'ardrone.qtgui': ['res/*.ui'],
     },
 
-    scripts = ['qtgui.py'],
+    scripts = ['qtgui.py', 'controller_keyboard.py'],
 )
