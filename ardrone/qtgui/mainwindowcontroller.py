@@ -12,7 +12,7 @@ from ..platform import qt as platform
 # Utility widgets
 from .dronedetection import *
 from .eventlog import create_event_log_dock_widget
-from .statusdisplay import StatusDisplay
+#from .statusdisplay import StatusDisplay
 
 QtCore = qt.import_module('QtCore')
 QtGui = qt.import_module('QtGui')
@@ -92,8 +92,8 @@ class MainWindowController(QtCore.QObject):
     self._connect_action('actionStartVideo', self.start_video)
     self._connect_action('actionStartNavdata', self.start_navdata)
 
-    self._status_display = StatusDisplay()
-    self._widget.centralWidget().layout().addWidget(self._status_display.widget)
+    #self._status_display = StatusDisplay()
+    #self._widget.centralWidget().layout().addWidget(self._status_display.widget)
     #for i in range(40):
     #  self._status_display.new_pose(1,2,3,4)
     #  self._status_display.new_pose(4,3,2,1)
