@@ -116,7 +116,7 @@ class MainWindowController(QtCore.QObject):
   def _navdata_cb(self, block):
     if isinstance(block, navdata.DemoBlock):
       self.batteryPercentage = block.vbat_flying_percentage
-      self._status_display.new_pose(block.theta, block.psi, block.phi, block.altitude)
+      #self._status_display.new_pose(block.theta, block.psi, block.phi, block.altitude)
 
   @qt.Slot()
   def take_off(self):
