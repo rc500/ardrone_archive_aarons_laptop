@@ -19,7 +19,19 @@ class ConnectionError(Exception):
     return str(self.value)
 
 class ControlLoop(object):
-  def __init__(self, connection, video_cb=None, navdata_cb=None):
+  """A control loop.
+
+  """
+
+  # Connection numbers
+  _AT = 1
+  _NAV = 2
+  _VID = 3
+
+  def __init__(self, connection,
+      video_cb=None, navdata_cb=None,
+      host='192.168.1.1',
+      at_port=5556, nav_port=5554, vid_port=5555, config_port=5559):
     """Initialse the control loop with a connection.
 
     You must call the connect and disconnect methods on the control loop before
@@ -35,43 +47,23 @@ class ControlLoop(object):
     >>> from ..platform import dummy
     >>> con = dummy.Connection()
     >>> cl = ControlLoop(con)
-    >>> try:
-    ...   cl.disconnect()
-    ... except ConnectionError:
-    ...   print('Not connected')
-    Not connected
-    >>> cl.connected
-    False
-    >>> cl.connect()
-    >>> cl.connected
-    True
-    >>> cl.disconnect()
-    >>> cl.connected
-    False
 
     """
-    self.connected = False
     self._connection = connection
     self._reset_sequence()
     self._vid_decoder = videopacket.Decoder()
+
     self.video_cb = video_cb
     self.navdata_cb = navdata_cb
 
-    self._connection.navdata_cb = self._got_navdata
-    self._connection.config_cb = self._got_config
-
     # State for navdata
     self._last_navdata_sequence = 0
-  
-  def connect(self):
-    self.connected = self._connection.connect()
-    self._assert_connected()
-  
-  def disconnect(self):
-    self._assert_connected()
-    self._connection.disconnect()
-    self.connected = False
 
+    # Open the connections
+    self._connection.open(ControlLoop._AT, (host, at_port), (None, at_port, None))
+    self._connection.open(ControlLoop._NAV, (host, nav_port), (None, nav_port, self._got_navdata))
+    self._connection.open(ControlLoop._VID, (host, vid_port), (None, vid_port, None))
+  
   def bootstrap(self):
     """Initialise all the drone data streams."""
     log.info('Bootstrapping communication with the drone.')
@@ -89,27 +81,11 @@ class ControlLoop(object):
   def flat_trim(self):
     r"""Send a take off command.
 
-    >>> from ..platform import dummy
-    >>> con = dummy.Connection()
-    >>> cl = ControlLoop(con)
-    >>> cl.connect()
-    >>> cl.flat_trim()
-    OUTPUT: 'AT*FTRIM=1\r'
-    >>> cl.disconnect()
-
     """
     self._send(at.ftrim())
 
   def take_off(self):
     r"""Send a take off command.
-
-    >>> from ..platform import dummy
-    >>> con = dummy.Connection()
-    >>> cl = ControlLoop(con)
-    >>> cl.connect()
-    >>> cl.take_off()
-    OUTPUT: 'AT*CONFIG=1,"CONTROL:outdoor","FALSE"\rAT*REF=2,290718208\r'
-    >>> cl.disconnect()
 
     """
     self._send(''.join([at.config('CONTROL:outdoor', False), at.ref(take_off = True)]))
@@ -117,41 +93,17 @@ class ControlLoop(object):
   def land(self):
     r"""Send a land command.
 
-    >>> from ..platform import dummy
-    >>> con = dummy.Connection()
-    >>> cl = ControlLoop(con)
-    >>> cl.connect()
-    >>> cl.land()
-    OUTPUT: 'AT*REF=1,290717696\r'
-    >>> cl.disconnect()
-
     """
     self._send(at.ref(take_off = False, reset = False))
  
   def hover(self):
     r"""Send a hover command.
 
-    >>> from ..platform import dummy
-    >>> con = dummy.Connection()
-    >>> cl = ControlLoop(con)
-    >>> cl.connect()
-    >>> cl.hover()
-    OUTPUT: 'AT*PCMD=1,1,0,0,0,0\r'
-    >>> cl.disconnect()
-
     """
     self._send(at.pcmd())
 
   def reset(self):
     r"""Send a reset command to the drone.
-
-    >>> from ..platform import dummy
-    >>> con = dummy.Connection()
-    >>> cl = ControlLoop(con)
-    >>> cl.connect()
-    >>> cl.reset()
-    OUTPUT: 'AT*REF=1,290717952\r'
-    >>> cl.disconnect()
 
     """
     self._send(at.ref(reset = True))
@@ -162,7 +114,7 @@ class ControlLoop(object):
   def start_video(self):
     self._connection.viddata_cb = self._vid_decoder.decode
     self._vid_decoder.vid_cb = self.video_cb
-    self._connection.put_video_packet('one')
+    self._connection.put(ControlLoop._VID, 'one')
 
   def start_navdata(self):
     log.info('starting navdata streaming')
@@ -170,7 +122,7 @@ class ControlLoop(object):
 
     # See Dev. guide 7.1.2 pp. 40
     self._last_navdata_sequence = 0
-    self._connection.put_navdata_packet('one')
+    self._connection.put(ControlLoop._NAV, 'one')
     self._send(at.config('general:navdata_demo', True))
 
   def _got_config(self, data):
@@ -189,7 +141,7 @@ class ControlLoop(object):
     if watchdog_state:
       # this is a case where the sequence counter should be reset
       self._last_navdata_sequence = 0
-      self._connection.put(at.comwdg())
+      self._connection.put(ControlLoop._AT, at.comwdg())
 
     # Dev. guide pp. 40: lost communication
     lost_com = (ndh.state & navdata.ARDRONE_COM_LOST_MASK) != 0
@@ -234,10 +186,5 @@ class ControlLoop(object):
     at.reset_sequence()
 
   def _send(self, cmd):
-    self._assert_connected()
     log.debug('Sending: %r' % (cmd,))
-    self._connection.put(cmd)
-
-  def _assert_connected(self):
-    if not self.connected:
-      raise ConnectionError('Not connected to drone.')
+    self._connection.put(ControlLoop._AT, cmd)

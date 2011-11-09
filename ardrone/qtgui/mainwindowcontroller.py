@@ -50,12 +50,8 @@ class MainWindowController(QtCore.QObject):
 
     # Initialise the drone control loop and attempt to open a connection.
     log.info('Initialising control loop.')
-    host, port = '192.168.1.1', 5556
-    if 'DRONEDEBUG' in os.environ:
-      host, port = '127.0.0.1', 5555
-    connection = platform.Connection(drone_host=host, at_bind_port=port)
+    connection = platform.Connection()
     self._control = ControlLoop(connection, video_cb=self._vid_cb, navdata_cb=self._navdata_cb)
-    self._control.connect()
 
     # Create a drone connection statusbar widget
     status_bar = self._widget.statusBar()
