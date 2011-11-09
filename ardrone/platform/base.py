@@ -9,16 +9,24 @@ class ConnectionError(Exception):
   def __str__(self):
     return self.msg
 
+
 class Connection(object):
-  """Sub classes should override the put method at a minimum. Usually the
+  """A base class for allowing platform independent UDP connections and UDP servers.
+
+  Since a UDP 'server' needs to sit in a loop waiting on a connection, it makes
+  sense to re-use the event loop from various GUI toolkits, the various
+  sub-classes of this class do this.
+
+  To open a connection, call the open method. This may send port and,
+  optionally, a bind port and callable pair to start a UDP server listening on
+  that port. The connection is identified by some hashable object.
+
+  The put method is used to send a packet over a connection. This sends a
+  packet of data to the send port fo the connection.
+
+  Sub classes should override the put method at a minimum. Usually the
   connect method will be overridden as well. Optionally the disconnect method
   may be overridden.
-
-  When a packet of navdata from the drone arrives, it should be passed to the
-  got_navdata method.
-
-  The navdata_cb attribute of the object gives the current navdata callable
-  which will be called when a packet arrives.
 
   All connection methods may raise a ConnectionError if there is some problem
   sending the data.
@@ -27,166 +35,63 @@ class Connection(object):
   >>> def f(packet):
   ...   global p
   ...   p = packet
-  >>> c = Connection(navdata_cb=f)
+  >>> c = Connection()
   >>> p is None
   True
-  >>> c.navdata_cb is f
-  True
-  >>> c.connect()
-  True
-  >>> c.put('one')
+  >>> c.open(1, ('127.0.0.1', 1234), (None, 5678, f))
+  >>> c.put(1, 'one')
   Traceback (most recent call last):
     File "<stdin>", line 1, in ?
   NotImplementedError: You must override the put method.
-  >>> c.got_navdata('hello')
+  >>> c.got_packet(1, 'hello')
   >>> p is 'hello'
   True
-  >>> c.got_navdata('world')
+  >>> c.got_packet(1, 'world')
   >>> p is 'world'
   True
-  >>> c.navdata_cb = None
-  >>> c.got_navdata('foo')
-  >>> p is 'foo'
-  False
-  >>> c.disconnect()
 
   """
 
-  def __init__(self,  navdata_cb=None, viddata_cb=None, config_cb=None):
-    """Initialise the connection. navdata_cb may optionally be a callable which
-    is called when a navdata, config or video packet arrives.
+  def __init__(self):
+    """Initialise the connection.
     
     >>> Connection() # doctest: +ELLIPSIS
     <ardrone.platform.base.Connection object at 0x...>
 
     """
-    self.navdata_cb = navdata_cb
-    self.viddata_cb = viddata_cb
-    self.config_cb = config_cb
+    self._connection_callables = {}
 
-  def connect(self):
-    """Optionally override this method to connect to the drone. Return True if
-    connection was successful, False otherwise. Calling put before this method
-    is called or if this method returns False is undefined behaviour. No
-    navdata packets should be sent via got_navdata until this method is called.
+  def open(self, connection, send, bind=None):
+    """Override this method in sub-classes to open a connection.
 
-    The default implementation returns True.
+    send is a pair of a string and integer giving the hostname/ip of the host
+    to send to and which port to send to.
 
-    >>> c = Connection()
-    >>> c.connect()
-    True
-    >>> c.disconnect()
-    
-    """
-    return True
+    bind is optionally a triplet (host,port,callable) which is a host interface
+    and port to bind to and a callable to call when data arrives on that port.
+    If the host is None, bind to all interfaces.
 
-  def disconnect(self):
-    """Optionally override this method to disconnect to the drone. Calling put
-    after this method is undefined behaviour. Depending on network effects,
-    however, navdata packets may still arrive after this method is called.
-
-    The default implementation does nothing.
-
-    >>> c = Connection()
-    >>> c.connect()
-    True
-    >>> c.disconnect()
+    Derrived classes *must* call the base implementation.
 
     """
-    pass
+    if bind is not None:
+      self._connection_callables[connection] = bind[2]
 
-  def put(self, command_string):
+
+  def put(self, connection, data):
     """Override this method to send the command string passed to the drone.
 
     The default implementation will throw a NotImplementedError.
 
-    >>> c = Connection()
-    >>> c.connect()
-    True
-    >>> c.put('one')
-    Traceback (most recent call last):
-      File "<stdin>", line 1, in ?
-    NotImplementedError: You must override the put method.
-    >>> c.disconnect()
-    
     """
     raise NotImplementedError('You must override the put method.')
 
-  def put_navdata_packet(self, packet):
-    """Override this method to send a packet to the navdata port on the device."""
-
-    raise NotImplementedError('You must override the put method.')
-
-  def put_video_packet(self, packet):
-    """Override this method to send a packet to the video port on the device."""
-
-    raise NotImplementedError('You must override the put method.')
-
-  def got_navdata(self, packet):
+  def got_packet(self, connection, packet):
     """Call this method when a navdata packet from the drone has arrived. Pass
     the raw packet in as a sequence of bytes.
 
-    >>> p = None
-    >>> def f(packet):
-    ...   global p
-    ...   p = packet
-    >>> c = Connection(navdata_cb=f)
-    >>> c.connect()
-    True
-    >>> c.got_navdata('hello')
-    >>> p is 'hello'
-    True
-    >>> c.got_navdata('world')
-    >>> p is 'world'
-    True
-    >>> c.disconnect()
-
     """
-    if self.navdata_cb is not None:
-      self.navdata_cb(packet)
-
-  def got_viddata(self, packet):
-    """Call this method when a video packet from the drone has arrived. Pass
-    the raw packet in as a sequence of bytes.
-
-    >>> p = None
-    >>> def f(packet):
-    ...   global p
-    ...   p = packet
-    >>> c = Connection(viddata_cb=f)
-    >>> c.connect()
-    True
-    >>> c.got_viddata('hello')
-    >>> p is 'hello'
-    True
-    >>> c.got_viddata('world')
-    >>> p is 'world'
-    True
-    >>> c.disconnect()
-
-    """
-    if self.viddata_cb is not None:
-      self.viddata_cb(packet)
-      
-  def got_config(self, packet):
-    """Call this method when a video packet from the drone has arrived. Pass
-    the raw packet in as a sequence of bytes.
-
-    >>> p = None
-    >>> def f(packet):
-    ...   global p
-    ...   p = packet
-    >>> c = Connection(config_cb=f)
-    >>> c.connect()
-    True
-    >>> c.got_config('hello')
-    >>> p is 'hello'
-    True
-    >>> c.got_config('world')
-    >>> p is 'world'
-    True
-    >>> c.disconnect()
-
-    """
-    if self.config_cb is not None:
-      self.config_cb(packet)
+    if connection in self._connection_callables:
+      cb = self._connection_callables[connection]
+      if cb is not None:
+        cb(packet)
