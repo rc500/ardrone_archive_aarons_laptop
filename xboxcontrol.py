@@ -3,6 +3,7 @@ import pygame, json, math, socket
 # Axes
 ROLL_AXIS         = 0 # Xbox: left stick H
 PITCH_AXIS        = 1 # Xbox: left stick V
+HOVER_AXIS        = 2 # Xbox: left trigger
 YAW_AXIS          = 3 # Xbox: right stick H
 GAS_AXIS          = 4 # Xbox: right stick V
 
@@ -80,6 +81,8 @@ def main():
       elif e.axis == GAS_AXIS:
         surface = 'gas'
         sign = -1.0
+      elif e.axis == HOVER_AXIS:
+        state['hover'] = value < -0.5
 
       if surface is not None:
         state[surface] = sign * e.value
@@ -88,7 +91,7 @@ def main():
     for x in ('roll', 'pitch', 'yaw', 'gas'):
       max_shift = max(max_shift, abs(state[x]))
     
-    state['hover'] = max_shift < 0.3
+    #state['hover'] = max_shift < 0.3
     if state['hover']:
       state['gas'] = 0.0
     
