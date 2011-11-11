@@ -87,6 +87,8 @@ def main():
   """
   if 'DEBUG' in os.environ:
     log.setLevel(logging.DEBUG)
+  else:
+    log.setLevel(logging.INFO)
 
   # Create the main application
   app = Application()

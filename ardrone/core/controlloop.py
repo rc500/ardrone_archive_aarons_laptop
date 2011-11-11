@@ -28,6 +28,7 @@ class ControlLoop(object):
   _NAV = 2
   _VID = 3
   _CONTROL = 4
+  _CONFIG = 5
 
   def __init__(self, connection,
       video_cb=None, navdata_cb=None,
@@ -75,8 +76,9 @@ class ControlLoop(object):
     # Open the connections
     self._connection.open(ControlLoop._AT, (host, at_port), (None, at_port, None))
     self._connection.open(ControlLoop._NAV, (host, nav_port), (None, nav_port, self._got_navdata))
-    self._connection.open(ControlLoop._VID, (host, vid_port), (None, vid_port, None))
+    self._connection.open(ControlLoop._VID, (host, vid_port), (None, vid_port, self._got_video))
     self._connection.open(ControlLoop._CONTROL, (host, control_port), (None, control_port, self._got_control))
+    self._connection.open(ControlLoop._CONFIG, (host, config_port), (None, config_port, self._got_config))
   
   def bootstrap(self):
     """Initialise all the drone data streams."""
@@ -121,13 +123,12 @@ class ControlLoop(object):
 
     """
     self._send(at.ref(reset = True))
-    #self._send(at.config('video:video_bitrate_control_mode', '1'))
-    #self._send(at.config('video:video_bitrate', '2000'))
-    #self._send(at.config('video:video_codec', '32'))
 
   def start_video(self):
     self._connection.viddata_cb = self._vid_decoder.decode
     self._vid_decoder.vid_cb = self.video_cb
+    self._send(at.config('video:video_bitrate_control_mode', '1')) # Dynamic
+    self._send(at.config('video:video_codec', '64'))
     self._connection.put(ControlLoop._VID, 'one')
 
   def start_navdata(self):
@@ -137,7 +138,6 @@ class ControlLoop(object):
     # See Dev. guide 7.1.2 pp. 40
     self._last_navdata_sequence = 0
     self._connection.put(ControlLoop._NAV, 'one')
-    self._send(at.config('general:navdata_demo', True))
 
   def _got_config(self, data):
     log.info('Got config packet len: %s' % (len(data),))
@@ -157,20 +157,6 @@ class ControlLoop(object):
       self._last_navdata_sequence = 0
       self._connection.put(ControlLoop._AT, at.comwdg())
 
-    # Dev. guide pp. 40: lost communication
-    lost_com = (ndh.state & navdata.ARDRONE_COM_LOST_MASK) != 0
-    if lost_com:
-      log.warning('Lost connection, re-establishing navdata connection.')
-      self._last_navdata_sequence = 0
-      self.start_navdata()
-
-    if ndh.sequence <= self._last_navdata_sequence:
-      log.error('Dropping out of sequence navdata packet: %s' % (ndh.sequence,))
-      return
-
-    # Record the sequence number
-    self._last_navdata_sequence = ndh.sequence
-
     # Is the AR_DRONE_NAVDATA_BOOSTRAP status bit set (Dev. guide fig 7.1)
     if (ndh.state & navdata.ARDRONE_NAVDATA_BOOTSTRAP) != 0:
       log.debug('Navdata booststrap stage 2');
@@ -183,6 +169,20 @@ class ControlLoop(object):
       log.debug('Navdata booststrap stage 3');
       self._send(at.ctrl(5))
       return
+
+    ## Dev. guide pp. 40: lost communication
+    #if (ndh.state & navdata.ARDRONE_COM_LOST_MASK) != 0:
+    #  log.warning('Lost connection, re-establishing navdata connection.')
+    #  self._last_navdata_sequence = 0
+    #  self.start_navdata()
+    #  return
+
+    if ndh.sequence <= self._last_navdata_sequence:
+      log.error('Dropping out of sequence navdata packet: %s' % (ndh.sequence,))
+      return
+
+    # Record the sequence number
+    self._last_navdata_sequence = ndh.sequence
 
     # Record flying state
     self._flying = (ndh.state & navdata.ARDRONE_FLY_MASK) != 0
@@ -198,6 +198,12 @@ class ControlLoop(object):
 
     #print('state: %s' % (ndh.state,))
     #print('Got data len: %s' % (len(data),))
+
+  def _got_config(self, packet):
+    log.info('Got config len %i' % (len(packet),))
+
+  def _got_video(self, packet):
+    self._vid_decoder.decode(packet)
 
   def _got_control(self, packet):
     # log.debug('Got control packet: %r' % (packet,))

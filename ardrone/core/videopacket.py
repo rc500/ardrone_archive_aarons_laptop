@@ -25,13 +25,12 @@ class Decoder(object):
     if self._handle is None:
       return
 
-    print('First byte: %s' % (data[0],))
     if 1 != self._cdll.p264_process_blockline(self._handle, data, len(data)):
       return
 
     get_image_buffer = self._cdll.p264_get_image_buffer
-    get_image_buffer.restype = ct.c_char_p
+    get_image_buffer.restype = ct.POINTER(ct.c_char)
     self.data = get_image_buffer(self._handle)
 
     if self.vid_cb is not None:
-      self.vid_cb(data)
+      self.vid_cb(self.data[0:(320*240*2)])

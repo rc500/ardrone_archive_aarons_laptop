@@ -106,8 +106,7 @@ class MainWindowController(QtCore.QObject):
 
   def _vid_cb(self, data):
     """Update the image in the camera window."""
-    ba = QtCore.QByteArray.fromRawData(data[0:(320*240*2)])
-    self._cam_label.setPixmap(QtGui.QPixmap(QtGui.QImage(ba, 320, 240, QtGui.QImage.Format_RGB16)))
+    self._cam_label.setPixmap(QtGui.QPixmap(QtGui.QImage(data, 320, 240, QtGui.QImage.Format_RGB16)))
 
   def _navdata_cb(self, block):
     if isinstance(block, navdata.DemoBlock):
