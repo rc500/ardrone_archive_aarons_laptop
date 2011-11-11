@@ -29,6 +29,16 @@ class ControllerWindow(QtGui.QWidget):
         'reset': False,
         'hover': False,
         }
+    self._key_state = {
+        'W': False,
+        'A': False,
+        'S': False,
+        'D': False,
+        'Up': False,
+        'Down': False,
+        'Left': False,
+        'Right': False,
+        }
     self.setMinimumSize(self.sizeHint())
 
     self._auto_hover_timer = QtCore.QTimer()
@@ -85,20 +95,28 @@ class ControllerWindow(QtGui.QWidget):
   def keyPressEvent(self, event):
     if event.key() == QtCore.Qt.Key_A:
       self._control_state['roll'] -= 1.0
+      self._key_state['A'] = True
     elif event.key() == QtCore.Qt.Key_D:
       self._control_state['roll'] += 1.0
+      self._key_state['D'] = True
     elif event.key() == QtCore.Qt.Key_S:
-      self._control_state['pitch'] -= 1.0
-    elif event.key() == QtCore.Qt.Key_W:
       self._control_state['pitch'] += 1.0
+      self._key_state['S'] = True
+    elif event.key() == QtCore.Qt.Key_W:
+      self._control_state['pitch'] -= 1.0
+      self._key_state['W'] = True
     elif event.key() == QtCore.Qt.Key_Left:
       self._control_state['yaw'] -= 1.0
+      self._key_state['Left'] = True
     elif event.key() == QtCore.Qt.Key_Right:
       self._control_state['yaw'] += 1.0
+      self._key_state['Right'] = True
     elif event.key() == QtCore.Qt.Key_Down:
       self._control_state['gas'] -= 1.0
+      self._key_state['Down'] = True
     elif event.key() == QtCore.Qt.Key_Up:
       self._control_state['gas'] += 1.0
+      self._key_state['Up'] = True
     elif event.key() == QtCore.Qt.Key_T:
       self._control_state['take_off'] = True
     elif event.key() == QtCore.Qt.Key_R:
@@ -111,20 +129,28 @@ class ControllerWindow(QtGui.QWidget):
   def keyReleaseEvent(self, event):
     if event.key() == QtCore.Qt.Key_A:
       self._control_state['roll'] += 1.0
+      self._key_state['A'] = False
     elif event.key() == QtCore.Qt.Key_D:
       self._control_state['roll'] -= 1.0
+      self._key_state['D'] = False
     elif event.key() == QtCore.Qt.Key_S:
-      self._control_state['pitch'] += 1.0
-    elif event.key() == QtCore.Qt.Key_W:
       self._control_state['pitch'] -= 1.0
+      self._key_state['S'] = False
+    elif event.key() == QtCore.Qt.Key_W:
+      self._control_state['pitch'] += 1.0
+      self._key_state['W'] = False
     elif event.key() == QtCore.Qt.Key_Left:
       self._control_state['yaw'] += 1.0
+      self._key_state['Left'] = False
     elif event.key() == QtCore.Qt.Key_Right:
       self._control_state['yaw'] -= 1.0
+      self._key_state['Right'] = False
     elif event.key() == QtCore.Qt.Key_Down:
       self._control_state['gas'] += 1.0
+      self._key_state['Down'] = False
     elif event.key() == QtCore.Qt.Key_Up:
       self._control_state['gas'] -= 1.0
+      self._key_state['Up'] = False
     elif event.key() == QtCore.Qt.Key_T:
       self._control_state['take_off'] = False
     elif event.key() == QtCore.Qt.Key_R:
@@ -147,7 +173,7 @@ class ControllerWindow(QtGui.QWidget):
 
     painter.save()
     painter.setTransform(QtGui.QTransform.fromTranslate(mid_x - pad_size - 0.5*pad_separation, mid_y))
-    self._draw_pad(painter, 'roll', 'pitch', 'Roll/pitch:\n{A,D}/{W,S}', pad_size)
+    self._draw_pad(painter, ('A', 'D', 'W', 'S'), 'Roll/pitch:\n{A,D}/{W,S}', pad_size)
     painter.restore()
 
     painter.save()
@@ -159,7 +185,7 @@ class ControllerWindow(QtGui.QWidget):
     except NameError:
       chars = ('\u2190', '\u2192', '\u2191', '\u2193')
 
-    self._draw_pad(painter, 'yaw', 'gas', 'Yaw/gas:\n{%s,%s}/{%s,%s}' % chars, pad_size)
+    self._draw_pad(painter, ('Left', 'Right', 'Up', 'Down'), 'Yaw/gas:\n{%s,%s}/{%s,%s}' % chars, pad_size)
     painter.restore()
 
     mid_y -= 0.2*pad_size
@@ -193,7 +219,7 @@ class ControllerWindow(QtGui.QWidget):
     painter.drawEllipse(0,0,0.5*th,0.5*th)
     painter.drawText(th,0.5*th,label)
 
-  def _draw_pad(self, painter, left_right_control, up_down_control, label, pad_size):
+  def _draw_pad(self, painter, key_state, label, pad_size):
     pad_path = self._pad_path(pad_size)
 
     bg_brush = QtGui.QBrush(QtCore.Qt.white)
@@ -205,15 +231,14 @@ class ControllerWindow(QtGui.QWidget):
 
     painter.fillPath(pad_path, bg_brush)
 
-    if self._control_state[left_right_control] < 0.0:
+    if self._key_state[key_state[0]]:
       painter.fillPath(self._pad_dir_path(LEFT, pad_size), sel_brush)
-    elif self._control_state[left_right_control] > 0.0:
+    if self._key_state[key_state[1]]:
       painter.fillPath(self._pad_dir_path(RIGHT, pad_size), sel_brush)
-
-    if self._control_state[up_down_control] < 0.0:
-      painter.fillPath(self._pad_dir_path(DOWN, pad_size), sel_brush)
-    elif self._control_state[up_down_control] > 0.0:
+    if self._key_state[key_state[2]]:
       painter.fillPath(self._pad_dir_path(UP, pad_size), sel_brush)
+    if self._key_state[key_state[3]]:
+      painter.fillPath(self._pad_dir_path(DOWN, pad_size), sel_brush)
 
     painter.fillRect(0.6*pad_size,-0.05*pad_size,0.3*pad_size,0.1*pad_size,flash_brush)
     painter.fillRect(-0.9*pad_size,-0.05*pad_size,0.3*pad_size,0.1*pad_size,flash_brush)
