@@ -16,5 +16,5 @@ setup(name='ardrone',
       'ardrone.qtgui': ['res/*.ui'],
     },
 
-    scripts = ['qtgui.py', 'keybdcontrol.py'],
+    scripts = ['qtdronegui.py', 'keybdcontrol.py'],
 )
