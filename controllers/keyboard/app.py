@@ -11,6 +11,8 @@ DOWN = 1
 LEFT = 2
 UP = 3
 
+CONTROL_SCALE = 0.3 # How much to change each control value by when button is pressed.
+
 class Application(QtGui.QApplication):
   def __init__(self, *args, **kwargs):
     super(Application, self).__init__(sys.argv, *args, **kwargs)
@@ -94,28 +96,28 @@ class ControllerWindow(QtGui.QWidget):
 
   def keyPressEvent(self, event):
     if event.key() == QtCore.Qt.Key_A:
-      self._control_state['roll'] -= 1.0
+      self._control_state['roll'] -= CONTROL_SCALE
       self._key_state['A'] = True
     elif event.key() == QtCore.Qt.Key_D:
-      self._control_state['roll'] += 1.0
+      self._control_state['roll'] += CONTROL_SCALE
       self._key_state['D'] = True
     elif event.key() == QtCore.Qt.Key_S:
-      self._control_state['pitch'] += 1.0
+      self._control_state['pitch'] += CONTROL_SCALE
       self._key_state['S'] = True
     elif event.key() == QtCore.Qt.Key_W:
-      self._control_state['pitch'] -= 1.0
+      self._control_state['pitch'] -= CONTROL_SCALE
       self._key_state['W'] = True
     elif event.key() == QtCore.Qt.Key_Left:
-      self._control_state['yaw'] -= 1.0
+      self._control_state['yaw'] -= CONTROL_SCALE
       self._key_state['Left'] = True
     elif event.key() == QtCore.Qt.Key_Right:
-      self._control_state['yaw'] += 1.0
+      self._control_state['yaw'] += CONTROL_SCALE
       self._key_state['Right'] = True
     elif event.key() == QtCore.Qt.Key_Down:
-      self._control_state['gas'] -= 1.0
+      self._control_state['gas'] -= CONTROL_SCALE
       self._key_state['Down'] = True
     elif event.key() == QtCore.Qt.Key_Up:
-      self._control_state['gas'] += 1.0
+      self._control_state['gas'] += CONTROL_SCALE
       self._key_state['Up'] = True
     elif event.key() == QtCore.Qt.Key_T:
       self._control_state['take_off'] = True
@@ -128,28 +130,28 @@ class ControllerWindow(QtGui.QWidget):
 
   def keyReleaseEvent(self, event):
     if event.key() == QtCore.Qt.Key_A:
-      self._control_state['roll'] += 1.0
+      self._control_state['roll'] += CONTROL_SCALE
       self._key_state['A'] = False
     elif event.key() == QtCore.Qt.Key_D:
-      self._control_state['roll'] -= 1.0
+      self._control_state['roll'] -= CONTROL_SCALE
       self._key_state['D'] = False
     elif event.key() == QtCore.Qt.Key_S:
-      self._control_state['pitch'] -= 1.0
+      self._control_state['pitch'] -= CONTROL_SCALE
       self._key_state['S'] = False
     elif event.key() == QtCore.Qt.Key_W:
-      self._control_state['pitch'] += 1.0
+      self._control_state['pitch'] += CONTROL_SCALE
       self._key_state['W'] = False
     elif event.key() == QtCore.Qt.Key_Left:
-      self._control_state['yaw'] += 1.0
+      self._control_state['yaw'] += CONTROL_SCALE
       self._key_state['Left'] = False
     elif event.key() == QtCore.Qt.Key_Right:
-      self._control_state['yaw'] -= 1.0
+      self._control_state['yaw'] -= CONTROL_SCALE
       self._key_state['Right'] = False
     elif event.key() == QtCore.Qt.Key_Down:
-      self._control_state['gas'] += 1.0
+      self._control_state['gas'] += CONTROL_SCALE
       self._key_state['Down'] = False
     elif event.key() == QtCore.Qt.Key_Up:
-      self._control_state['gas'] -= 1.0
+      self._control_state['gas'] -= CONTROL_SCALE
       self._key_state['Up'] = False
     elif event.key() == QtCore.Qt.Key_T:
       self._control_state['take_off'] = False
