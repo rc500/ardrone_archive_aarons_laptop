@@ -46,7 +46,7 @@ def main():
       'gas': 0.0,
       'take_off': False,
       'reset': False,
-      'hover': False,
+      'hover': True,
       };
 
   # Create a state timer
@@ -82,18 +82,18 @@ def main():
         surface = 'gas'
         sign = -1.0
       elif e.axis == HOVER_AXIS:
-        state['hover'] = value < -0.5
+        state['hover'] = e.value < -0.5
 
       if surface is not None:
         state[surface] = sign * e.value
 
-    max_shift = 0.0
-    for x in ('roll', 'pitch', 'yaw', 'gas'):
-      max_shift = max(max_shift, abs(state[x]))
+    #max_shift = 0.0
+    #for x in ('roll', 'pitch', 'yaw', 'gas'):
+    #  max_shift = max(max_shift, abs(state[x]))
     
-    #state['hover'] = max_shift < 0.3
-    if state['hover']:
-      state['gas'] = 0.0
+    #state['hover'] = max_shift < 1e-2
+    #if state['hover']:
+    #  state['gas'] = 0.0
     
     send_state(state)
 
