@@ -1,7 +1,7 @@
 """An implementation of the control loop.
 
 """
-import logging
+import logging, json
 log = logging.getLogger()
 
 from . import atcommands as at
@@ -27,11 +27,12 @@ class ControlLoop(object):
   _AT = 1
   _NAV = 2
   _VID = 3
+  _CONTROL = 4
 
   def __init__(self, connection,
       video_cb=None, navdata_cb=None,
       host='192.168.1.1',
-      at_port=5556, nav_port=5554, vid_port=5555, config_port=5559):
+      at_port=5556, nav_port=5554, vid_port=5555, config_port=5559, control_port=5560):
     """Initialse the control loop with a connection.
 
     You must call the connect and disconnect methods on the control loop before
@@ -52,6 +53,7 @@ class ControlLoop(object):
     self._connection = connection
     self._reset_sequence()
     self._vid_decoder = videopacket.Decoder()
+    self._flying = False
 
     self.video_cb = video_cb
     self.navdata_cb = navdata_cb
@@ -59,10 +61,22 @@ class ControlLoop(object):
     # State for navdata
     self._last_navdata_sequence = 0
 
+    # State for control
+    self._last_control_sequence = 0
+    self._last_control_state = {
+        'reset': False,
+        'take_off': False,
+        'roll': 0.0,
+        'pitch': 0.0,
+        'yaw': 0.0,
+        'gas': 0.0,
+        }
+
     # Open the connections
     self._connection.open(ControlLoop._AT, (host, at_port), (None, at_port, None))
     self._connection.open(ControlLoop._NAV, (host, nav_port), (None, nav_port, self._got_navdata))
     self._connection.open(ControlLoop._VID, (host, vid_port), (None, vid_port, None))
+    self._connection.open(ControlLoop._CONTROL, (host, control_port), (None, control_port, self._got_control))
   
   def bootstrap(self):
     """Initialise all the drone data streams."""
@@ -170,6 +184,9 @@ class ControlLoop(object):
       self._send(at.ctrl(5))
       return
 
+    # Record flying state
+    self._flying = (ndh.state & navdata.ARDRONE_FLY_MASK) != 0
+
     for packet in packets:
       if self.navdata_cb is not None:
         self.navdata_cb(packet)
@@ -181,6 +198,41 @@ class ControlLoop(object):
 
     #print('state: %s' % (ndh.state,))
     #print('Got data len: %s' % (len(data),))
+
+  def _got_control(self, packet):
+    # log.debug('Got control packet: %r' % (packet,))
+
+    # Parse packet
+    data = json.loads(packet.decode())
+
+    # Reset sequence counter if we get a '1'
+    if data['seq'] == 1:
+      self._last_control_sequence = 0
+
+    # Check and update sequence counter
+    if data['seq'] <= self._last_control_sequence:
+      log.warning('Dropping control packet with invalid sequence number: %i' % (data.seq,))
+      return
+    self._last_control_sequence = data['seq']
+
+    # Extract control state
+    state = data['state']
+    #log.debug('Control state: %r' % (state,))
+
+    # Compare state to recorded state
+    if not self._last_control_state['reset'] and state['reset']:
+      self.bootstrap()
+    if not self._last_control_state['take_off'] and state['take_off']:
+      if self._flying:
+        self.land()
+      else:
+        self.take_off()
+
+    # Send the command state
+    self._send(at.pcmd(not state['hover'], False, state['roll'], state['pitch'], state['gas'], state['yaw']))
+
+    # Record this state
+    self._last_control_state = state
 
   def _reset_sequence(self):
     at.reset_sequence()
