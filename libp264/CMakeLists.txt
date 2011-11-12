@@ -57,9 +57,5 @@ add_library(vlib
 )
 target_link_libraries(vlib vpos vpapi)
 
-add_executable(test test.c)
-target_link_libraries(test vlib)
-
-#link_directories(${CMAKE_CURRENT_SOURCE_DIR})
 add_library(p264 SHARED libp264.c)
 target_link_libraries(p264 vlib)
