@@ -1,6 +1,6 @@
 """Functions to generate AT commands for the A.R. Drone.
 
-This module is based on chapter 6 of the developer guie (pp.29). Most direct
+This module is based on chapter 6 of the developer guide (pp.29). Most direct
 control of the drone is accomplished by sending UDP packets containing
 so-called 'AT' commands to the drone on port 5559. This module wraps functions
 to generate AT command strings along with some internal utility functions to
