@@ -1,39 +1,63 @@
 """Functions to generate AT commands for the A.R. Drone.
 
-This module provides various API functions to generate AT commands for sending
-to an A.R. drone. For example, to lift off and set hover mode:
+This module is based on chapter 6 of the developer guie (pp.29). Most direct
+control of the drone is accomplished by sending UDP packets containing
+so-called 'AT' commands to the drone on port 5559. This module wraps functions
+to generate AT command strings along with some internal utility functions to
+provide the ppropriate floating-point -> integer conversion.
+
+Each public AT command function in this module takes a set of keyword arguments
+and returns an appropriately encoded AT command for sending directly to the
+dron. For example, to lift off and set hover mode:
 
 >>> reset_sequence()
 >>> ''.join([ref(reset = True), pcmd(False), ref(take_off = True)])
 'AT*REF=1,290717952\\rAT*PCMD=2,0,0,0,0,0\\rAT*REF=3,290718208\\r'
 
-In general the sequence number will be incremented automatically for you
-although one can use reset_sequence to set it back to 1.
-
 """
 
+"""We make use of the ctypes module primarily to allow for the floating point
+-> integer conversion required by the AT commands. In addition, we explicitly
+encode all AT command parameters as _machine_ types such as c_int or c_float
+rather than Python types such as int or float. This is because commands sent to
+the drone require/assume that they are backed by a particular binary encoding
+which Python hids from you for its built in types.
+
+"""
 import ctypes as ct
 
-# The common prefix for all AT commands
+"""All AT commands start with a common prefix: (dev. guide 6.1, pp. 30)"""
 __prefix = 'AT*'
 
-# The <LF> (line feed) string.
+"""All AT commands end with a common suffix: (dev. guide 6.1, pp. 30)"""
 __lf = '\r'
 
+"""AT commands are sent to the drone with an associated sequence number. The
+drone will ignore commands sent to it with a sequence number less than or equal
+to one it has alreay received (dev. guide 6.2, pp. 30). We keep track of this
+sequence number as a global counter since we assume one process is controlling
+one drone.
+
+It may well be required for future expansion that this state be abstracted into
+a class. For the moment, owever, this is sufficient for our purposes.
+
+"""
 __sequence = 0
 
 def reset_sequence():
   """Internally AT commands have a sequence number. The drone expects the first
   command to have sequence number 1 and the remaining commands to increase in
-  number (see developer guide). This function resets the sequence counter back
-  to 1.
+  number (see dev. guide 6.2, pp. 30). We maintain a global sequence number
+  countin __sequence. This function resets the sequence counter back to 1.
 
   """
   global __sequence
   __sequence = 0
 
 def ref(reset = False, take_off = False):
-  """Generate the (take off/land) (emergency/reset) AT*REF command.
+  """Control basic behaviour of the drone: take-off/land and emergency/reset.
+  
+  See: Dev. guide: 6.6, pp. 33.
 
   >>> reset_sequence()
   >>> ref()
@@ -58,7 +82,24 @@ def ref(reset = False, take_off = False):
 def pcmd(progressive_commands = True, combined_yaw = False,
     left_right_tilt = 0.0, front_back_tilt = 0.0,
     vertical_speed = 0.0, angular_speed = 0.0):
-  """Generate a PCMD AT Command sequence.
+  """Control motion of the drone and activate/de-activate auto-hover mode.
+  
+  See: Dev. guide: 6.6, pp. 35.
+
+  The PCMD command controls at least three features:
+
+  - Progressive commands: if enabled, roll, pitch, yaw and vertical speed (gas)
+    will be honoured by the drone. If disabled, the drone will attempt to hover
+    in one spot autonomously.
+
+  - Combined yaw: if enabled, angular speed changed will result in a combined
+    yaw and roll (a 'racing' turn) which may be more efficient at high speed.
+
+  - The left/right and front/back tilt commands are floating point values in
+    the range [-1,1]. They reflect a proportion of the maximum tilt angle the
+    drone is configured to perform. The vertical speed and angular speed
+    reflect the commanded speed rather than actual value. The units are
+    unknown.
 
   >>> reset_sequence()
   >>> pcmd()
@@ -100,7 +141,19 @@ def pcmd(progressive_commands = True, combined_yaw = False,
       ct.c_float(angular_speed))
 
 def ftrim():
-  """Generate the FTRIM AT command.
+  """Set 'flat trim', i.e. calibrate the drone's idea of what is horizontal.
+  
+  See: Dev. guide: 6.6, pp. 36.
+
+  The flat trim datum is the orientation of the drone when left/right and
+  front/back tilts are set to 0. It is also (it would appear) used within the
+  autonomous hover control-loop.
+
+  The drone appears to use whatever it's orientation is the _moment_ the power
+  is connected as this initial datum. Since one is usually holding the drone at
+  this point, it is generally a good idea to send this command to the drone
+  just before taking off. Failing to do this tends to lead to the drone flying
+  off in one direction.
 
   >>> reset_sequence()
   >>> ftrim()
@@ -111,22 +164,16 @@ def ftrim():
   """
   return __at('FTRIM')
 
-def aflight(enable=True):
-  """Generate the automonous flight AFLIGH AT command.
-
-  >>> reset_sequence()
-  >>> aflight()
-  'AT*AFLIGHT=1,1\\r'
-  >>> aflight(False)
-  'AT*AFLIGHT=2,0\\r'
-
-  """
-  if enable:
-    return __at('AFLIGHT', ct.c_int32(1))
-  return __at('AFLIGHT', ct.c_int32(0))
-
 def config(key, value):
-  """Generate the CONFIG AT command.
+  """Set configuration values for the drone.
+  
+  See: Dev. guide: 6.6, pp. 37.
+
+  The drone has a number of configuration commands which my be configured. See
+  dev. guide ch. 8, pp. 59. This command will set a specfied configuration
+  parameter.
+
+  ''Note'' I've not ascertained whether these _actually work_ yet.
 
   >>> reset_sequence()
   >>> config('GENERAL:num_version_config', 1)
@@ -145,7 +192,12 @@ def config(key, value):
   return __at('CONFIG', str(key), str(value))
 
 def config_ids(session_id, user_id, application_id):
-  """Generate the CONFIG_IDS AT command.
+  """Generate the CONFIG_IDS AT command to set identification for the next
+  configuration command.
+  
+  See: Dev. guide: 6.6, pp. 37.
+
+  ''Note'' I haven't tested this command yet.
 
   >>> reset_sequence()
   >>> config_ids('session_id', 'user_id', 'application_id')
@@ -155,7 +207,17 @@ def config_ids(session_id, user_id, application_id):
   return __at('CONFIG_IDS', str(session_id), str(user_id), str(application_id))
 
 def comwdg():
-  """Generate the COMWGD AT command to reset the watchdog.
+  """Reset the connection lost watchdog state.
+
+  See: Dev. guide: 6.6, pp. 37, 7.1.2, pp. 40.
+
+  When handshaking with the drone to make it report navigation data via navdata
+  packets, the client must detect when the drone enters it's 'watchdog state'.
+  The drone will do this when it suspects communication with the client has
+  been lost. When this state has been detected, the COMWDG command must be sent
+  to the drone to reset the watchdog.
+
+  See ardrone.core.controlloop for more details.
 
   >>> reset_sequence()
   >>> comwdg()
@@ -166,6 +228,12 @@ def comwdg():
 
 def ctrl(mode, filesize=0):
   """Generate the CTRL AT command.
+
+  This command is undocumented and has been derrived by looking at the SDK
+  source code.
+
+  It would appear that this command is a miscellaneous 'catch all' command for
+  toggling state. As I understand it more, I'll add documentation here.
 
   >>> reset_sequence()
   >>> ctrl(4)
