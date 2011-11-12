@@ -1,13 +1,29 @@
-"""ctype structures for navdata.
+"""Parse navdata packets from the drone.
+
+See dev. guide ch. 7, pp 39.
+
+Python isn't really geared up to parse in-memory data structures in the same
+way that C is. Fortunately the ctypes module allows Python to do this without
+too much pain. What pain _is_ required is wrapped into this module.
+
+_Unfortunately_ the navdata stream is almost entirely undocumented in the
+developers' guide. The knowledge crystalised in this module, therefore, has
+been obtained by directly reading the various navdata.c source files in the
+SDK.
+
+Since the packet format is undocumented beyond how to parse the option block
+header, things in this module are subject to change.
 
 """
 
+"""We use the veneabe ctypes module for parsing in-memory data structures."""
 import ctypes as ct
 
+# Use the logging module to log any errors/warnings.
 import logging
 log = logging.getLogger()
 
-"""The header for a navdata packet."""
+"""The header for a navdata packet. (Dev. guide 7.1.1, pp. 39)"""
 NAVDATA_HEADER = ct.c_int32(0x55667788)
 
 """The navdata demo tag for an option packet. (Lifted from navdata.c)"""
@@ -90,6 +106,16 @@ ARDRONE_COM_WATCHDOG_MASK   = 1 << 30 #/*!< Communication Watchdog : (1) com pro
 ARDRONE_EMERGENCY_MASK      = 1 << 31  #/*!< Emergency landing : (0) no emergency, (1) emergency */
 
 def split(data):
+  """Split a raw navdata packet received from the drone into a header and sequence of blocks.
+
+  _data_ is a sequence of bytes received from the drone. Should this sequence
+  of bytes be a valid navdata packet, this function returns a pair. The first
+  element of the pair is the NavBlockHeader corresponding to the packet header.
+  The second element is a sequence of block objects (e.g. DemoBlock).
+
+  ''FIXME'' The error handling of this function is not all that it could be.
+
+  """
   ndh = NavDataHeader.from_buffer_copy(data[0:ct.sizeof(NavDataHeader)])
   if not ndh.valid():
     log.error('Got invalid navdata packet')
@@ -271,7 +297,7 @@ class DemoBlock(ct.LittleEndianStructure):
 
   >>> db = DemoBlock()
   >>> ct.sizeof(db)
-  176
+  44
   >>> db.header.id = 0xdeadbeef # rubbish
   >>> db.valid()
   False
