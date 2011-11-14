@@ -18,69 +18,32 @@ class Connection(base.Connection):
   >>> from ..core import atcommands as at
   >>> at.reset_sequence()
   >>> a = Connection()
-  >>> a.put(at.ref())
-  OUTPUT: 'AT*REF=1,290717696\n'
+  >>> a.open(1, '127.0.0.1', (None, 1234, None))
+  >>> a.put(1, at.ref())
+  OUTPUT: 'AT*REF=1,290717696\r'
   >>> def f(x):
   ...   print('Log: %s' % (repr(x),))
-  >>> b = Connection(log_cb = f)
+  >>> b = Connection(f)
   >>> b.log_cb is f
   True
-  >>> b.put(at.ref())
-  Log: 'AT*REF=2,290717696\n'
+  >>> b.put(1, at.ref())
+  Log: 'AT*REF=2,290717696\r'
 
   """
 
-  def __init__(self, log_cb = None, data_cb = None, *args, **kwargs):
+  def __init__(self, log_cb = None, *args, **kwargs):
     """ Create the dummy connection object.
-
-    data_cb is a callable which will periodically be sent fake navdata packets.
-
-    >>> a = Connection()
-    >>> a.navdata_cb is None
-    True
-    >>> p = None
-    >>> def foo(packet):
-    ...   global p
-    ...   p = packet
-    >>> p is None
-    True
-    >>> b = Connection(navdata_cb = foo)
-    >>> b.connect()
-    True
-    >>> b.navdata_cb is None
-    False
-    >>> b.navdata_cb is foo
-    True
-    >>> import time
-    >>> time.sleep(0.2)
-    >>> p is None
-    False
-    >>> b.disconnect()
 
     """
     base.Connection.__init__(self, *args, **kwargs)
     self.log_cb = log_cb
-    self._schedule_cb('Hello')
 
-  def put(self, command_string):
+  def put(self, connection, packet):
     r""" Send the command string to the drone over the network.
 
-    >>> from ..core import atcommands as at
-    >>> t = Connection()
-    >>> t.put('Foo\nBar')
-    OUTPUT: 'Foo\nBar'
-    >>> at.reset_sequence()
-    >>> t.put(at.ref())
-    OUTPUT: 'AT*REF=1,290717696\n'
-    >>> t.put(at.ref())
-    OUTPUT: 'AT*REF=2,290717696\n'
     """
 
     if self.log_cb is None:
-      print('OUTPUT: %s' % (repr(str(command_string)),))
+      print('OUTPUT: %s' % (repr(str(packet)),))
     else:
-      self.log_cb(str(command_string))
-  
-  def _schedule_cb(self, data):
-    t = threading.Timer(0.05 * random.random() + 0.05, lambda: self.got_navdata(data))
-    t.start()
+      self.log_cb(str(packet))

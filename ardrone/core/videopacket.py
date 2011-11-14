@@ -1,0 +1,36 @@
+import ctypes as ct
+import os
+
+import logging
+log = logging.getLogger()
+
+class Decoder(object):
+  """A simple object which maintains a raw decoded image form of video packets sent to it.
+
+  """
+  def __init__(self, vid_cb = None):
+    self.data = []
+    self.vid_cb = vid_cb
+    self._handle = None
+
+    dllpath = os.path.join(os.path.dirname(__file__), '..', '..', 'libp264', 'build', 'libp264.so')
+
+    try:
+      self._cdll = ct.CDLL(dllpath)
+      self._handle = self._cdll.p264_open()
+    except OSError as e:
+      log.error('Failed to open video decoder library: %s' % (str(e),))
+
+  def decode(self, data):
+    if self._handle is None:
+      return
+
+    if 1 != self._cdll.p264_process_blockline(self._handle, data, len(data)):
+      return
+
+    get_image_buffer = self._cdll.p264_get_image_buffer
+    get_image_buffer.restype = ct.POINTER(ct.c_char)
+    self.data = get_image_buffer(self._handle)
+
+    if self.vid_cb is not None:
+      self.vid_cb(self.data[0:(320*240*2)])

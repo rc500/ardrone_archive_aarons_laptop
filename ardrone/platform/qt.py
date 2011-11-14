@@ -41,15 +41,9 @@ class Connection(base.Connection):
   from the server.
 
   >>> data_log = []
-  >>> c = Connection(
-  ...   navdata_cb=lambda d: data_log.append(d),
-  ...   drone_host='127.0.0.1',
-  ...   at_bind_port=5555, navdata_bind_port=5556)
-
-  Connect to the server.
-
-  >>> c.connect()
-  True
+  >>> c = Connection()
+  >>> c.open(1, ('127.0.0.1', 5556), None)
+  >>> c.open(2, ('127.0.0.1', 1234), (None, 5555, lambda d: data_log.append(d)))
 
   Create some commands to send.
 
@@ -59,8 +53,8 @@ class Connection(base.Connection):
 
   Send the commands.
 
-  >>> c.put(r1)
-  >>> c.put(r2)
+  >>> c.put(1,r1)
+  >>> c.put(1,r2)
 
   Wait for the event loop to finish.
 
@@ -80,47 +74,45 @@ class Connection(base.Connection):
   >>> p.terminate()
 
   """
-  def __init__(self, bind_host=QHostAddress.Any,
-      drone_host='192.168.1.1',
-      at_port=5556, at_bind_port=5556,
-      navdata_bind_port=5554,
-      *args, **kwargs):
-    base.Connection.__init__(self, *args, **kwargs)
+  def __init__(self, *args, **kwargs):
+    super(Connection, self).__init__(*args, **kwargs)
 
-    self._bind_host = QHostAddress(bind_host)
-    self._drone_host = QHostAddress(drone_host)
+    # tuples giving the socket, send host and send port
+    self._sockets = {}
 
-    self._at_port = at_port
-    self._at_bind_port = at_bind_port
-    self._at_socket = QUdpSocket()
+  def open(self, connection, send, bind=None):
+    super(Connection, self).open(connection, send, bind)
 
-    self._navdata_bind_port = navdata_bind_port
-    self._navdata_socket = QUdpSocket()
+    socket = QUdpSocket()
 
-    # Start the server
-    if not self._navdata_socket.bind(self._bind_host, self._navdata_bind_port):
-      logging.error('error binding navdata port: ' + self._navdata_socket.errorString())
-      raise base.ConnectionError(self._navdata_socket.errorString())
-    QObject.connect(self._navdata_socket, SIGNAL('readyRead()'), self._navDataReadyRead)
+    if bind is not None:
+      if bind[0] is None:
+        bind_host = QtNetwork.QHostAddress(QtNetwork.QHostAddress.Any)
+      else:
+        bind_host = QtNetwork.QHostAddress(bind[0])
+      logging.info('Qt: binding to UDP host/port: %s/%s' % (bind_host.toString(), bind[1]))
+      if not socket.bind(bind_host, bind[1]):
+        logging.error('error binding UDP server: ' + socket.errorString())
+        return #raise base.ConnectionError(socket.errorString())
 
-  def connect(self):
-    if not self._at_socket.bind(self._bind_host, self._at_bind_port):
-      logging.error('error binding AT command port: ' + self._at_socket.errorString())
-      return False
+      # Bind a handler to the readtRead signal
+      def ready_read():
+        #logging.info('Got datapacket on connection: %i' % (connection,))
+        sz = socket.pendingDatagramSize()
+        (data, host, port) = socket.readDatagram(sz)
+        if qt.USES_PYSIDE:
+          # PySide returns a QByteArray
+          self.got_packet(connection, data.data())
+        else:
+          self.got_packet(connection, data)
 
-    return True
+      QObject.connect(socket, SIGNAL('readyRead()'), ready_read)
 
-  def put(self, cmd):
-    if -1 == self._at_socket.writeDatagram(cmd, self._drone_host, self._at_port):
+    self._sockets[connection] = (socket, QtNetwork.QHostAddress(send[0]), send[1])
+
+  def put(self, connection, data):
+    socket, host, port = self._sockets[connection]
+    if -1 == socket.writeDatagram(data, host, port):
       logging.error('Failed to send to %s:%s. Error was: %s' %
-          (self._drone_host.toString(), self._at_port, self._at_socket.errorString()))
-      raise base.ConnectionError(self._at_socket.errorString())
-  
-  def _navDataReadyRead(self):
-    sz = self._navdata_socket.pendingDatagramSize()
-    (data, host, port) = self._navdata_socket.readDatagram(sz)
-    if qt.USES_PYSIDE:
-      # PySide returns a QByteArray
-      self.got_navdata(data.data())
-    else:
-      self.got_navdata(bytes.decode(data))
+          (host.toString(), port, socket.errorString()))
+      raise base.ConnectionError(socket.errorString())

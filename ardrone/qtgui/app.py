@@ -85,7 +85,10 @@ def main():
   so don't expect it to return until the application should exit.
 
   """
-  log.setLevel(logging.DEBUG)
+  if 'DEBUG' in os.environ:
+    log.setLevel(logging.DEBUG)
+  else:
+    log.setLevel(logging.INFO)
 
   # Create the main application
   app = Application()
