@@ -22,8 +22,6 @@ have been received in the wrong order: the command with the largest (latest)
 sequence will always 'win'."""
 seq = 0
 
-
-
 def main():
   """The main entry point of the progam. Called by the bootstrap code at the
   bottom of the file.
