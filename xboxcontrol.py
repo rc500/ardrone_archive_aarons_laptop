@@ -19,6 +19,7 @@ def send_state(state):
   global seq, sock
   seq += 1
   HOST, PORT = ('127.0.0.1', 5560)
+  print('state is', json.dumps({'seq': seq, 'state': state}))
   sock.sendto(json.dumps({'seq': seq, 'state': state}), (HOST, PORT))
 
 def main():
@@ -87,11 +88,11 @@ def main():
       if surface is not None:
         state[surface] = sign * e.value
 
-    #max_shift = 0.0
-    #for x in ('roll', 'pitch', 'yaw', 'gas'):
-    #  max_shift = max(max_shift, abs(state[x]))
+    max_shift = 0.0
+    for x in ('roll', 'pitch', 'yaw', 'gas'):
+      max_shift = max(max_shift, abs(state[x]))
     
-    #state['hover'] = max_shift < 1e-2
+    state['hover'] = max_shift < 1e-1
     #if state['hover']:
     #  state['gas'] = 0.0
     
