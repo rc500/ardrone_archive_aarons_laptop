@@ -55,8 +55,8 @@ def main():
 
   # Press take off again (paradoxically, this will land the drone).
   state = press(state, 'take_off')
-  
-  def send_state(state):
+
+def send_state(state):
   """Send the state dictionary to the drone GUI.
 
   state is a dictionary with (at least) the keys roll, pitch, yaw, gas,
