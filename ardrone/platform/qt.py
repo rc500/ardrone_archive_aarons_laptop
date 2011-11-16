@@ -1,4 +1,6 @@
-"""A connection based on PyQt4
+"""
+Support for Qt applications
+===========================
 
 """
 import logging

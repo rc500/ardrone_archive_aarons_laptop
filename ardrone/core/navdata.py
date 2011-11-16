@@ -1,4 +1,9 @@
-"""Parse navdata packets from the drone.
+"""
+Parsing ``navdata`` packets from the drone
+------------------------------------------
+
+.. warning:: The majority of code in this module has been reverse engineered
+  from the SDK. It relies heavily on undocumented features.
 
 See dev. guide ch. 7, pp 39.
 

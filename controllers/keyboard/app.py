@@ -1,3 +1,9 @@
+"""
+The keyboard control window
+===========================
+
+"""
+
 import json, logging, os, sys
 
 import ardrone.util.qtcompat as qt
@@ -18,6 +24,9 @@ class Application(QtGui.QApplication):
     super(Application, self).__init__(sys.argv, *args, **kwargs)
 
 class ControllerWindow(QtGui.QWidget):
+  """A QWidget sub-class for displaying the keyboard contoller state.
+
+  """
   def __init__(self, host='127.0.0.1', port=5560, *args, **kwargs):
     super(ControllerWindow, self).__init__(*args, **kwargs)
 
@@ -318,6 +327,10 @@ class ControllerWindow(QtGui.QWidget):
     return path
 
 def main():
+  """Run the keyboard controller main loop. This function returns *only* when
+  the application has quit.
+
+  """
   app = Application()
   win = ControllerWindow()
   win.show()

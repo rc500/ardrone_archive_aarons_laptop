@@ -1,4 +1,6 @@
-"""Functions to generate AT commands for the A.R. Drone.
+"""
+Wrapper functions for generating AT commands
+--------------------------------------------
 
 This module is based on chapter 6 of the developer guide (pp.29). Most direct
 control of the drone is accomplished by sending UDP packets containing
@@ -173,7 +175,7 @@ def config(key, value):
   dev. guide ch. 8, pp. 59. This command will set a specfied configuration
   parameter.
 
-  ''Note'' I've not ascertained whether these _actually work_ yet.
+  ''Note'' I've not ascertained whether these *actually work* yet.
 
   >>> reset_sequence()
   >>> config('GENERAL:num_version_config', 1)

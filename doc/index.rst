@@ -2,6 +2,13 @@ Contents
 ========
 
 .. toctree::
-  :maxdepth: 1
+  :maxdepth: 2
 
-  control
+  architecture
+  core
+  platform
+  util
+  qtgui
+  controllers
+
+  examples

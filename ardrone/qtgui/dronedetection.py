@@ -1,3 +1,8 @@
+"""
+Detecting the drone
+===================
+
+"""
 import logging
 
 from ..util import qtcompat as qt
