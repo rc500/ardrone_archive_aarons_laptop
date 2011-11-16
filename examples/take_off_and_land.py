@@ -20,7 +20,41 @@ have been received in the wrong order: the command with the largest (latest)
 sequence will always 'win'."""
 seq = 0
 
-def send_state(state):
+
+
+def main():
+  """The main entry point of the progam. Called by the bootstrap code at the
+  bottom of the file.
+
+  """
+
+  # Initialse a dictionary corresponding to the controls current state.
+  state = {
+      'roll': 0.0,
+      'pitch': 0.0,
+      'yaw': 0.0,
+      'gas': 0.0,
+      'take_off': False,
+      'reset': False,
+      'hover': True,
+  };
+
+  # Reset the drone
+  state = press(state, 'reset')
+
+  # Wait 5 seconds for the drone to reset
+  time.sleep(5)
+
+  # Take off
+  state = press(state, 'take_off')
+
+  # Wait 10 seconds
+  time.sleep(10)
+
+  # Press take off again (paradoxically, this will land the drone).
+  state = press(state, 'take_off')
+  
+  def send_state(state):
   """Send the state dictionary to the drone GUI.
 
   state is a dictionary with (at least) the keys roll, pitch, yaw, gas,
@@ -62,7 +96,8 @@ def press(state, button):
 
   FIXME: No attempt to *verify* the value of button is made.
 
-  """
+  """ 
+  
 
   # Press the button
   state[button] = True
@@ -74,38 +109,6 @@ def press(state, button):
   # Release the button
   state[button] = False
   send_state(state)
-
-def main():
-  """The main entry point of the progam. Called by the bootstrap code at the
-  bottom of the file.
-
-  """
-
-  # Initialse a dictionary corresponding to the controls current state.
-  state = {
-      'roll': 0.0,
-      'pitch': 0.0,
-      'yaw': 0.0,
-      'gas': 0.0,
-      'take_off': False,
-      'reset': False,
-      'hover': True,
-  };
-
-  # Reset the drone
-  state = press(state, 'reset')
-
-  # Wait 5 seconds for the drone to reset
-  time.sleep(5)
-
-  # Take off
-  state = press(state, 'take_off')
-
-  # Wait 10 seconds
-  time.sleep(10)
-
-  # Press take off again (paradoxically, this will land the drone).
-  state = press(state, 'take_off')
 
 if __name__ == '__main__':
   main()
