@@ -1,3 +1,14 @@
+"""
+Qt compatibility layer
+======================
+
+The ardrone system attempts to provide support both for the `PyQt
+<http://www.riverbankcomputing.co.uk/software/pyqt/intro>`_ and `PySide
+<http://www.pyside.org/>`_ bindings to Qt. This module provides a single
+function which can be used to import a named Qt module.
+
+"""
+
 from __future__ import with_statement
 from __future__ import division
 

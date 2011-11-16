@@ -1,0 +1,7 @@
+System architecture
+===================
+
+.. toctree::
+
+  control
+

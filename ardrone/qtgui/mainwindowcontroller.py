@@ -1,3 +1,9 @@
+"""
+The main GUI window
+===================
+
+"""
+
 import logging
 import os
 

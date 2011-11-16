@@ -1,3 +1,11 @@
+"""
+Parsing video packets
+=====================
+
+.. warning:: This module is a work in progress!
+
+"""
+
 import ctypes as ct
 import os
 
@@ -9,6 +17,13 @@ class Decoder(object):
 
   """
   def __init__(self, vid_cb = None):
+    """Initialise the decoder.
+
+    *vid_cb* is a callable which will be called with a sequence of bytes
+    corresponding to the raw decoded video frame. If ``None``, no attempt is
+    made to call it.
+
+    """
     self.data = []
     self.vid_cb = vid_cb
     self._handle = None
@@ -22,6 +37,9 @@ class Decoder(object):
       log.error('Failed to open video decoder library: %s' % (str(e),))
 
   def decode(self, data):
+    """Decode a raw video packet as received over the network from the drone.
+
+    """
     if self._handle is None:
       return
 

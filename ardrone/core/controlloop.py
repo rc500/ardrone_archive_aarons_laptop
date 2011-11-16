@@ -1,4 +1,8 @@
-"""An implementation of the control loop.
+"""
+Central control loop
+====================
+
+An implementation of the control loop.
 
 """
 import logging, json

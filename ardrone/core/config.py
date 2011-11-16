@@ -1,4 +1,8 @@
-"""Configuration of the A.R. Drone.
+"""
+Parsing drone configuration
+===========================
+
+.. warning:: This module is a work in progress!
 
 """
 

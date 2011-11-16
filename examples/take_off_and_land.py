@@ -1,4 +1,6 @@
-"""A simple example of sending control commands to the drone via qtdronequi.
+"""
+``take_off_and_land.py``: sending control commands to the drone via qtdronequi
+==============================================================================
 
 The qtdronegui program can accept control commands for the drone over the
 network. It listens on UDP port 5560 for JSON formatted control commands.
@@ -84,8 +86,8 @@ def press(state, button):
   This function returns the new state.
 
   Idiomatic use is to pass the current state and set the current state to the
-  return value. e.g.:
-  
+  return value. e.g.::
+
     state = {
       'roll': # ... 
     }
