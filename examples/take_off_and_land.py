@@ -82,7 +82,7 @@ def main():
   """
 
   # Initialse a dictionary corresponding to the controls current state.
-	state = {
+  state = {
       'roll': 0.0,
       'pitch': 0.0,
       'yaw': 0.0,
@@ -96,13 +96,13 @@ def main():
   state = press(state, 'reset')
 
   # Wait 5 seconds for the drone to reset
-	time.sleep(5)
+  time.sleep(5)
 
   # Take off
   state = press(state, 'take_off')
 
   # Wait 10 seconds
-	time.sleep(10)
+  time.sleep(10)
 
   # Press take off again (paradoxically, this will land the drone).
   state = press(state, 'take_off')
