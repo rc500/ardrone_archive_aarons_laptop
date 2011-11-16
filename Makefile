@@ -23,4 +23,9 @@ clean:
 	rm -rf $(BUILDDIR)/epub
 	rm -rf $(BUILDDIR)/latex
 
-.PHONY: all clean html epub pdf latex
+sync: html
+	rsync -av --delete $(BUILDDIR)/html/ l4.me.uk:~/public_html/ardrone
+
+.PHONY: all clean html epub pdf latex sync
+
+# vim:ts=8:noet:sts=8
