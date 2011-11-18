@@ -297,7 +297,7 @@ class ChecksumBlock(ct.LittleEndianStructure):
   ]
 
   def json(self):
-    return json.dumps({ 'checksum': self.checksum })
+    return json.dumps({ 'type': 'checksum', 'checksum': self.checksum })
 
   def valid(self):
     return self.header.id == NAVDATA_CKS_TAG.value
@@ -354,7 +354,7 @@ class DemoBlock(ct.LittleEndianStructure):
         'ctrl_state', 'vbat_flying_percentage', 'theta', 'phi', 'psi',
         'altitude', 'vx', 'vy', 'vz', 'num_frames',
     ]
-    json_dict = { }
+    json_dict = { 'type': 'demo' }
     for field_name in json_fields:
       json_dict[field_name] = getattr(self, field_name)
     return json.dumps(json_dict)
@@ -389,7 +389,7 @@ class IPhoneAnglesBlock(ct.LittleEndianStructure):
 
   def json(self):
     json_fields = [ 'enable', 'ax', 'ay', 'az', 'elapsed' ]
-    json_dict = { }
+    json_dict = { 'type': 'iphoneangles' }
     for field_name in json_fields:
       json_dict[field_name] = getattr(self, field_name)
     return json.dumps(json_dict)
@@ -438,7 +438,7 @@ class VisionDetectBlock(ct.LittleEndianStructure):
         'width': self.width[idx], 'height': self.height[idx],
         'dist': self.dist[idx]
       })
-    return json.dumps({ 'features': features })
+    return json.dumps({ 'type': 'visiondetect', 'features': features })
 
   def valid(self):
     return self.header.id == NAVDATA_VISION_DETECT_TAG.value
