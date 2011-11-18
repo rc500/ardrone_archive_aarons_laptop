@@ -19,6 +19,9 @@ SDK.
 Since the packet format is undocumented beyond how to parse the option block
 header, things in this module are subject to change.
 
+Each block as returned from the drone has a json() method which may be used to
+get a JSON formatted string describing the block.
+
 """
 
 """We use the veneabe ctypes module for parsing in-memory data structures."""
@@ -27,6 +30,8 @@ import ctypes as ct
 # Use the logging module to log any errors/warnings.
 import logging
 log = logging.getLogger()
+
+import json
 
 """The header for a navdata packet. (Dev. guide 7.1.1, pp. 39)"""
 NAVDATA_HEADER = ct.c_int32(0x55667788)
@@ -291,6 +296,9 @@ class ChecksumBlock(ct.LittleEndianStructure):
       ('checksum', ct.c_int32),
   ]
 
+  def json(self):
+    return json.dumps({ 'checksum': self.checksum })
+
   def valid(self):
     return self.header.id == NAVDATA_CKS_TAG.value
 
@@ -341,6 +349,16 @@ class DemoBlock(ct.LittleEndianStructure):
       #('drone_camera_trans', Vector3x1),
   ]
 
+  def json(self):
+    json_fields = [
+        'ctrl_state', 'vbat_flying_percentage', 'theta', 'phi', 'psi',
+        'altitude', 'vx', 'vy', 'vz', 'num_frames',
+    ]
+    json_dict = { }
+    for field_name in json_fields:
+      json_dict[field_name] = getattr(self, field_name)
+    return json.dumps(json_dict)
+
   def valid(self):
     return self.header.id == NAVDATA_DEMO_TAG.value
   
@@ -368,6 +386,13 @@ class IPhoneAnglesBlock(ct.LittleEndianStructure):
       ('az', ct.c_float),
       ('elapsed', ct.c_uint32),
   ]
+
+  def json(self):
+    json_fields = [ 'enable', 'ax', 'ay', 'az', 'elapsed' ]
+    json_dict = { }
+    for field_name in json_fields:
+      json_dict[field_name] = getattr(self, field_name)
+    return json.dumps(json_dict)
 
   def valid(self):
     return self.header.id == NAVDATA_IPHONE_ANGLES_TAG.value
@@ -398,6 +423,22 @@ class VisionDetectBlock(ct.LittleEndianStructure):
       ('height', ct.c_uint32 * 4),
       ('dist', ct.c_uint32 * 4),
   ]
+
+  def json(self):
+    """This method returns a JSON object describing the dtected features but
+    formats it in a different way: the dictionary has a single field,
+    'features', which contains an array of features detected. Each feature has
+    a 'xc', 'yc', 'width', 'height' and 'dist' field initialised from the packet.
+
+    """
+    features = []
+    for idx in range(self.nb_detected):
+      features.append({
+        'xc': self.xc[idx], 'yc': self.yc[idx],
+        'width': self.width[idx], 'height': self.height[idx],
+        'dist': self.dist[idx]
+      })
+    return json.dumps({ 'features': features })
 
   def valid(self):
     return self.header.id == NAVDATA_VISION_DETECT_TAG.value
