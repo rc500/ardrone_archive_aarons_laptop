@@ -94,13 +94,19 @@ class ControlLoop(object):
   def bootstrap(self):
     """Initialise all the drone data streams."""
     log.info('Bootstrapping communication with the drone.')
-    self._send(at.config('detect:enemy_colors','2'))
-    self._send(at.config('detect:enemy_without_shell','1'))
-    self.reset()
     self.flat_trim()
     self.get_config()
+    self._send(at.config('general:navdata_demo', False)) # required for video detect
+    self._send(at.config('general:vision_enable', True))
+    self._send(at.config('detect:detect_type', 2))
+    self._send(at.config('detect:enemy_colors', 2)) # orange-yellow-orange
+    self._send(at.config('detect:detections_select_h', 1))
+    self._send(at.config('detect:enemy_without_shell', False))
+    self._send(at.config('video:video_channel', 2))
+    #self._send(at.config('general:navdata_options', 0xffffffff))
     self.start_navdata()
     self.start_video()
+    self.reset()
 
   def get_config(self):
     """Ask the drone for it's configuration."""
@@ -117,7 +123,7 @@ class ControlLoop(object):
     r"""Send a take off command.
 
     """
-    self._send(''.join([at.config('CONTROL:outdoor', False), at.ref(take_off = True)]))
+    self._send(''.join([at.config('control:outdoor', False), at.ref(take_off = True)]))
   
   def land(self):
     r"""Send a land command.
@@ -142,7 +148,7 @@ class ControlLoop(object):
     self._vid_decoder.vid_cb = self.video_cb
     self._send(at.config('video:video_bitrate_control_mode', '1')) # Dynamic
     self._send(at.config('video:video_codec', '64'))
-    self._connection.put(ControlLoop._VID, 'one')
+    self._connection.put(ControlLoop._VID, b'\x01\x00\x00\x00')
 
   def start_navdata(self):
     log.info('starting navdata streaming')
@@ -150,7 +156,7 @@ class ControlLoop(object):
 
     # See Dev. guide 7.1.2 pp. 40
     self._last_navdata_sequence = 0
-    self._connection.put(ControlLoop._NAV, 'one')
+    self._connection.put(ControlLoop._NAV, b'\x01\x00\x00\x00')
 
   def _got_config(self, data):
     log.info('Got config packet len: %s' % (len(data),))

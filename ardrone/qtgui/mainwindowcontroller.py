@@ -122,8 +122,6 @@ class MainWindowController(QtCore.QObject):
     elif isinstance(block, navdata.VisionDetectBlock):
       # Parse the features from the block
       features = json.loads(block.json())['features']
-      if len(features) > 0:
-        log.debug('Features: %s' % (repr(features),))
     elif isinstance(block, navdata.ChecksumBlock):
       # This is handled by the control loop, we'll just ignore this
       pass
