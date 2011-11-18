@@ -1,4 +1,6 @@
-"""A simple example of sending control commands to the drone via qtdronequi.
+"""
+``take_off_and_land.py``: sending control commands to the drone via qtdronequi
+==============================================================================
 
 The qtdronegui program can accept control commands for the drone over the
 network. It listens on UDP port 5560 for JSON formatted control commands.
@@ -19,8 +21,6 @@ sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 have been received in the wrong order: the command with the largest (latest)
 sequence will always 'win'."""
 seq = 0
-
-
 
 def main():
   """The main entry point of the progam. Called by the bootstrap code at the
@@ -53,8 +53,8 @@ def main():
 
   # Press take off again (paradoxically, this will land the drone).
   state = press(state, 'take_off')
-  
-  def send_state(state):
+
+def send_state(state):
   """Send the state dictionary to the drone GUI.
 
   state is a dictionary with (at least) the keys roll, pitch, yaw, gas,
@@ -84,8 +84,8 @@ def press(state, button):
   This function returns the new state.
 
   Idiomatic use is to pass the current state and set the current state to the
-  return value. e.g.:
-  
+  return value. e.g.::
+
     state = {
       'roll': # ... 
     }

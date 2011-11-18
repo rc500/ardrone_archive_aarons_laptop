@@ -1,4 +1,6 @@
-"""A dummy connection for testing.
+"""
+A dummy platform for testing
+============================
 
 """
 import random

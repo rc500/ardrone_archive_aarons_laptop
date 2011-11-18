@@ -1,3 +1,9 @@
+"""
+Logging events to a UI widget
+=============================
+
+"""
+
 import logging
 import os
 import time

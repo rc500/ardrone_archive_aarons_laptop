@@ -1,4 +1,6 @@
-"""Base classes for platform-specific functionality.
+"""
+Base classes for platform support
+=================================
 
 """
 

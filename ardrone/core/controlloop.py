@@ -1,4 +1,8 @@
-"""An implementation of the control loop.
+"""
+Central control loop
+====================
+
+An implementation of the control loop.
 
 """
 import logging, json
@@ -29,15 +33,21 @@ class ControlLoop(object):
   _VID = 3
   _CONTROL = 4
   _CONFIG = 5
+  _CONTROL_DATA = 6
 
   def __init__(self, connection,
       video_cb=None, navdata_cb=None,
-      host='192.168.1.1',
-      at_port=5556, nav_port=5554, vid_port=5555, config_port=5559, control_port=5560):
+      host='192.168.1.1', control_host='127.0.0.1',
+      at_port=5556, nav_port=5554, vid_port=5555, config_port=5559,
+      control_port=5560, control_data_port=5561):
     """Initialse the control loop with a connection.
 
     You must call the connect and disconnect methods on the control loop before
     trying any control methods.
+
+    *host* is the IP address of the drone
+
+    *control_host* is the IP address to which decoded packets will be sent
 
     Set video_cb to a callable which will be passed a sequence of bytes in
     RGB565 (==RGB16) format for each video frame.
@@ -79,6 +89,7 @@ class ControlLoop(object):
     self._connection.open(ControlLoop._VID, (host, vid_port), (None, vid_port, self._got_video))
     self._connection.open(ControlLoop._CONTROL, (host, control_port), (None, control_port, self._got_control))
     self._connection.open(ControlLoop._CONFIG, (host, config_port), (None, config_port, self._got_config))
+    self._connection.open(ControlLoop._CONTROL_DATA, (control_host, control_data_port), (None, 3456, None))
   
   def bootstrap(self):
     """Initialise all the drone data streams."""
@@ -192,16 +203,12 @@ class ControlLoop(object):
     self._flying = (ndh.state & navdata.ARDRONE_FLY_MASK) != 0
 
     for packet in packets:
+      # Send a JSON encoded control packet to the controller
+      self._connection.put(ControlLoop._CONTROL_DATA, packet.json())
+
+      # Call the navdata callable if one is configured
       if self.navdata_cb is not None:
         self.navdata_cb(packet)
-
-      #if isinstance(packet, navdata.DemoBlock):
-      #  log.info('Battery: %i' % (packet.vbat_flying_percentage,))
-      #  log.info('Orientation: %f,%f,%f' % (packet.theta, packet.phi, packet.psi))
-      #  log.info('Altitude: %i' % (packet.altitude,))
-
-    #print('state: %s' % (ndh.state,))
-    #print('Got data len: %s' % (len(data),))
 
   def _got_config(self, packet):
     log.info('Got config len %i' % (len(packet),))
