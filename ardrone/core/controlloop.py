@@ -140,7 +140,7 @@ class ControlLoop(object):
     self._vid_decoder.vid_cb = self.video_cb
     self._send(at.config('video:video_bitrate_control_mode', '1')) # Dynamic
     self._send(at.config('video:video_codec', '64'))
-    self._connection.put(ControlLoop._VID, 'one')
+    self._connection.put(ControlLoop._VID, b'\x01\x00\x00\x00')
 
   def start_navdata(self):
     log.info('starting navdata streaming')
@@ -148,7 +148,7 @@ class ControlLoop(object):
 
     # See Dev. guide 7.1.2 pp. 40
     self._last_navdata_sequence = 0
-    self._connection.put(ControlLoop._NAV, 'one')
+    self._connection.put(ControlLoop._NAV, b'\x01\x00\x00\x00')
 
   def _got_config(self, data):
     log.info('Got config packet len: %s' % (len(data),))
