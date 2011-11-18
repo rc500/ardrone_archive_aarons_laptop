@@ -83,6 +83,8 @@ class ControlLoop(object):
   def bootstrap(self):
     """Initialise all the drone data streams."""
     log.info('Bootstrapping communication with the drone.')
+    self._send(at.config('detect:enemy_colors','2'))
+    self._send(at.config('detect:enemy_without_shell','1'))
     self.reset()
     self.flat_trim()
     self.get_config()
@@ -145,6 +147,8 @@ class ControlLoop(object):
 
   def _got_navdata(self, data):
     ndh, packets = navdata.split(data)
+	
+    print(packets)
 
     if not ndh.valid():
       log.error('Got invalid navdata packet')

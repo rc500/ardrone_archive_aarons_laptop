@@ -46,9 +46,15 @@ def main():
 	send_state(state)
 
 	time.sleep(0.5)
-
+	if VisionDetectBlock.vali()==True:
+		print ('hahaha')
+	else:
+		print('de doulevei')
+		
 	state['take_off'] = False
 	send_state(state)
+	
+
 
 
 if __name__ == '__main__':
