@@ -115,7 +115,7 @@ class ControlLoop(object):
     r"""Send a take off command.
 
     """
-    self._send(''.join([at.config('CONTROL:outdoor', False), at.ref(take_off = True)]))
+    self._send(''.join([at.config('control:outdoor', False), at.ref(take_off = True)]))
   
   def land(self):
     r"""Send a land command.
