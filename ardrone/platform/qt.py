@@ -99,14 +99,15 @@ class Connection(base.Connection):
 
       # Bind a handler to the readtRead signal
       def ready_read():
-        #logging.info('Got datapacket on connection: %i' % (connection,))
-        sz = socket.pendingDatagramSize()
-        (data, host, port) = socket.readDatagram(sz)
-        if qt.USES_PYSIDE:
-          # PySide returns a QByteArray
-          self.got_packet(connection, data.data())
-        else:
-          self.got_packet(connection, data)
+        while socket.hasPendingDatagrams():
+          #logging.info('Got datapacket on connection: %i' % (connection,))
+          sz = socket.pendingDatagramSize()
+          (data, host, port) = socket.readDatagram(sz)
+          if qt.USES_PYSIDE:
+            # PySide returns a QByteArray
+            self.got_packet(connection, data.data())
+          else:
+            self.got_packet(connection, data)
 
       QObject.connect(socket, SIGNAL('readyRead()'), ready_read)
 
