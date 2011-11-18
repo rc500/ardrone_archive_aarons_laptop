@@ -165,7 +165,7 @@ def split(data):
       assert(ipa.valid())
       options.append(ipa)
     else:
-      log.info('Unknown navdata option tag: %s' % (obh.id,))
+      log.debug('Unknown navdata option tag: %s' % (obh.id,))
 
   if not got_valid_checksum_option:
     log.error('Navdata packet did not have valid checksum.')
