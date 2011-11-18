@@ -94,11 +94,19 @@ class ControlLoop(object):
   def bootstrap(self):
     """Initialise all the drone data streams."""
     log.info('Bootstrapping communication with the drone.')
-    self.reset()
     self.flat_trim()
     self.get_config()
+    self._send(at.config('general:navdata_demo', False)) # required for video detect
+    self._send(at.config('general:vision_enable', True))
+    self._send(at.config('detect:detect_type', 2))
+    self._send(at.config('detect:enemy_colors', 2)) # orange-yellow-orange
+    self._send(at.config('detect:detections_select_h', 1))
+    self._send(at.config('detect:enemy_without_shell', False))
+    self._send(at.config('video:video_channel', 2))
+    #self._send(at.config('general:navdata_options', 0xffffffff))
     self.start_navdata()
     self.start_video()
+    self.reset()
 
   def get_config(self):
     """Ask the drone for it's configuration."""
