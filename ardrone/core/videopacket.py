@@ -28,13 +28,16 @@ class Decoder(object):
     self.vid_cb = vid_cb
     self._handle = None
 
-    dllpath = os.path.join(os.path.dirname(__file__), '..', '..', 'libp264', 'build', 'libp264.so')
-
-    try:
-      self._cdll = ct.CDLL(dllpath)
-      self._handle = self._cdll.p264_open()
-    except OSError as e:
-      log.error('Failed to open video decoder library: %s' % (str(e),))
+    for dllfile in ['libp264', 'libp264.dll', 'libp264.so']:
+      dllpath = os.path.join(os.path.dirname(__file__), '..', '..', 'libp264', 'build', dllfile)
+      try:
+        self._cdll = ct.CDLL(dllpath)
+        self._handle = self._cdll.p264_open()
+        log.info('Loaded video decoder library: %s' % (dllpath,))
+        return
+      except OSError as e:
+        log.warning('Failed to open video decoder library: %s' % (str(e),))
+    log.error('Could not load any decoder library.')
 
   def decode(self, data):
     """Decode a raw video packet as received over the network from the drone.
