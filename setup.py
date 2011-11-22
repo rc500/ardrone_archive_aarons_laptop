@@ -14,6 +14,7 @@ setup(name='ardrone',
 
     package_data = {
       'ardrone.qtgui': ['res/*.ui'],
+      'ardrone.core': ['dlls/*.dll'],
     },
 
     scripts = ['qtdronegui.py', 'keybdcontrol.py'],
