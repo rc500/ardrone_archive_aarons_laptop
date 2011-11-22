@@ -7,7 +7,11 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/VP_Os/linux)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -Wall -O2 -g")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -Wall -O2 -g")
 
-add_definitions(-DTARGET_CPU_X86=1 -DUSE_LINUX=1)
+add_definitions(-DTARGET_CPU_X86=1)
+
+if(UNIX)
+  add_definitions(-DUSE_LINUX=1)
+endif(UNIX)
 
 add_library(vpapi
   VP_Api/vp_api.c
