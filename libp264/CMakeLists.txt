@@ -13,6 +13,10 @@ if(UNIX)
   add_definitions(-DUSE_LINUX=1)
 endif(UNIX)
 
+if(MINGW)
+  add_definitions(-DUSE_MINGW32=1)
+endif(MINGW)
+
 add_library(vpapi
   VP_Api/vp_api.c
   VP_Api/vp_api_io_multi_stage.c
