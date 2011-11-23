@@ -101,7 +101,6 @@ class ControlLoop(object):
     #self.start_navdata()
     #self.start_video()
     self.reset()
-    self.send_config()
 
   def get_config(self):
     """Ask the drone for it's configuration."""
@@ -170,27 +169,31 @@ class ControlLoop(object):
       # this is a case where the sequence counter should be reset
       self._last_navdata_sequence = 0
       self._connection.put(ControlLoop._AT, at.comwdg()) 
-    elif (ndh.state & navdata.ARDRONE_COM_LOST_MASK) != 0:
+
+    if (ndh.state & navdata.ARDRONE_COM_LOST_MASK) != 0:
       # Dev. guide pp. 40: lost communication
       log.warning('Lost connection, re-establishing navdata connection.')
       self._last_navdata_sequence = 0
+      self.send_config()
       self.start_navdata()
-    elif (ndh.state & navdata.ARDRONE_NAVDATA_BOOTSTRAP) != 0:
+
+    if (ndh.state & navdata.ARDRONE_NAVDATA_BOOTSTRAP) != 0:
       # Is the AR_DRONE_NAVDATA_BOOSTRAP status bit set (Dev. guide fig 7.1)
       log.info('Navdata booststrap')
       self.send_config()
       key, value = self._config_to_send[0]
       log.info('Sending: %s = %s' % (key, value))
       self._send(at.config(key, value))
-    elif (ndh.state & navdata.ARDRONE_COMMAND_MASK) != 0:
+
+    if (ndh.state & navdata.ARDRONE_COMMAND_MASK) != 0:
       log.info('ACK command')
-      self._config_to_send = self._config_to_send[1:]
       self._send(at.ctrl(5))
-      if len(self._config_to_send) > 0:
-        key, value = self._config_to_send[0]
-        log.info('Sending: %s = %s' % (key, value))
-        self._send(at.config(key, value))
-    #  self.send_config()
+      self._config_to_send = self._config_to_send[1:]
+
+    if len(self._config_to_send) > 0:
+      key, value = self._config_to_send[0]
+      log.info('Sending: %s = %s' % (key, value))
+      self._send(at.config(key, value))
 
     if ndh.sequence <= self._last_navdata_sequence:
       log.error('Dropping out of sequence navdata packet: %s' % (ndh.sequence,))
@@ -213,14 +216,14 @@ class ControlLoop(object):
   def send_config(self):
 #    self._config_to_send.append(('general:navdata_demo', True))
     self._config_to_send.append(('general:navdata_demo', False)) # required for video detect
-    self._config_to_send.append(('video:video_bitrate_control_mode', '1')) # Dynamic
-    self._config_to_send.append(('video:video_codec', '64'))
+    self._config_to_send.append(('video:video_channel', 2))    
+    #self._config_to_send.append(('video:video_bitrate_control_mode', '1')) # Dynamic
+    #self._config_to_send.append(('video:video_codec', '64'))
     self._config_to_send.append(('general:vision_enable', True))
     self._config_to_send.append(('detect:detect_type', 2))
     self._config_to_send.append(('detect:enemy_colors', 2)) # orange-yellow-orange 
     self._config_to_send.append(('detect:detections_select_h', 1))
     self._config_to_send.append(('detect:enemy_without_shell', False))
-    self._config_to_send.append(('video:video_channel', 2))    
 
   def _got_config(self, packet):
     log.info('Got config len %i' % (len(packet),))
