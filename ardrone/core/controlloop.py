@@ -96,11 +96,11 @@ class ControlLoop(object):
   def bootstrap(self):
     """Initialise all the drone data streams."""
     log.info('Bootstrapping communication with the drone.')
+    self.reset()
     self.flat_trim()
     #self.get_config()
-    #self.start_navdata()
-    #self.start_video()
-    self.reset()
+    self.start_navdata()
+    self.start_video()
 
   def get_config(self):
     """Ask the drone for it's configuration."""
