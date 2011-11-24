@@ -21,6 +21,140 @@ except Exception as e:
 
 from . import base
 
+class ControlServer(object):
+  """A server which can listen for control messages and transmit status
+  information.
+
+  Usage example
+  ------------
+  
+  Create a Qt event loop:
+
+  >>> from ..util import qtcompat as qt
+  >>> QtCore = qt.import_module('QtCore')
+  >>> app = QtCore.QCoreApplication([])
+
+  Create a server:
+
+  >>> s = ControlServer()
+
+  Run the server (stopping after 1 second).
+
+  >>> import multiprocessing as mp
+  >>> p = mp.Process(target=app.exec_)
+  >>> QtCore.QTimer.singleShot(1000, app, QtCore.SLOT('quit()'))
+  >>> p.start()
+
+  Create a client:
+
+  >>> c = ControlClient()
+  >>> c.wait_for_connect()
+  True
+
+  Wait for the server to exit.
+
+  >>> p.join()
+  >>> p.exitcode
+  0
+
+  Check we disconnected.
+
+  >>> c.wait_for_disconnect()
+  True
+
+  """
+
+  """The default port to listen on."""
+  CONTROL_PORT = 5570
+
+  def __init__(self, port=CONTROL_PORT):
+    """Create a new server listening on *port* for new connections."""
+
+    self._server = QtNetwork.QTcpServer()
+    self._server.newConnection.connect(self._new_connection)
+    self._connections = []
+
+    if not self._server.listen(port = port):
+      raise RuntimeError('Cannot start control server: ' + self._server.errorString())
+
+  def _new_connection(self):
+    """Called when a connection is made to the server."""
+
+    while self._server.hasPendingConnections():
+      next_connection = self._server.nextPendingConnection()
+      next_connection.readyRead.connect(self._ready_read)
+      next_connection.disconnected.connect(self._connection_lost)
+      self._connections.append(next_connection)
+
+  def _ready_read(self, connection):
+    print(connection)
+
+  def _connection_lost(self, connection):
+    self._connections.remove(connection)
+
+class ControlClient(object):
+  """A simple TCP client for sending control commands to and getting data back
+  from the control server.
+
+  Instances of this class have a boolean *connected* attribute which can be
+  used to query the connection state.
+
+  """
+
+  def __init__(self,
+      host_name='127.0.0.1',
+      port=ControlServer.CONTROL_PORT):
+    """Initialise the control client and connect to the named host and port."""
+
+    self._socket = QtNetwork.QTcpSocket()
+    self._socket.connected.connect(self._connected)
+    self._socket.disconnected.connect(self._disconnected)
+    self.connected = False
+    self._socket.connectToHost(host_name, port)
+
+  def wait_for_connect(self, timeout_msecs=30000):
+    """If not connected, wait for a connection.
+    
+    *timeout_msecs* is the maximum number of milliseconds to wait for a
+    connection.
+
+    Returns True iff the connection was made or if the client was already
+    connected.
+
+    """
+
+    if self.connected:
+      return True
+
+    # True == at he beginning because a special qt bool wrapper is returned by
+    # PySide.
+    return True == self._socket.waitForConnected(timeout_msecs)
+
+  def wait_for_disconnect(self, timeout_msecs=30000):
+    """If not diconnected, wait for a connection to be broken.
+    
+    *timeout_msecs* is the maximum number of milliseconds to wait for a
+    disconnection.
+
+    Returns True iff the connection was disconnected or if the client was already
+    disconnected.
+
+    """
+
+    if not self.connected:
+      return True
+
+    # True == at he beginning because a special qt bool wrapper is returned by
+    # PySide.
+    return True == self._socket.waitForDisconnected(timeout_msecs)
+
+  def _connected(self):
+    self.connected = True
+
+  def _disconnected(self):
+    self.connected = False
+
+
 class Connection(base.Connection):
   """A Qt implementation of the UDP connection to the drone.
 
