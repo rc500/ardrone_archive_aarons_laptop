@@ -1,4 +1,8 @@
-"""Core A.R. drone control code.
+"""
+Core control logic
+==================
+
+Core A.R. drone control code.
 
 This package contains core functionality for controlling the drone. Note that
 one generally has to use this package along with ardrone.platform modules in
@@ -9,7 +13,7 @@ This package is made up of the following modules:
   - atcommands: Abstracts the generation of AT command packets for directly
     controlling the drone.
 
-  - config: ''Work in progress'' Parse the drone configuration when sent to the
+  - config: **Work in progress** Parse the drone configuration when sent to the
     client in a config packet.
 
   - navdata: Parse navdata navigation packets which are sent by the drone
@@ -22,6 +26,20 @@ This package is made up of the following modules:
   - videopacket: ''Work in progress'' Use the mini-library libp264 shipped with
     these packages to decode ieo packets as they arrive from the drone.
 
+.. automodule:: ardrone.core.controlloop
+  :members:
+
+.. automodule:: ardrone.core.navdata
+  :members:
+
+.. automodule:: ardrone.core.videopacket
+  :members:
+
+.. automodule:: ardrone.core.config
+  :members:
+
+.. automodule:: ardrone.core.atcommands
+  :members:
 """
 
 from . import atcommands, config, controlloop, navdata, videopacket

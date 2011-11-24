@@ -26,7 +26,7 @@
 #define VP_SUCCEEDED(a)	(((a) & 0xffff) == VP_SUCCESS)
 #define VP_FAILED(a)	(((a) & 0xffff) != VP_SUCCESS)
 
-#ifndef _WIN32
+#if !defined(_WIN32) || defined(__MINGW32__)
 	/* 
 	Those macros have been used in the SDK but are already defined in Windows.h
 	and thus used with a wrong value when compiling under Windows, leading to a crash.

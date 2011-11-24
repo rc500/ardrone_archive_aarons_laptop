@@ -1,3 +1,6 @@
 .*.swp
 *.pyc
 build/
+doc/html/
+doc/epub/
+doc/latex/

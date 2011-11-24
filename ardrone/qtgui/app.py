@@ -1,4 +1,6 @@
-"""Main application loop for the GUI program.
+"""
+Main application loop for the GUI program
+=========================================
 
 """
 

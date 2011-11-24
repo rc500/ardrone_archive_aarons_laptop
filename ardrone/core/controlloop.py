@@ -1,4 +1,8 @@
-"""An implementation of the control loop.
+"""
+Central control loop
+====================
+
+An implementation of the control loop.
 
 """
 import logging, json
@@ -29,15 +33,21 @@ class ControlLoop(object):
   _VID = 3
   _CONTROL = 4
   _CONFIG = 5
+  _CONTROL_DATA = 6
 
   def __init__(self, connection,
       video_cb=None, navdata_cb=None,
-      host='192.168.1.1',
-      at_port=5556, nav_port=5554, vid_port=5555, config_port=5559, control_port=5560):
+      host='192.168.1.1', control_host='127.0.0.1',
+      at_port=5556, nav_port=5554, vid_port=5555, config_port=5559,
+      control_port=5560, control_data_port=5561):
     """Initialse the control loop with a connection.
 
     You must call the connect and disconnect methods on the control loop before
     trying any control methods.
+
+    *host* is the IP address of the drone
+
+    *control_host* is the IP address to which decoded packets will be sent
 
     Set video_cb to a callable which will be passed a sequence of bytes in
     RGB565 (==RGB16) format for each video frame.
@@ -79,15 +89,24 @@ class ControlLoop(object):
     self._connection.open(ControlLoop._VID, (host, vid_port), (None, vid_port, self._got_video))
     self._connection.open(ControlLoop._CONTROL, (host, control_port), (None, control_port, self._got_control))
     self._connection.open(ControlLoop._CONFIG, (host, config_port), (None, config_port, self._got_config))
+    self._connection.open(ControlLoop._CONTROL_DATA, (control_host, control_data_port), (None, 3456, None))
   
   def bootstrap(self):
     """Initialise all the drone data streams."""
     log.info('Bootstrapping communication with the drone.')
-    self.reset()
     self.flat_trim()
     self.get_config()
+    self._send(at.config('general:navdata_demo', False)) # required for video detect
+    self._send(at.config('general:vision_enable', True))
+    self._send(at.config('detect:detect_type', 2))
+    self._send(at.config('detect:enemy_colors', 2)) # orange-yellow-orange
+    self._send(at.config('detect:detections_select_h', 1))
+    self._send(at.config('detect:enemy_without_shell', False))
+    self._send(at.config('video:video_channel', 2))
+    #self._send(at.config('general:navdata_options', 0xffffffff))
     self.start_navdata()
     self.start_video()
+    self.reset()
 
   def get_config(self):
     """Ask the drone for it's configuration."""
@@ -104,7 +123,7 @@ class ControlLoop(object):
     r"""Send a take off command.
 
     """
-    self._send(''.join([at.config('CONTROL:outdoor', False), at.ref(take_off = True)]))
+    self._send(''.join([at.config('control:outdoor', False), at.ref(take_off = True)]))
   
   def land(self):
     r"""Send a land command.
@@ -129,7 +148,7 @@ class ControlLoop(object):
     self._vid_decoder.vid_cb = self.video_cb
     self._send(at.config('video:video_bitrate_control_mode', '1')) # Dynamic
     self._send(at.config('video:video_codec', '64'))
-    self._connection.put(ControlLoop._VID, 'one')
+    self._connection.put(ControlLoop._VID, b'\x01\x00\x00\x00')
 
   def start_navdata(self):
     log.info('starting navdata streaming')
@@ -137,7 +156,7 @@ class ControlLoop(object):
 
     # See Dev. guide 7.1.2 pp. 40
     self._last_navdata_sequence = 0
-    self._connection.put(ControlLoop._NAV, 'one')
+    self._connection.put(ControlLoop._NAV, b'\x01\x00\x00\x00')
 
   def _got_config(self, data):
     log.info('Got config packet len: %s' % (len(data),))
@@ -145,6 +164,8 @@ class ControlLoop(object):
 
   def _got_navdata(self, data):
     ndh, packets = navdata.split(data)
+	
+    print(packets)
 
     if not ndh.valid():
       log.error('Got invalid navdata packet')
@@ -188,16 +209,12 @@ class ControlLoop(object):
     self._flying = (ndh.state & navdata.ARDRONE_FLY_MASK) != 0
 
     for packet in packets:
+      # Send a JSON encoded control packet to the controller
+      self._connection.put(ControlLoop._CONTROL_DATA, packet.json())
+
+      # Call the navdata callable if one is configured
       if self.navdata_cb is not None:
         self.navdata_cb(packet)
-
-      #if isinstance(packet, navdata.DemoBlock):
-      #  log.info('Battery: %i' % (packet.vbat_flying_percentage,))
-      #  log.info('Orientation: %f,%f,%f' % (packet.theta, packet.phi, packet.psi))
-      #  log.info('Altitude: %i' % (packet.altitude,))
-
-    #print('state: %s' % (ndh.state,))
-    #print('Got data len: %s' % (len(data),))
 
   def _got_config(self, packet):
     log.info('Got config len %i' % (len(packet),))

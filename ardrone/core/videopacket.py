@@ -1,3 +1,11 @@
+"""
+Parsing video packets
+=====================
+
+.. warning:: This module is a work in progress!
+
+"""
+
 import ctypes as ct
 import os
 
@@ -9,19 +17,33 @@ class Decoder(object):
 
   """
   def __init__(self, vid_cb = None):
+    """Initialise the decoder.
+
+    *vid_cb* is a callable which will be called with a sequence of bytes
+    corresponding to the raw decoded video frame. If ``None``, no attempt is
+    made to call it.
+
+    """
     self.data = []
     self.vid_cb = vid_cb
     self._handle = None
 
-    dllpath = os.path.join(os.path.dirname(__file__), '..', '..', 'libp264', 'build', 'libp264.so')
-
-    try:
-      self._cdll = ct.CDLL(dllpath)
-      self._handle = self._cdll.p264_open()
-    except OSError as e:
-      log.error('Failed to open video decoder library: %s' % (str(e),))
+    for basedir in ['dlls', os.path.join('..', '..', 'libp264', 'build')]:
+      for dllfile in ['libp264', 'libp264.dll', 'libp264.so']:
+        dllpath = os.path.join(os.path.dirname(__file__), basedir, dllfile)
+        try:
+          self._cdll = ct.CDLL(dllpath)
+          self._handle = self._cdll.p264_open()
+          log.info('Loaded video decoder library: %s' % (dllpath,))
+          return
+        except OSError as e:
+          log.info('Failed to open video decoder library: %s' % (str(e),))
+    log.error('Could not load any decoder library.')
 
   def decode(self, data):
+    """Decode a raw video packet as received over the network from the drone.
+
+    """
     if self._handle is None:
       return
 

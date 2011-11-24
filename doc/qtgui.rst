@@ -1,0 +1,3 @@
+.. automodule:: ardrone.qtgui
+  :members:
+

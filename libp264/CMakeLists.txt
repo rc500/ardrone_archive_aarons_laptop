@@ -4,10 +4,26 @@ cmake_minimum_required(VERSION 2.8)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/VP_Os/linux)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -Wall -O2 -g")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -Wall -O2 -g")
+if(CMAKE_COMPILER_IS_GNUCC)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -O2 -g")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -O2 -g")
+endif(CMAKE_COMPILER_IS_GNUCC)
 
-add_definitions(-DTARGET_CPU_X86=1 -DUSE_LINUX=1)
+add_definitions(-DTARGET_CPU_X86=1)
+
+if(UNIX)
+  add_definitions(-DUSE_LINUX=1)
+  if(CMAKE_COMPILER_IS_GNUCC)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
+  endif(CMAKE_COMPILER_IS_GNUCC)
+endif(UNIX)
+
+if(MINGW)
+  add_definitions(-DUSE_MINGW32=1)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mwindows")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mwindows")
+endif(MINGW)
 
 add_library(vpapi
   VP_Api/vp_api.c
@@ -15,7 +31,7 @@ add_library(vpapi
   VP_Api/vp_api_supervisor.c
   VP_Api/vp_api_error.c
   #VP_Api/vp_api_stage.c
-  VP_Api/vp_api_thread_helper.c
+  #VP_Api/vp_api_thread_helper.c
 )
 
 add_library(vpos
