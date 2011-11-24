@@ -12,10 +12,10 @@ received.
 #------------------------------------------------------------------------
 #IMPORT
 
-import json
 import os
 import signal
 import sys
+import json, socket, time
 
 #------------------------------------------------------------------------
 #INITIALISE
@@ -32,10 +32,25 @@ QtCore = qt.import_module('QtCore')
 QtNetwork = qt.import_module('QtNetwork')
 #------------------------------------------------------------------------
 def height_control(height):
-# Corrects height to 1000mm
-
-	print('Current height is', height)
+# Corrects height to target height
+	targetHeight=500
+	correctionStep=0.1
+	#implement proportional control
+	error = targetHeight-height
+	#print('Current error is', error)
+	psuedoError = error * 0.02
+	correction = correctionStep * psuedoError
+	if correction >= 1:
+		correction = 1
+	elif correction <= -1:
+		correction = -1
+	state['gas'] = correction
+	send_state(state)
+	#print ('correction = ', correction)
+	#print ('correcting state is ', state)
 #------------------------------------------------------------------------
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+seq=0
 def send_state(state):
 # Send edited state to the drone
 
