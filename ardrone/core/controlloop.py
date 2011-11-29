@@ -34,12 +34,13 @@ class ControlLoop(object):
   _CONTROL = 4
   _CONFIG = 5
   _CONTROL_DATA = 6
+  _VIDEO_DATA = 7
 
   def __init__(self, connection,
       video_cb=None, navdata_cb=None,
       host='192.168.1.1', control_host='127.0.0.1',
       at_port=5556, nav_port=5554, vid_port=5555, config_port=5559,
-      control_port=5560, control_data_port=5561):
+      control_port=5560, control_data_port=5561,video_data_port=5562):
     """Initialse the control loop with a connection.
 
     You must call the connect and disconnect methods on the control loop before
@@ -90,6 +91,7 @@ class ControlLoop(object):
     self._connection.open(ControlLoop._CONTROL, (host, control_port), (None, control_port, self._got_control))
     self._connection.open(ControlLoop._CONFIG, (host, config_port), (None, config_port, self._got_config))
     self._connection.open(ControlLoop._CONTROL_DATA, (control_host, control_data_port), (None, 3456, None))
+    self._connection.open(ControlLoop._VIDEO_DATA, (control_host, video_data_port), (None, 3457, None))
   
     self._config_to_send = []
   
@@ -229,7 +231,8 @@ class ControlLoop(object):
     log.info('Got config len %i' % (len(packet),))
 
   def _got_video(self, packet):
-    self._vid_decoder.decode(packet)
+    self._connection.put(ControlLoop._VIDEO_DATA, packet)
+    self._vid_decoder.decode(packet) #comment this out when done elsewhere
 
   def _got_control(self, packet):
     # log.debug('Got control packet: %r' % (packet,))
