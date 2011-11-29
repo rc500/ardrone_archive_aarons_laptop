@@ -28,15 +28,16 @@ class Decoder(object):
     self.vid_cb = vid_cb
     self._handle = None
 
-    for dllfile in ['libp264', 'libp264.dll', 'libp264.so']:
-      dllpath = os.path.join(os.path.dirname(__file__), '..', '..', 'libp264', 'build', dllfile)
-      try:
-        self._cdll = ct.CDLL(dllpath)
-        self._handle = self._cdll.p264_open()
-        log.info('Loaded video decoder library: %s' % (dllpath,))
-        return
-      except OSError as e:
-        log.warning('Failed to open video decoder library: %s' % (str(e),))
+    for basedir in ['dlls', os.path.join('..', '..', 'libp264', 'build')]:
+      for dllfile in ['libp264', 'libp264.dll', 'libp264.so']:
+        dllpath = os.path.join(os.path.dirname(__file__), basedir, dllfile)
+        try:
+          self._cdll = ct.CDLL(dllpath)
+          self._handle = self._cdll.p264_open()
+          log.info('Loaded video decoder library: %s' % (dllpath,))
+          return
+        except OSError as e:
+          log.info('Failed to open video decoder library: %s' % (str(e),))
     log.error('Could not load any decoder library.')
 
   def decode(self, data):
