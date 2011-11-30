@@ -154,7 +154,7 @@ class ControlLoop(object):
     self.send_config()
 
   def _got_config(self, data):
-    log.info('Got config packet len: %s' % (len(data),))
+    log.debug('Got config packet len: %s' % (len(data),))
     return
 
   def _got_navdata(self, data):
@@ -172,29 +172,29 @@ class ControlLoop(object):
       self._last_navdata_sequence = 0
       self._connection.put(ControlLoop._AT, at.comwdg()) 
 
-    if (ndh.state & navdata.ARDRONE_COM_LOST_MASK) != 0:
-      # Dev. guide pp. 40: lost communication
-      log.warning('Lost connection, re-establishing navdata connection.')
-      self._last_navdata_sequence = 0
-      self.send_config()
-      self.start_navdata()
+    #if (ndh.state & navdata.ARDRONE_COM_LOST_MASK) != 0:
+    #  # Dev. guide pp. 40: lost communication
+    #  log.warning('Lost connection, re-establishing navdata connection.')
+    #  self._last_navdata_sequence = 0
+    #  self.send_config()
+    #  self.start_navdata()
 
     if (ndh.state & navdata.ARDRONE_NAVDATA_BOOTSTRAP) != 0:
       # Is the AR_DRONE_NAVDATA_BOOSTRAP status bit set (Dev. guide fig 7.1)
-      log.info('Navdata booststrap')
+      log.debug('Navdata booststrap')
       self.send_config()
       key, value = self._config_to_send[0]
       log.info('Sending: %s = %s' % (key, value))
       self._send(at.config(key, value))
 
     if (ndh.state & navdata.ARDRONE_COMMAND_MASK) != 0:
-      log.info('ACK command')
+      log.debug('ACK command')
       self._send(at.ctrl(5))
       self._config_to_send = self._config_to_send[1:]
 
     if len(self._config_to_send) > 0:
       key, value = self._config_to_send[0]
-      log.info('Sending: %s = %s' % (key, value))
+      log.debug('Sending: %s = %s' % (key, value))
       self._send(at.config(key, value))
 
     if ndh.sequence <= self._last_navdata_sequence:
