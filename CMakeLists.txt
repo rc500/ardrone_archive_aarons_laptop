@@ -18,3 +18,6 @@ set(CMAKE_INSTALL_PREFIX "${CMAKE_SOURCE_DIR}/ardrone/native")
 
 # Build the libp264 library
 add_subdirectory(third-party/libp264)
+
+# Build the aruco library
+#add_subdirectory(third-party/aruco-1.0.0)

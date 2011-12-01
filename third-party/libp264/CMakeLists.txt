@@ -25,7 +25,7 @@ if(MINGW)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mwindows")
 endif(MINGW)
 
-add_library(vpapi
+add_library(vpapi STATIC
   VP_Api/vp_api.c
   VP_Api/vp_api_io_multi_stage.c
   VP_Api/vp_api_supervisor.c
@@ -34,12 +34,12 @@ add_library(vpapi
   #VP_Api/vp_api_thread_helper.c
 )
 
-add_library(vpos
+add_library(vpos STATIC
   VP_Os/vp_os_malloc.c
   VP_Os/vp_os_error_handling.c
 )
 
-add_library(vlib
+add_library(vlib STATIC
   VLIB/video_codec.c       VLIB/video_huffman.c     VLIB/video_packetizer.c
   VLIB/video_controller.c  VLIB/video_macroblock.c  VLIB/video_picture.c
   VLIB/video_dct.c         VLIB/video_mem32.c       VLIB/video_quantizer.c
@@ -48,7 +48,7 @@ add_library(vlib
   
   VLIB/Stages/vlib_stage_decode.c VLIB/Stages/vlib_stage_encode.c
 
-  VLIB/Utils/video_bin_dct.c
+  # VLIB/Utils/video_bin_dct.c
 
   VLIB/UVLC/uvlc.c
   VLIB/UVLC/uvlc_gob_layer.c

@@ -6,6 +6,8 @@ Parsing video packets
 
 """
 
+from .. import native
+
 import ctypes as ct
 import os
 
@@ -27,18 +29,12 @@ class Decoder(object):
     self.data = []
     self.vid_cb = vid_cb
     self._handle = None
-
-    for basedir in ['dlls', os.path.join('..', '..', 'libp264', 'build')]:
-      for dllfile in ['libp264', 'libp264.dll', 'libp264.so']:
-        dllpath = os.path.join(os.path.dirname(__file__), basedir, dllfile)
-        try:
-          self._cdll = ct.CDLL(dllpath)
-          self._handle = self._cdll.p264_open()
-          log.info('Loaded video decoder library: %s' % (dllpath,))
-          return
-        except OSError as e:
-          log.info('Failed to open video decoder library: %s' % (str(e),))
-    log.error('Could not load any decoder library.')
+    self._cdll = native.load_dll('libp264')
+    if self._cdll is not None:
+      # FIXME: The handle is never released. *BAD PROGRAMMER*
+      self._handle = self._cdll.p264_open()
+    else:
+      log.error('Could not load any decoder library.')
 
   def decode(self, data):
     """Decode a raw video packet as received over the network from the drone.
