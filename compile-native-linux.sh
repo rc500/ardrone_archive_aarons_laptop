@@ -11,6 +11,6 @@ fi
 cd "${build_dir}"
 
 # Run cmake and make the librar{y,ies}.
-cmake ../..
+cmake ../.. -DINSTALL_DOC=OFF
 make all install
 

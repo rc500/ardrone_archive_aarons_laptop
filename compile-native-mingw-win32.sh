@@ -11,6 +11,6 @@ fi
 cd "${build_dir}"
 
 # Run cmake and make the librar{y,ies}.
-cmake -DCMAKE_TOOLCHAIN_FILE=../../mingw-toolchain.cmake ../..
+cmake -DCMAKE_TOOLCHAIN_FILE=../../mingw-toolchain.cmake ../.. -DINSTALL_DIC=OFF
 make all install
 
