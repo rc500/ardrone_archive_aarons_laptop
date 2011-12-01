@@ -75,3 +75,8 @@ target_link_libraries(vlib vpos vpapi)
 
 add_library(p264 SHARED libp264.c)
 target_link_libraries(p264 vlib)
+
+# Install the library
+install(TARGETS p264
+  LIBRARY DESTINATION lib
+)
