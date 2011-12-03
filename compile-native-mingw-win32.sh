@@ -19,6 +19,7 @@ if [ ! -d "${build_dir}" ]; then
   mkdir -p "${build_dir}"
 fi
 pushd "${build_dir}"
-cmake "-DCMAKE_TOOLCHAIN_FILE=${toolchain_file}" ../.. -DINSTALL_DOC=OFF "-DCMAKE_PREFIX_PATH=${opencv_build_dir}"
+cmake "-DCMAKE_TOOLCHAIN_FILE=${toolchain_file}" ../.. -DINSTALL_DOC=OFF "-DCMAKE_PREFIX_PATH=${opencv_build_dir}" \
+  "-DCMAKE_INSTALL_PREFIX=${this_dir}/ardrone/native"
 make all install
 popd

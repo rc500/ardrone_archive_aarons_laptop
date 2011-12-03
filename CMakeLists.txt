@@ -13,14 +13,10 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "RelWithDebInfo")
 endif(NOT CMAKE_BUILD_TYPE)
 
-# We want to install to the ardrone/native directory relative to this ptoject.
-set(CMAKE_INSTALL_PREFIX "${CMAKE_SOURCE_DIR}/ardrone/native")
-
 # The following makes sure that an rpath is set in Linux luibraries so
 # dependencies can be found.
 set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-
 
 # Build the libp264 library
 add_subdirectory(third-party/libp264)
