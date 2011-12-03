@@ -1,3 +1,6 @@
+# The aruco headers need this
+find_package(OpenCV REQUIRED)
+
 add_library(caruco SHARED
   caruco.h
   caruco.cpp

@@ -12,7 +12,7 @@ fi
 cd "${build_dir}"
 
 # Run cmake and make the librar{y,ies}.
-cmake ../.. -DINSTALL_DOC=ON "-DCMAKE_INSTALL_PREFIX=${this_dir}/ardrone/native"
+cmake ../../native -DINSTALL_DOC=ON "-DCMAKE_INSTALL_PREFIX=${this_dir}/ardrone/native"
 make doc
 make all install
 

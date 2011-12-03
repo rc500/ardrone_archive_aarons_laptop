@@ -18,12 +18,10 @@ endif(NOT CMAKE_BUILD_TYPE)
 set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
-# Build the libp264 library
-add_subdirectory(third-party/libp264)
-
 # Build the aruco library
 add_subdirectory(third-party/aruco-1.0.0)
 include_directories("${CMAKE_SOURCE_DIR}/third-party/aruco-1.0.0/src")
 
-# Build the C bindings to aruco
+# Build the native libraries
+add_subdirectory(libp264)
 add_subdirectory(caruco)

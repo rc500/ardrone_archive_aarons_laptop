@@ -5,4 +5,4 @@ doc/html/
 doc/epub/
 doc/latex/
 ardrone/native/
-win32-third-party/opencv/
+native/win32-third-party/opencv/
