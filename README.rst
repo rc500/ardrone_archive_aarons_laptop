@@ -14,6 +14,10 @@ Linux libaries need to be built via the ``compile-native-linux.sh`` schell
 script. In addition, a corresponding ``compile-native-mingw-win32.sh`` script
 is provided for those cross-compiling the Windows DLLs using MinGW under Linux.
 
+When cross-compiling for Windows, the OpenCV source is expected to reside in
+the ``win32-third-party/opencv`` directory relative to the
+``compile-native-mingw-win32.sh`` script.
+
 Building the documentation
 --------------------------
 
