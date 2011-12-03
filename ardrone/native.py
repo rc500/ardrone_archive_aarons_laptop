@@ -23,17 +23,18 @@ def load_dll(name):
   this_dir = os.path.abspath(os.path.dirname(__file__))
 
   # And hence the native libdir
-  native_dir = os.path.join(this_dir, 'native', 'lib')
+  native_dir = os.path.join(this_dir, 'native')
 
-  for suffix in ['', '.dll', '.so']:
-    dllpath = os.path.join(native_dir, name + suffix)
-    if os.path.exists(dllpath):
-      try:
-        dll = ctypes.CDLL(dllpath)
-        return dll
-      except OSError as e:
-        # Report DLL load errors and try to continue
-        log.warning('Error loading %s: %s' % (dllpath, str(e)))
+  for lib_dir in ['', 'bin', 'lib']:
+    for suffix in ['', '.so']:
+      dllpath = os.path.join(native_dir, lib_dir, name + suffix)
+      if os.path.exists(dllpath):
+        try:
+          dll = ctypes.CDLL(dllpath)
+          return dll
+        except OSError as e:
+          # Report DLL load errors and try to continue
+          log.warning('Error loading %s: %s' % (dllpath, str(e)))
 
   log.error('Failed to find or load DLL "%s" in the native directory.' % (name,))
   return None
