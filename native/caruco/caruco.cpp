@@ -6,6 +6,7 @@
 using namespace aruco;
 
 // handle wrapper structures
+struct aruco_board_configuration_s { BoardConfiguration config; };
 struct aruco_camera_parameters_s { CameraParameters parameters; };
 struct aruco_marker_s { Marker marker; };
 struct aruco_marker_detector_s { MarkerDetector detector; };
@@ -227,5 +228,40 @@ aruco_status_t aruco_camera_parameters_save_to_file(
 {
   FUNC_BEGIN;
   p->parameters.saveToFile(path);
+  FUNC_END;
+}
+
+// BOARD CONFIGURATION
+
+aruco_board_configuration_t* aruco_board_configuration_new()
+{
+  return new aruco_board_configuration_t();
+}
+
+void aruco_board_configuration_free(aruco_board_configuration_t* config)
+{
+  delete config;
+}
+
+void aruco_board_configuration_copy_from(
+    aruco_board_configuration_t* config,
+    aruco_board_configuration_t* other_config)
+{
+  config->config = other_config->config;
+}
+
+aruco_status_t aruco_board_configuration_save_to_file(
+    aruco_board_configuration_t* config, const char* path)
+{
+  FUNC_BEGIN;
+  config->config.saveToFile(path);
+  FUNC_END;
+}
+
+aruco_status_t aruco_board_configuration_read_from_file(
+    aruco_board_configuration_t* config, const char* path)
+{
+  FUNC_BEGIN;
+  config->config.readFromFile(path);
   FUNC_END;
 }

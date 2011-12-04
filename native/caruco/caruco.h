@@ -33,6 +33,7 @@ struct aruco_image_s {
 
 /******* OPAQUE HANDLE TYPES *******/
 
+typedef struct aruco_board_configuration_s aruco_board_configuration_t;
 typedef struct aruco_camera_parameters_s aruco_camera_parameters_t;
 typedef struct aruco_marker_s aruco_marker_t;
 typedef struct aruco_marker_detector_s aruco_marker_detector_t;
@@ -138,6 +139,28 @@ aruco_status_t aruco_camera_parameters_read_from_xml_file(
 aruco_status_t aruco_camera_parameters_resize(
     aruco_camera_parameters_t* parameters,
     struct aruco_size_s* size);
+
+/******* BOARD CONFIGURATION *******/
+
+/* constructor/destructor */
+aruco_board_configuration_t*  aruco_board_configuration_new();
+void                          aruco_board_configuration_free(
+    aruco_board_configuration_t* board_configuration);
+
+/* copy other_config into config */
+void                        aruco_board_configuration_copy_from(
+    aruco_board_configuration_t* config,
+    aruco_board_configuration_t* other_config);
+
+/* accessors */
+aruco_bool_t aruco_board_configuration_is_valid(
+    aruco_board_configuration_t* config);
+
+/* file I/O */
+aruco_status_t aruco_board_configuration_save_to_file(
+    aruco_board_configuration_t* config, const char* path);
+aruco_status_t aruco_board_configuration_read_from_file(
+    aruco_board_configuration_t* config, const char* path);
 
 #ifdef __cplusplus
 }
