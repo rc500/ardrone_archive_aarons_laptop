@@ -77,6 +77,16 @@ void aruco_marker_draw(aruco_marker_t* marker,
     int line_width /* =1 is a good default */,
     aruco_bool_t write_id);
 
+void aruco_marker_draw_3d_axis(
+    aruco_marker_t*             marker,
+    struct aruco_image_s*       image,
+    aruco_camera_parameters_t*  cp);
+
+void aruco_marker_draw_3d_cube(
+    aruco_marker_t*             marker,
+    struct aruco_image_s*       image,
+    aruco_camera_parameters_t*  cp);
+
 /******* MARKER VECTOR *******/
 
 /* constructor/destructor */
@@ -169,6 +179,18 @@ aruco_status_t aruco_board_configuration_read_from_file(
 /* constructor/destructor */
 aruco_board_t*  aruco_board_new();
 void            aruco_board_free(aruco_board_t* board);
+
+/* drawing*/
+
+void aruco_board_draw_3d_axis(
+    aruco_board_t*              board,
+    struct aruco_image_s*       image,
+    aruco_camera_parameters_t*  cp);
+
+void aruco_board_draw_3d_cube(
+    aruco_board_t*              board,
+    struct aruco_image_s*       image,
+    aruco_camera_parameters_t*  cp);
 
 /******* BOARD DETECTOR *******/
 

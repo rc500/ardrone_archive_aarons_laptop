@@ -35,3 +35,21 @@ void aruco_marker_draw(aruco_marker_t* marker,
   cv::Mat m(caruco::mat_from_image(image));
   marker->marker.draw(m, cv::Scalar(r,g,b), line_width, write_id == ARUCO_TRUE);
 }
+
+void aruco_marker_draw_3d_axis(
+    aruco_marker_t* marker,
+    struct aruco_image_s* image,
+    aruco_camera_parameters_t* cp)
+{
+  cv::Mat m(caruco::mat_from_image(image));
+  aruco::CvDrawingUtils::draw3dAxis(m, marker->marker, cp->parameters);
+}
+
+void aruco_marker_draw_3d_cube(
+    aruco_marker_t* marker,
+    struct aruco_image_s* image,
+    aruco_camera_parameters_t* cp)
+{
+  cv::Mat m(caruco::mat_from_image(image));
+  aruco::CvDrawingUtils::draw3dCube(m, marker->marker, cp->parameters);
+}
