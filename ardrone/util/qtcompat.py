@@ -30,11 +30,13 @@ except ImportError:
 
 
 def _pyside_import_module(moduleName):
+  """Import the named Qt module (e.g. 'QtCore', 'QtGui') and return a module instance."""
   pyside = __import__('PySide', globals(), locals(), [moduleName], -1)
   return getattr(pyside, moduleName)
 
 
 def _pyqt4_import_module(moduleName):
+  """Import the named Qt module (e.g. 'QtCore', 'QtGui') and return a module instance."""
   pyside = __import__('PyQt4', globals(), locals(), [moduleName], -1)
   return getattr(pyside, moduleName)
 

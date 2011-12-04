@@ -23,10 +23,27 @@ class ConnectionError(Exception):
     return str(self.value)
 
 class ControlLoop(object):
-  """A control loop.
+  """A control loop for the drone. Initialises navdata and video streams.
+
+  You must call the connect and disconnect methods on the control loop before
+  trying any control methods.
+
+  *host* is the IP address of the drone
+
+  *control_host* is the IP address to which decoded packets will be sent
+
+  *video_cb* is a callable which will be passed a sequence of bytes in
+  RGB565 (==RGB16) format for each video frame.
+
+  If non-None, navdata_cb is a callable which will be passed a block as
+  defined in ardrone.core.navdata (e.g. DmoBlock, VisionDetectBlock, etc) as
+  and when verified navdata packets arrive.
+
+  >>> from ..platform import dummy
+  >>> con = dummy.Connection()
+  >>> cl = ControlLoop(con)
 
   """
-
   # Connection numbers
   _AT = 1
   _NAV = 2
@@ -41,27 +58,7 @@ class ControlLoop(object):
       host='192.168.1.1', control_host='127.0.0.1',
       at_port=5556, nav_port=5554, vid_port=5555, config_port=5559,
       control_port=5560, control_data_port=5561,video_data_port=5562):
-    """Initialse the control loop with a connection.
 
-    You must call the connect and disconnect methods on the control loop before
-    trying any control methods.
-
-    *host* is the IP address of the drone
-
-    *control_host* is the IP address to which decoded packets will be sent
-
-    Set video_cb to a callable which will be passed a sequence of bytes in
-    RGB565 (==RGB16) format for each video frame.
-
-    If non-None, navdata_cb is a callable which will be passed a block as
-    defined in ardrone.core.navdata (e.g. DmoBlock, VisionDetectBlock, etc) as
-    and when verified navdata packets arrive.
-
-    >>> from ..platform import dummy
-    >>> con = dummy.Connection()
-    >>> cl = ControlLoop(con)
-
-    """
     self._connection = connection
     self._reset_sequence()
     self._vid_decoder = videopacket.Decoder()
