@@ -11,15 +11,22 @@ extern "C" {
 /******* ENUMERATIONS *******/
 
 /* funtions return ARUCO_FAILURE on failure and set error */
-typedef enum { ARUCO_FAILURE = -1, ARUCO_SUCCESS = 0 } aruco_status_t;
+typedef enum {
+  ARUCO_FAILURE = -1,
+  ARUCO_SUCCESS = 0
+} aruco_status_t;
 
 /* boolean wrapper type */
-typedef enum { ARUCO_FALSE = 0, ARUCO_TRUE = 1 } aruco_bool_t;
+typedef enum {
+  ARUCO_FALSE = 0,
+  ARUCO_TRUE = 1
+} aruco_bool_t;
 
 /******* STRUCTURES *******/
 
 struct aruco_size_s {
-  int width, height;
+  int                 width;
+  int                 height;
 };
 
 struct aruco_image_s {
@@ -33,13 +40,13 @@ struct aruco_image_s {
 
 /******* OPAQUE HANDLE TYPES *******/
 
-typedef struct aruco_board_s aruco_board_t;
-typedef struct aruco_board_detector_s aruco_board_detector_t;
-typedef struct aruco_board_configuration_s aruco_board_configuration_t;
-typedef struct aruco_camera_parameters_s aruco_camera_parameters_t;
-typedef struct aruco_marker_s aruco_marker_t;
-typedef struct aruco_marker_detector_s aruco_marker_detector_t;
-typedef struct aruco_marker_vector_s aruco_marker_vector_t;
+typedef struct aruco_board_s                aruco_board_t;
+typedef struct aruco_board_detector_s       aruco_board_detector_t;
+typedef struct aruco_board_configuration_s  aruco_board_configuration_t;
+typedef struct aruco_camera_parameters_s    aruco_camera_parameters_t;
+typedef struct aruco_marker_s               aruco_marker_t;
+typedef struct aruco_marker_detector_s      aruco_marker_detector_t;
+typedef struct aruco_marker_vector_s        aruco_marker_vector_t;
 
 /******* ERROR HANDLING *******/
 
@@ -47,7 +54,7 @@ typedef struct aruco_marker_vector_s aruco_marker_vector_t;
 const char* aruco_error_last_str();
 
 /* return code for last error */
-int aruco_error_last_code();
+int         aruco_error_last_code();
 
 /******* MARKER *******/
 
