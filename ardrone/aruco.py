@@ -78,6 +78,8 @@ _dll.aruco_error_last_str.restype = ct.c_char_p
 
 _dll.aruco_board_new.restype = _Handle
 _dll.aruco_board_free.argtypes = ( _Handle, )
+_dll.aruco_board_draw_3d_axis.argtypes = ( _Handle, _ImagePtr, _Handle )
+_dll.aruco_board_draw_3d_cube.argtypes = ( _Handle, _ImagePtr, _Handle )
 
 _dll.aruco_board_configuration_new.restype = _Handle
 _dll.aruco_board_configuration_free.argtypes = ( _Handle, )
@@ -113,6 +115,8 @@ _dll.aruco_marker_draw.argtypes = (
     _Handle, _ImagePtr,
     ct.c_float, ct.c_float, ct.c_float, ct.c_int, ct.c_int
 )
+_dll.aruco_marker_draw_3d_axis.argtypes = ( _Handle, _ImagePtr, _Handle )
+_dll.aruco_marker_draw_3d_cube.argtypes = ( _Handle, _ImagePtr, _Handle )
 
 _dll.aruco_marker_detector_new.restype = _Handle
 _dll.aruco_marker_detector_free.argtypes = ( _Handle, )
@@ -224,6 +228,26 @@ class Board(_HandleWrapper):
   """
   _new = _dll.aruco_board_new
   _free = _dll.aruco_board_free
+
+  def draw_3d_axis(self, image, params):
+    """Draw the 3d axis of this object into an image.
+
+    *image* is an image to draw into (see Marker.draw for this object's type).
+
+    *params* is an instance of CameraParameters.
+
+    """
+    dll_.aruco_board_draw_3d_axis(self.handle, _to_image(image), params.handle)
+
+  def draw_3d_cube(self, image, params):
+    """Draw the 3d cube of this object into an image.
+
+    *image* is an image to draw into (see Marker.draw for this object's type).
+
+    *params* is an instance of CameraParameters.
+
+    """
+    dll_.aruco_board_draw_3d_cube(self.handle, _to_image(image), params.handle)
 
 class BoardConfiguration(_HandleWrapper):
   """This class defines a board with several markers.
@@ -369,6 +393,26 @@ class Marker(_HandleWrapper):
     _dll.aruco_marker_draw(self.handle, _to_image(image),
         color[0], color[1], color[2], line_width,
         _ARUCO_TRUE if write_id else _ARUCO_FALSE)
+
+  def draw_3d_axis(self, image, params):
+    """Draw the 3d axis of this object into an image.
+
+    *image* is an image to draw into (see Marker.draw for this object's type).
+
+    *params* is an instance of CameraParameters.
+
+    """
+    dll_.aruco_marker_draw_3d_axis(self.handle, _to_image(image), params.handle)
+
+  def draw_3d_cube(self, image, params):
+    """Draw the 3d cube of this object into an image.
+
+    *image* is an image to draw into (see Marker.draw for this object's type).
+
+    *params* is an instance of CameraParameters.
+
+    """
+    dll_.aruco_marker_draw_3d_cube(self.handle, _to_image(image), params.handle)
 
 class MarkerDetector(_HandleWrapper):
   """Main class for marker detection.
