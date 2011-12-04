@@ -76,6 +76,13 @@ if _dll is None:
 # Function return and argument types
 _dll.aruco_error_last_str.restype = ct.c_char_p
 
+_dll.aruco_board_configuration_new.restype = _Handle
+_dll.aruco_board_configuration_free.argtypes = ( _Handle, )
+_dll.aruco_board_configuration_save_to_file.restype = _Status
+_dll.aruco_board_configuration_save_to_file.argtypes = ( _Handle, ct.c_char_p )
+_dll.aruco_board_configuration_read_from_file.restype = _Status
+_dll.aruco_board_configuration_read_from_file.argtypes = ( _Handle, ct.c_char_p )
+
 _dll.aruco_camera_parameters_new.restype = _Handle
 _dll.aruco_camera_parameters_free.argtypes = ( _Handle, )
 _dll.aruco_camera_parameters_is_valid.argtypes = ( _Handle, )
@@ -202,6 +209,35 @@ class _MarkerVector(_HandleWrapper):
     return contents
 
 # Public classes
+
+class BoardConfiguration(_HandleWrapper):
+  """This class defines a board with several markers.
+
+  """
+  _new = _dll.aruco_board_configuration_new
+  _free = _dll.aruco_board_configuration_free
+  _copy = _dll.aruco_board_configuration_copy_from
+
+  def save_to_file(self, path):
+    """Save the board configuration to a file.
+    
+    *path* is a filesystem path
+    
+    Raises an ArucoError if there is a file I/O error.
+    
+    """
+    _dll.aruco_board_configuration_save_to_file(self.handle, path)
+
+  def read_from_file(self, path):
+    """Read the board configuration from a file previously saved via
+    save_to_file.
+    
+    *path* is a filesystem path
+    
+    Raises an ArucoError if there is a file I/O error.
+    
+    """
+    _dll.aruco_board_configuration_read_from_file(self.handle, path)
 
 class CameraParameters(_HandleWrapper):
   """Parameters of the camera.
