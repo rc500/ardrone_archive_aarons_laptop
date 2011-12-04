@@ -191,13 +191,7 @@ void aruco_board_draw_3d_cube(
 
 /******* BOARD DETECTOR *******/
 
-/* constructor/destructor */
-aruco_board_detector_t* aruco_board_detector_new();
-void                    aruco_board_detector_free(aruco_board_detector_t* board_detector);
-
-/* detection */
-aruco_status_t aruco_board_detector_detect(
-    aruco_board_detector_t*       detector,
+aruco_status_t aruco_detect_board(
     aruco_marker_vector_t*        detected_markers, /* from aruco_marker_detector_detect */
     aruco_board_configuration_t*  b_conf, /* board to detect */
     aruco_board_t*                b_detected, /* output */

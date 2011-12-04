@@ -9,7 +9,6 @@
 // handle wrappers
 struct aruco_board_s { aruco::Board board; };
 struct aruco_board_configuration_s { aruco::BoardConfiguration config; };
-struct aruco_board_detector_s { aruco::BoardDetector detector; };
 struct aruco_camera_parameters_s { aruco::CameraParameters parameters; };
 struct aruco_marker_s { aruco::Marker marker; };
 struct aruco_marker_vector_s { std::vector<aruco::Marker> vector; };
