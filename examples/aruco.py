@@ -13,7 +13,7 @@ this_dir = os.path.abspath(os.path.dirname(__file__))
 sys.path.insert(0, os.path.abspath(os.path.join(this_dir, '..')))
 
 # Load the aruco module.
-from ardrone.aruco import detect
+from ardrone.aruco import detect_markers
 
 # Check the command-line arcuments.
 if len(sys.argv) < 3:
@@ -22,5 +22,5 @@ if len(sys.argv) < 3:
 
 # This is probably the simplest possible example.
 arr = array(Image.open(sys.argv[1]).convert('RGB'))
-[m.draw(arr) for m in detect(arr)]
+[m.draw(arr) for m in detect_markers(arr)]
 Image.fromarray(arr).save(sys.argv[2], 'PNG')

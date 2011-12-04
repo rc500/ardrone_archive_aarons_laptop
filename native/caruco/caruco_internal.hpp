@@ -12,7 +12,6 @@ struct aruco_board_configuration_s { aruco::BoardConfiguration config; };
 struct aruco_board_detector_s { aruco::BoardDetector detector; };
 struct aruco_camera_parameters_s { aruco::CameraParameters parameters; };
 struct aruco_marker_s { aruco::Marker marker; };
-struct aruco_marker_detector_s { aruco::MarkerDetector detector; };
 struct aruco_marker_vector_s { std::vector<aruco::Marker> vector; };
 
 // a namespace to hold functions/global variables private to caruco

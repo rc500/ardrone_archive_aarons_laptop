@@ -16,11 +16,8 @@ software. An example of using the module::
   # interface, are read-only.
   arr = np.array(PIL.Image.open('input.png').convert("RGB"))
 
-  # Create a detector.
-  detector = aruco.MarkerDetector()
-  
   # Find the markers and draw them.
-  markers = detector.detect(arr)
+  markers = aruco.detect_markers(arr)
   for m in markers:
     m.draw(arr)
 
@@ -118,11 +115,10 @@ _dll.aruco_marker_draw.argtypes = (
 _dll.aruco_marker_draw_3d_axis.argtypes = ( _Handle, _ImagePtr, _Handle )
 _dll.aruco_marker_draw_3d_cube.argtypes = ( _Handle, _ImagePtr, _Handle )
 
-_dll.aruco_marker_detector_new.restype = _Handle
-_dll.aruco_marker_detector_free.argtypes = ( _Handle, )
-_dll.aruco_marker_detector_detect.restype = _Status
-_dll.aruco_marker_detector_detect.argtypes = \
-    ( _Handle, _ImagePtr, _Handle )
+_dll.aruco_detect_markers.restype = _Status
+_dll.aruco_detect_markers.argtypes = ( _ImagePtr, _Handle )
+_dll.aruco_detect_markers_full.restype = _Status
+_dll.aruco_detect_markers_full.argtypes = ( _ImagePtr, _Handle, _Handle, ct.c_float )
 
 _dll.aruco_marker_vector_new.restype = _Handle
 _dll.aruco_marker_vector_free.argtypes = ( _Handle, )
@@ -414,53 +410,33 @@ class Marker(_HandleWrapper):
     """
     dll_.aruco_marker_draw_3d_cube(self.handle, _to_image(image), params.handle)
 
-class MarkerDetector(_HandleWrapper):
-  """Main class for marker detection.
-
-  """
-  _new = _dll.aruco_marker_detector_new
-  _free = _dll.aruco_marker_detector_free
-
-  def detect(self, image, params=None, marker_size=None):
-    """Detects the markers in the image passed.
-
-    If you provide information about the camera parameters and the size of the
-    marker, then, the extrinsics of the markers are detected.
-
-    If one of *params* or *marker_size* is not None and the other is None, an
-    ArucoError is raised.
-
-    *params* is an instance of CameraParameters which must have been
-    initialised to the camera intrinsics.
-
-    *marker_size* is the size of the marker images in metres.
-
-    Returns a sequence of Marker objects, one for each detected marker.
-
-    """
-    v = _MarkerVector()
-
-    if (params is None) and (marker_size is None):
-      _dll.aruco_marker_detector_detect(self.handle, _to_image(image), v.handle)
-    elif (params is not None) and (marker_size is not None):
-      _dll.aruco_marker_detector_detect_full(self.handle,
-          _to_image(image), v.handle, params.handle, marker_size)
-    else:
-      raise ArucoError('Both params and marker_size must be None or ' +
-          'both must not be None.')
-
-    return v.contents()
-
-def detect(image, params=None, marker_size=None):
+def detect_markers(image, params=None, marker_size=None):
   """Detects the markers in the image passed.
 
-  This is a convenience wrapper around ``MarkerDetector.detect`` which creates
-  an instance of the marker detector and then destructs it. This is useful for
-  a one-off detection.
+  If you provide information about the camera parameters and the size of the
+  marker, then, the extrinsics of the markers are detected.
 
-  See ``MarkerDetector.detect`` for full documentation.
+  If one of *params* or *marker_size* is not None and the other is None, an
+  ArucoError is raised.
+
+  *params* is an instance of CameraParameters which must have been
+  initialised to the camera intrinsics.
+
+  *marker_size* is the size of the marker images in metres.
+
+  Returns a sequence of Marker objects, one for each detected marker.
 
   """
-  with MarkerDetector() as d:
-    return d.detect(image, params, marker_size)
+  v = _MarkerVector()
+
+  if (params is None) and (marker_size is None):
+    _dll.aruco_detect_markers(_to_image(image), v.handle)
+  elif (params is not None) and (marker_size is not None):
+    _dll.aruco_detect_markers_full(_to_image(image), v.handle,
+        params.handle, marker_size)
+  else:
+    raise ArucoError('Both params and marker_size must be None or ' +
+        'both must not be None.')
+
+  return v.contents()
 

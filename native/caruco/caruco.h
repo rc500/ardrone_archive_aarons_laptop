@@ -45,7 +45,6 @@ typedef struct aruco_board_detector_s       aruco_board_detector_t;
 typedef struct aruco_board_configuration_s  aruco_board_configuration_t;
 typedef struct aruco_camera_parameters_s    aruco_camera_parameters_t;
 typedef struct aruco_marker_s               aruco_marker_t;
-typedef struct aruco_marker_detector_s      aruco_marker_detector_t;
 typedef struct aruco_marker_vector_s        aruco_marker_vector_t;
 
 /******* ERROR HANDLING *******/
@@ -108,23 +107,14 @@ aruco_marker_t* aruco_marker_vector_element(aruco_marker_vector_t* v, size_t i);
 
 /******* MARKER DETECTION *******/
 
-/* constructor/destructor */
-aruco_marker_detector_t*  aruco_marker_detector_new();
-void                      aruco_marker_detector_free(
-    aruco_marker_detector_t* detector);
-
-/* detecting markers */
-
 /* simple detection with no extrinsic calculation */
-aruco_status_t aruco_marker_detector_detect(
-    aruco_marker_detector_t*  detector,
+aruco_status_t aruco_detect_markers(
     struct aruco_image_s*     input,
     aruco_marker_vector_t*    detected_markers /* output */);
 
 /* Full detection. Only this function will result in marker extrinsics being
  * calculated. */
-aruco_status_t aruco_marker_detector_detect_full(
-    aruco_marker_detector_t*    detector,
+aruco_status_t aruco_detect_markers_full(
     struct aruco_image_s*       input,
     aruco_marker_vector_t*      detected_markers, /* output */
     aruco_camera_parameters_t*  cam_params,
