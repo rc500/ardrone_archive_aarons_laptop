@@ -33,6 +33,8 @@ struct aruco_image_s {
 
 /******* OPAQUE HANDLE TYPES *******/
 
+typedef struct aruco_board_s aruco_board_t;
+typedef struct aruco_board_detector_s aruco_board_detector_t;
 typedef struct aruco_board_configuration_s aruco_board_configuration_t;
 typedef struct aruco_camera_parameters_s aruco_camera_parameters_t;
 typedef struct aruco_marker_s aruco_marker_t;
@@ -161,6 +163,27 @@ aruco_status_t aruco_board_configuration_save_to_file(
     aruco_board_configuration_t* config, const char* path);
 aruco_status_t aruco_board_configuration_read_from_file(
     aruco_board_configuration_t* config, const char* path);
+
+/******* BOARD *******/
+
+/* constructor/destructor */
+aruco_board_t*  aruco_board_new();
+void            aruco_board_free(aruco_board_t* board);
+
+/******* BOARD DETECTOR *******/
+
+/* constructor/destructor */
+aruco_board_detector_t* aruco_board_detector_new();
+void                    aruco_board_detector_free(aruco_board_detector_t* board_detector);
+
+/* detection */
+aruco_status_t aruco_board_detector_detect(
+    aruco_board_detector_t*       detector,
+    aruco_marker_vector_t*        detected_markers, /* from aruco_marker_detector_detect */
+    aruco_board_configuration_t*  b_conf, /* board to detect */
+    aruco_board_t*                b_detected, /* output */
+    aruco_camera_parameters_t*    cp,
+    float                         marker_size_meters);
 
 #ifdef __cplusplus
 }

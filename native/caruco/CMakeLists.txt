@@ -7,7 +7,9 @@ add_library(caruco SHARED
 
   error_handling.cpp
 
+  board.cpp
   board_configuration.cpp
+  board_detector.cpp
   camera_parameters.cpp
   marker.cpp
   marker_detector.cpp

@@ -76,12 +76,20 @@ if _dll is None:
 # Function return and argument types
 _dll.aruco_error_last_str.restype = ct.c_char_p
 
+_dll.aruco_board_new.restype = _Handle
+_dll.aruco_board_free.argtypes = ( _Handle, )
+
 _dll.aruco_board_configuration_new.restype = _Handle
 _dll.aruco_board_configuration_free.argtypes = ( _Handle, )
 _dll.aruco_board_configuration_save_to_file.restype = _Status
 _dll.aruco_board_configuration_save_to_file.argtypes = ( _Handle, ct.c_char_p )
 _dll.aruco_board_configuration_read_from_file.restype = _Status
 _dll.aruco_board_configuration_read_from_file.argtypes = ( _Handle, ct.c_char_p )
+
+_dll.aruco_board_detector_new.restype = _Handle
+_dll.aruco_board_detector_free.argtypes = ( _Handle, )
+_dll.aruco_board_detector_detect.restype = _Status
+_dll.aruco_board_detector_detect.argtypes = ( _Handle, _Handle, _Handle, _Handle, _Handle, ct.c_float )
 
 _dll.aruco_camera_parameters_new.restype = _Handle
 _dll.aruco_camera_parameters_free.argtypes = ( _Handle, )
@@ -210,6 +218,13 @@ class _MarkerVector(_HandleWrapper):
 
 # Public classes
 
+class Board(_HandleWrapper):
+  """This class encapsulates the orientation and position of a detected board.
+
+  """
+  _new = _dll.aruco_board_new
+  _free = _dll.aruco_board_free
+
 class BoardConfiguration(_HandleWrapper):
   """This class defines a board with several markers.
 
@@ -238,6 +253,32 @@ class BoardConfiguration(_HandleWrapper):
     
     """
     _dll.aruco_board_configuration_read_from_file(self.handle, path)
+
+class BoardDetector(_HandleWrapper):
+  """This class encapsulates the board detector class.
+
+  """
+  _new = _dll.aruco_board_detector_new
+  _free = _dll.aruco_board_detector_free
+
+  def detect(self, markers, configuration, params, marker_size):
+    """Detects a board given some markers.
+
+    *markers* is a sequence of markers as returned from the MarkerDetector.
+
+    *configuration* is a BoardConfiguration for the board.
+
+    *params* is an instance of CameraParameters which must have been
+    initialised to the camera intrinsics.
+
+    *marker_size* is the size of the marker images in metres.
+
+    Returns an instance of the Board class describing the detected board.
+
+    **FIXME:** This method is not yet implemented.
+
+    """
+    raise NotImplementedError('Not yet implemented')
 
 class CameraParameters(_HandleWrapper):
   """Parameters of the camera.
