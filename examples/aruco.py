@@ -16,17 +16,17 @@ import sys
 from numpy import array
 from PIL import Image
 
+# Where is this file?
+this_dir = os.path.abspath(os.path.dirname(__file__))
+
+# Insert a path to load modules from relative to this file
+sys.path.insert(0, os.path.abspath(os.path.join(this_dir, '..')))
+
+# Load the aruco module.
+from ardrone.aruco import detect_markers
+
 def main():
   """The main entry point of the program."""
-
-  # Where is this file?
-  this_dir = os.path.abspath(os.path.dirname(__file__))
-
-  # Insert a path to load modules from relative to this file
-  sys.path.insert(0, os.path.abspath(os.path.join(this_dir, '..')))
-
-  # Load the aruco module.
-  from ardrone.aruco import detect_markers
 
   # Check the command-line arcuments.
   if len(sys.argv) < 3:
