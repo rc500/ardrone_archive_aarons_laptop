@@ -27,7 +27,6 @@ software. An example of using the module::
 """
 
 import ctypes as ct
-import numpy as np
 from . import native
 
 # Enums
@@ -174,26 +173,71 @@ class _HandleWrapper(object):
     self.__class__._free(self.handle)
     self.handle = None
 
-def _to_image(image):
+def _to_image(image, allow_read_only=True):
   """Converts an object whcih exports the array interface to one which can be
   passed as an image pointer to a caruco API function.
 
-  """
-  arr = np.array(image, copy=False)
+  The array interface is defined at
+  http://docs.scipy.org/doc/numpy/reference/arrays.interface.html
 
-  # Check arraay type and shape
-  if arr.ndim != 3 or arr.shape[2] != 3:
-    raise ArucoError('Input image must have only 3 channels')
-  if arr.dtype != np.uint8:
-    raise ArucoError(
-        'Input image must have 8-bit per channel colour depth. ' +
-        'Data type is: ' + str(arr.dtype))
+  """
+  # Check the input image supports the array interface
+  if not hasattr(image, '__array_interface__'):
+    raise ValueError('Input must support the array interface: ' +
+        'http://docs.scipy.org/doc/numpy/reference/arrays.interface.html')
+
+  array = image.__array_interface__
+  if 'version' in array and array['version'] < 3:
+    raise ValueError('Input must support >= version 3 of the array interface.')
+
+  shape = array['shape']
+  typestr = array['typestr']
+
+  # Check array type and shape
+  if len(shape) != 3 or shape[2] != 3:
+    raise ValueError('Input must be an array with three colour channels, i.e. wxhx3 in shape.')
+  if typestr != '|u1':
+    raise ValueError('Input must be an array of bytes.')
+
+  # Check packing
+  if 'strides' in array and array['strides'] is not None:
+    strides = array['strides']
+    if strides != (shape[1]*shape[2],shape[2],1):
+      raise ValueError('Input must be packed.')
+
+  data_ptr = None
+
+  # Do we have a data tuple?
+  if 'data' in array and array['data'] is not None:
+    data = array['data']
+    if isinstance(data, tuple):
+      # Check for read-only images
+      if data[1] and not allow_read_only:
+        raise ValueError('Input must not be read-only.')
+
+      # Extract pointer
+      data_ptr = ct.pointer(ct.c_uint8.from_address(data[0]))
+    else:
+      # data object must export buffer inteface.
+      # An explicit check for string types.
+      if isinstance(data, str):
+        if not allow_read_only:
+          raise ValueError('Input must not be read-only. Strings are read-only.')
+        data_ptr = ct.cast(ct.c_char_p(data), ct.POINTER(ct.c_uint8))
+      else:
+        data_ptr = ct.pointer(ct.c_uint8.from_buffer(data))
+  else:
+    # If data entry is not present, use the buffer interface of the input
+    data_ptr = ct.pointer(ct.c_uint8.from_buffer(image))
+
+  assert data_ptr is not None
 
   # Create an image structure
   im = _Image()
-  im.data = arr.ctypes.data_as(ct.POINTER(ct.c_uint8))
-  im.size.width = arr.shape[0]
-  im.size.height = arr.shape[1]
+  #im.data = np.array(image, copy=False).ctypes.data_as(ct.POINTER(ct.c_uint8))
+  im.data = data_ptr
+  im.size.width = shape[0]
+  im.size.height = shape[1]
   return ct.byref(im)
 
 class _MarkerVector(_HandleWrapper):
@@ -231,7 +275,7 @@ class Board(_HandleWrapper):
     *params* is an instance of CameraParameters.
 
     """
-    dll_.aruco_board_draw_3d_axis(self.handle, _to_image(image), params.handle)
+    dll_.aruco_board_draw_3d_axis(self.handle, _to_image(image, allow_read_only=False), params.handle)
 
   def draw_3d_cube(self, image, params):
     """Draw the 3d cube of this object into an image.
@@ -241,7 +285,7 @@ class Board(_HandleWrapper):
     *params* is an instance of CameraParameters.
 
     """
-    dll_.aruco_board_draw_3d_cube(self.handle, _to_image(image), params.handle)
+    dll_.aruco_board_draw_3d_cube(self.handle, _to_image(image, allow_read_only=False), params.handle)
 
 class BoardConfiguration(_HandleWrapper):
   """This class defines a board with several markers.
@@ -358,7 +402,7 @@ class Marker(_HandleWrapper):
     drawn into the image.
 
     """
-    _dll.aruco_marker_draw(self.handle, _to_image(image),
+    _dll.aruco_marker_draw(self.handle, _to_image(image, allow_read_only=False),
         color[0], color[1], color[2], line_width,
         _ARUCO_TRUE if write_id else _ARUCO_FALSE)
 
@@ -370,7 +414,7 @@ class Marker(_HandleWrapper):
     *params* is an instance of CameraParameters.
 
     """
-    dll_.aruco_marker_draw_3d_axis(self.handle, _to_image(image), params.handle)
+    dll_.aruco_marker_draw_3d_axis(self.handle, _to_image(image, allow_read_only=False), params.handle)
 
   def draw_3d_cube(self, image, params):
     """Draw the 3d cube of this object into an image.
@@ -380,7 +424,7 @@ class Marker(_HandleWrapper):
     *params* is an instance of CameraParameters.
 
     """
-    dll_.aruco_marker_draw_3d_cube(self.handle, _to_image(image), params.handle)
+    dll_.aruco_marker_draw_3d_cube(self.handle, _to_image(image, allow_read_only=False), params.handle)
 
 def detect_board(markers, configuration, params, marker_size):
   """Detects a board given some markers.

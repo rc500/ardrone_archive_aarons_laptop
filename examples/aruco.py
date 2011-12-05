@@ -34,8 +34,9 @@ def main():
     sys.exit(1)
 
   # This is probably the simplest possible example.
-  arr = array(Image.open(sys.argv[1]).convert('RGB'))
-  [m.draw(arr) for m in detect_markers(arr)]
+  im = Image.open(sys.argv[1]).convert('RGB')
+  arr = array(im)
+  [m.draw(arr) for m in detect_markers(im)]
   Image.fromarray(arr).save(sys.argv[2], 'PNG')
 
 if __name__ == '__main__':
