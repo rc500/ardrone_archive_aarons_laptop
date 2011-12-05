@@ -104,6 +104,7 @@ void                    aruco_marker_vector_free(
 void aruco_marker_vector_clear(aruco_marker_vector_t* v);
 size_t aruco_marker_vector_size(aruco_marker_vector_t* v);
 aruco_marker_t* aruco_marker_vector_element(aruco_marker_vector_t* v, size_t i);
+void aruco_marker_vector_push_back(aruco_marker_vector_t* v, aruco_marker_t* marker);
 
 /******* MARKER DETECTION *******/
 
@@ -176,6 +177,10 @@ aruco_status_t aruco_board_configuration_read_from_file(
 /* constructor/destructor */
 aruco_board_t*  aruco_board_new();
 void            aruco_board_free(aruco_board_t* board);
+
+/* write the 3-element rotation vector (a Rodrigues rotation) and 3-element
+ * translation vector to r and t. */
+void aruco_board_get_extrinsics(aruco_board_t* board, float* r, float *t);
 
 /* drawing*/
 

@@ -41,3 +41,8 @@ aruco_marker_t* aruco_marker_vector_element(aruco_marker_vector_t* v, size_t idx
     return NULL;
   return reinterpret_cast<aruco_marker_t*>(&(v->vector[idx]));
 }
+
+void aruco_marker_vector_push_back(aruco_marker_vector_t* v, aruco_marker_t* marker)
+{
+  v->vector.push_back(marker->marker);
+}

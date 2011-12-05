@@ -76,6 +76,7 @@ _dll.aruco_board_new.restype = _Handle
 _dll.aruco_board_free.argtypes = ( _Handle, )
 _dll.aruco_board_draw_3d_axis.argtypes = ( _Handle, _ImagePtr, _Handle )
 _dll.aruco_board_draw_3d_cube.argtypes = ( _Handle, _ImagePtr, _Handle )
+_dll.aruco_board_get_extrinsics.argtypes = ( _Handle, ct.POINTER(ct.c_float), ct.POINTER(ct.c_float) )
 
 _dll.aruco_board_configuration_new.restype = _Handle
 _dll.aruco_board_configuration_free.argtypes = ( _Handle, )
@@ -123,6 +124,7 @@ _dll.aruco_marker_vector_clear.argtypes = ( _Handle, )
 _dll.aruco_marker_vector_size.argtypes = ( _Handle, )
 _dll.aruco_marker_vector_element.restype = _Handle
 _dll.aruco_marker_vector_element.argtypes = ( _Handle, _Size )
+_dll.aruco_marker_vector_push_back.argtypes = ( _Handle, _Handle )
 
 class ArucoError(Exception):
   """An exception which wraps an error returned from the aruco library.
@@ -257,6 +259,11 @@ class _MarkerVector(_HandleWrapper):
       m.copy_from(_dll.aruco_marker_vector_element(self.handle, idx))
       contents.append(m)
     return contents
+  
+  def push_back(self, m):
+    if not isinstance(m, Marker):
+      raise ValueError('Expected instance of ardrone.aruco.Marker')
+    _dll.aruco_marker_vector_push_back(self.handle, m.handle)
 
 # Public classes
 
@@ -275,7 +282,7 @@ class Board(_HandleWrapper):
     *params* is an instance of CameraParameters.
 
     """
-    dll_.aruco_board_draw_3d_axis(self.handle, _to_image(image, allow_read_only=False), params.handle)
+    _dll.aruco_board_draw_3d_axis(self.handle, _to_image(image, allow_read_only=False), params.handle)
 
   def draw_3d_cube(self, image, params):
     """Draw the 3d cube of this object into an image.
@@ -285,7 +292,21 @@ class Board(_HandleWrapper):
     *params* is an instance of CameraParameters.
 
     """
-    dll_.aruco_board_draw_3d_cube(self.handle, _to_image(image, allow_read_only=False), params.handle)
+    _dll.aruco_board_draw_3d_cube(self.handle, _to_image(image, allow_read_only=False), params.handle)
+
+  def get_extrinsics(self):
+    """Return a pair describing the extrinsics of the board.
+    
+    The first element is a triple giving the Rodrigues rotation.
+    
+    The second element is a triple giving the translation vector for the board.
+
+    """
+    r = (ct.c_float * 3)()
+    t = (ct.c_float * 3)()
+    _dll.aruco_board_get_extrinsics(self.handle, r, t)
+
+    return (tuple([float(x) for x in r]), tuple([float(x) for x in t]))
 
 class BoardConfiguration(_HandleWrapper):
   """This class defines a board with several markers.
@@ -414,7 +435,7 @@ class Marker(_HandleWrapper):
     *params* is an instance of CameraParameters.
 
     """
-    dll_.aruco_marker_draw_3d_axis(self.handle, _to_image(image, allow_read_only=False), params.handle)
+    _dll.aruco_marker_draw_3d_axis(self.handle, _to_image(image, allow_read_only=False), params.handle)
 
   def draw_3d_cube(self, image, params):
     """Draw the 3d cube of this object into an image.
@@ -424,7 +445,7 @@ class Marker(_HandleWrapper):
     *params* is an instance of CameraParameters.
 
     """
-    dll_.aruco_marker_draw_3d_cube(self.handle, _to_image(image, allow_read_only=False), params.handle)
+    _dll.aruco_marker_draw_3d_cube(self.handle, _to_image(image, allow_read_only=False), params.handle)
 
 def detect_board(markers, configuration, params, marker_size):
   """Detects a board given some markers.
@@ -440,10 +461,14 @@ def detect_board(markers, configuration, params, marker_size):
 
   Returns an instance of the Board class describing the detected board.
 
-  **FIXME:** This method is not yet implemented.
-
   """
-  raise NotImplementedError('Not yet implemented')
+
+  mv = _MarkerVector()
+  [mv.push_back(m) for m in markers]
+
+  b = Board()
+  _dll.aruco_detect_board(mv.handle, configuration.handle, b.handle, params.handle, marker_size)
+  return b
 
 def detect_markers(image, params=None, marker_size=None):
   """Detects the markers in the image passed.

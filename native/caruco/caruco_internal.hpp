@@ -28,7 +28,7 @@ namespace caruco {
 
   inline void set_error(const cv::Exception& e)
   {
-    last_error_str = e.what();
+    last_error_str = e.err;
     last_error_code = e.code;
   }
 

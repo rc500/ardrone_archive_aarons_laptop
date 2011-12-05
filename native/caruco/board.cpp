@@ -28,3 +28,14 @@ void aruco_board_draw_3d_cube(
   cv::Mat m(caruco::mat_from_image(image));
   aruco::CvDrawingUtils::draw3dCube(m, board->board, cp->parameters);
 }
+
+void aruco_board_get_extrinsics(
+    aruco_board_t* board,
+    float* r, float *t)
+{
+  for(int i=0; i<3; ++i)
+  {
+    r[i] = board->board.Rvec.at<float>(i);
+    t[i] = board->board.Tvec.at<float>(i);
+  }
+}

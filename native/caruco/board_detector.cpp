@@ -1,5 +1,6 @@
 #include "caruco.h"
 #include "caruco_internal.hpp"
+#include <iostream>
 
 aruco_status_t aruco_detect_board(
     aruco_marker_vector_t*        detected_markers,
