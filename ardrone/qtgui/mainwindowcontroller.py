@@ -86,6 +86,9 @@ class MainWindowController(QtCore.QObject):
     else:
       log.error('No camera label found on QMainWindow.')
 
+    # No video frame as yet
+    self._last_frame = None
+
     # Wire up our actions
     self._connect_action('actionFlatTrim', self.flat_trim)
     self._connect_action('actionTakeOff', self.take_off)
@@ -94,6 +97,7 @@ class MainWindowController(QtCore.QObject):
     self._connect_action('actionLand', self.land)
     self._connect_action('actionStartVideo', self.start_video)
     self._connect_action('actionStartNavdata', self.start_navdata)
+    self._connect_action('actionSaveImage', self.save_image)
 
     #self._status_display = StatusDisplay()
     #self._widget.centralWidget().layout().addWidget(self._status_display.widget)
@@ -113,7 +117,8 @@ class MainWindowController(QtCore.QObject):
 
   def _vid_cb(self, data):
     """Update the image in the camera window."""
-    self._cam_label.setPixmap(QtGui.QPixmap(QtGui.QImage(data, 320, 240, QtGui.QImage.Format_RGB16)))
+    self._last_frame = QtGui.QImage(data, 320, 240, QtGui.QImage.Format_RGB16)
+    self._cam_label.setPixmap(QtGui.QPixmap(self._last_frame))
 
   def _navdata_cb(self, block):
     if isinstance(block, navdata.DemoBlock):
@@ -167,4 +172,19 @@ class MainWindowController(QtCore.QObject):
     log.info('Start navdata')
     self._control.start_navdata()
 
+  @qt.Slot()
+  def save_image(self):
+    if self._last_frame is None:
+      log.error('No video frame to save')
+      return
+
+    # Search for the next available video image filename
+    i=0
+    imagepath = os.path.abspath('image_%06d.png' % i)
+    while os.path.exists(imagepath):
+      i += 1
+      imagepath =  os.path.abspath('image_%06d.png' % i)
+
+    log.info('Saving image to: ' + imagepath)
+    self._last_frame.save(imagepath)
 
