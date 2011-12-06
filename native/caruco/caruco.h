@@ -137,6 +137,17 @@ void                        aruco_camera_parameters_copy_from(
 aruco_bool_t aruco_camera_parameters_is_valid(
     aruco_camera_parameters_t* parameters);
 
+/* write the 9 coefficients of the camera matrix to the array passed. The coefficients
+ * are written in C-style (i.e. row-major) ordering. */
+void aruco_camera_parameters_get_camera_matrix(
+    aruco_camera_parameters_t* parameters,
+    float* m);
+
+/* write the 4 distortion coefficients to m */
+void aruco_camera_parameters_get_distortion_coeffs(
+    aruco_camera_parameters_t* parameters,
+    float* m);
+
 /* file I/O */
 aruco_status_t aruco_camera_parameters_save_to_file(
     aruco_camera_parameters_t* parameters, const char* path);

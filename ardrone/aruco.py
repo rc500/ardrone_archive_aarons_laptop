@@ -98,6 +98,8 @@ _dll.aruco_camera_parameters_read_from_file.argtypes = ( _Handle, ct.c_char_p )
 _dll.aruco_camera_parameters_read_from_xml_file.restype = _Status
 _dll.aruco_camera_parameters_read_from_xml_file.argtypes = ( _Handle, ct.c_char_p )
 _dll.aruco_camera_parameters_resize.argtypes = ( _Handle, ct.POINTER(_Size) )
+_dll.aruco_camera_parameters_get_camera_matrix.argtypes = ( _Handle, ct.POINTER(ct.c_float) )
+_dll.aruco_camera_parameters_get_distortion_coeffs.argtypes = ( _Handle, ct.POINTER(ct.c_float) )
 
 _dll.aruco_marker_new.restype = _Handle
 _dll.aruco_marker_free.argtypes = ( _Handle, )
@@ -390,6 +392,19 @@ class CameraParameters(_HandleWrapper):
     sz = _Size()
     sz.width, sz.height = size
     _dll.aruco_camera_parameters_resize(self.handle, ct.byref(sz))
+
+  def get_camera_matrix(self):
+    m = (ct.c_float * 9)()
+    _dll.aruco_camera_parameters_get_camera_matrix(self.handle, m)
+    return ( 
+        tuple([float(x) for x in m[0:3]]),
+        tuple([float(x) for x in m[3:6]]),
+        tuple([float(x) for x in m[6:9]]) )
+
+  def get_distortion_coeffs(self):
+    m = (ct.c_float * 4)()
+    _dll.aruco_camera_parameters_get_distortion_coeffs(self.handle, m)
+    return tuple([float(x) for x in m])
 
 class Marker(_HandleWrapper):
   """This class represents a marker.
