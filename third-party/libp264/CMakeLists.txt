@@ -25,30 +25,29 @@ if(MINGW)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mwindows")
 endif(MINGW)
 
-add_library(vpapi
-  VP_Api/vp_api.c
+add_library(p264 SHARED
+  libp264.c
+
+  #VP_Api/vp_api.c
   VP_Api/vp_api_io_multi_stage.c
-  VP_Api/vp_api_supervisor.c
+  #VP_Api/vp_api_supervisor.c
   VP_Api/vp_api_error.c
   #VP_Api/vp_api_stage.c
   #VP_Api/vp_api_thread_helper.c
-)
 
-add_library(vpos
   VP_Os/vp_os_malloc.c
   VP_Os/vp_os_error_handling.c
-)
 
-add_library(vlib
   VLIB/video_codec.c       VLIB/video_huffman.c     VLIB/video_packetizer.c
   VLIB/video_controller.c  VLIB/video_macroblock.c  VLIB/video_picture.c
   VLIB/video_dct.c         VLIB/video_mem32.c       VLIB/video_quantizer.c
   
   VLIB/Platform/x86/video_utils.c
   
-  VLIB/Stages/vlib_stage_decode.c VLIB/Stages/vlib_stage_encode.c
+  #VLIB/Stages/vlib_stage_decode.c
+  #VLIB/Stages/vlib_stage_encode.c
 
-  VLIB/Utils/video_bin_dct.c
+  #VLIB/Utils/video_bin_dct.c
 
   VLIB/UVLC/uvlc.c
   VLIB/UVLC/uvlc_gob_layer.c
@@ -71,7 +70,10 @@ add_library(vlib
   VLIB/P264/p264_gob_layer.c      VLIB/P264/p264_mb_layer.c
   VLIB/P264/p264_Qp.c             VLIB/P264/video_p264.c
 )
-target_link_libraries(vlib vpos vpapi)
 
-add_library(p264 SHARED libp264.c)
-target_link_libraries(p264 vlib)
+# Install the library
+install(TARGETS p264
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib
+  RUNTIME DESTINATION lib
+)

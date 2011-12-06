@@ -15,7 +15,13 @@ import logging
 # This makes sure the path which python uses to find things when using import
 # can find all our code.
 sys.path.insert(0, os.path.abspath('..'))
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+                                   
 from ardrone.core import videopacket
+
+
+
 
 # The magic runes required to import the Qt modules in a platform-independent
 # way
