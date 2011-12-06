@@ -9,13 +9,15 @@ setup(name='ardrone',
 
     packages=[
       'ardrone', 'ardrone.core', 'ardrone.util', 'ardrone.platform', 'ardrone.qtgui',
+      'ardrone.native',
       'controllers', 'controllers.keyboard'
     ],
 
     package_data = {
       'ardrone.qtgui': ['res/*.ui'],
       'ardrone.core': ['dlls/*.dll'],
+      'ardrone': ['native/bin/*', 'native/lib/*.*'],
     },
 
-    scripts = ['qtdronegui.py', 'keybdcontrol.py'],
+    scripts = ['qtdronegui.py', 'keybdcontrol.py', 'xboxcontrol.py'],
 )
