@@ -177,6 +177,12 @@ void                        aruco_board_configuration_copy_from(
 aruco_bool_t aruco_board_configuration_is_valid(
     aruco_board_configuration_t* config);
 
+/* write ids to ids. Return number of ids in board configuration. Set ids=NULL
+ * to query how many markers are in configuration. */
+int aruco_board_configuration_marker_ids(
+    aruco_board_configuration_t* config,
+    int* ids);
+
 /* file I/O */
 aruco_status_t aruco_board_configuration_save_to_file(
     aruco_board_configuration_t* config, const char* path);
@@ -212,7 +218,8 @@ aruco_status_t aruco_detect_board(
     aruco_board_configuration_t*  b_conf, /* board to detect */
     aruco_board_t*                b_detected, /* output */
     aruco_camera_parameters_t*    cp,
-    float                         marker_size_meters);
+    float                         marker_size_meters,
+    float*                        lik /* output likelihood of detection */);
 
 #ifdef __cplusplus
 }

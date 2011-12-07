@@ -84,9 +84,10 @@ _dll.aruco_board_configuration_save_to_file.restype = _Status
 _dll.aruco_board_configuration_save_to_file.argtypes = ( _Handle, ct.c_char_p )
 _dll.aruco_board_configuration_read_from_file.restype = _Status
 _dll.aruco_board_configuration_read_from_file.argtypes = ( _Handle, ct.c_char_p )
+_dll.aruco_board_configuration_marker_ids.argtypes = ( _Handle, ct.POINTER(ct.c_int) )
 
 _dll.aruco_detect_board.restype = _Status
-_dll.aruco_detect_board.argtypes = ( _Handle, _Handle, _Handle, _Handle, ct.c_float )
+_dll.aruco_detect_board.argtypes = ( _Handle, _Handle, _Handle, _Handle, ct.c_float, ct.POINTER(ct.c_float) )
 
 _dll.aruco_camera_parameters_new.restype = _Handle
 _dll.aruco_camera_parameters_free.argtypes = ( _Handle, )
@@ -339,6 +340,13 @@ class BoardConfiguration(_HandleWrapper):
     """
     _dll.aruco_board_configuration_read_from_file(self.handle, path)
 
+  def marker_ids(self):
+    """Return a sequence of integer marker ids for this board."""
+    sz = _dll.aruco_board_configuration_marker_ids(self.handle, None)
+    ids = (ct.c_int * sz)()
+    _dll.aruco_board_configuration_marker_ids(self.handle, ids)
+    return ids[:]
+
 class CameraParameters(_HandleWrapper):
   """Parameters of the camera.
 
@@ -474,7 +482,8 @@ def detect_board(markers, configuration, params, marker_size):
 
   *marker_size* is the size of the marker images in metres.
 
-  Returns an instance of the Board class describing the detected board.
+  Returns *board, lik*, an instance of the Board class describing the detected
+  board and a float giving a measure of it's likelihood of being in the image.
 
   """
 
@@ -482,8 +491,9 @@ def detect_board(markers, configuration, params, marker_size):
   [mv.push_back(m) for m in markers]
 
   b = Board()
-  _dll.aruco_detect_board(mv.handle, configuration.handle, b.handle, params.handle, marker_size)
-  return b
+  lik = ct.c_float(0)
+  _dll.aruco_detect_board(mv.handle, configuration.handle, b.handle, params.handle, marker_size, ct.byref(lik))
+  return (b, lik.value)
 
 def detect_markers(image, params=None, marker_size=None):
   """Detects the markers in the image passed.
