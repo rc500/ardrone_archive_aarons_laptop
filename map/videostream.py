@@ -35,13 +35,13 @@ class TrackerThread(threading.Thread):
     super(TrackerThread, self).__init__()
     self._tracker = Tracker(bc_file, cp_file)
     self._queue = Queue.Queue(maxsize=2)
-    self._recon_image = None
+    self._recon_images = []
 
   def run(self):
     while True:
       im = self._queue.get()
       self._tracker.new_image(im)
-      self._recon_image = self._tracker.recon_image()
+      self._recon_images = [self._tracker.recon_image(i) for i in range(len(self._tracker.boards))]
 
   def put_image(self, im):
     try:
@@ -49,18 +49,21 @@ class TrackerThread(threading.Thread):
     except Queue.Full:
       pass
 
-  def recon_image(self):
-    return self._recon_image
+  def recon_images(self):
+    return self._recon_images
+
+  def recon_image(self, idx):
+    return self._recon_images[idx]
 
 class ExampleApp(object):
   def __init__(self):
     # Check the command-line arcuments.
     if len(sys.argv) < 3:
-      print('usage: videostream.py board_config.abc camera_params.yml')
+      print('usage: videostream.py camera_params.yml [board_config.abc...]')
       sys.exit(1)
 
     # Create the tracker
-    self._tracker = TrackerThread(*sys.argv[1:3])
+    self._tracker = TrackerThread(sys.argv[1], sys.argv[2:])
     self._tracker.daemon = True
     self._tracker.start()
 
@@ -93,18 +96,33 @@ class ExampleApp(object):
     # we convert the image to this 3-byte per pixel RGB888 format
     self._image = cv.CreateMat(240, 320, cv.CV_8UC3)
 
+    #self._video_win = QtGui.QWidget()
+    #layout = QtGui.QBoxLayout(QtGui.QBoxLayout.TopToBottom, self._video_win)
     self._win = QtGui.QWidget()
-    layout = QtGui.QBoxLayout(QtGui.QBoxLayout.LeftToRight, self._win)
+    grid = QtGui.QGridLayout(self._win)
+
+    self._detect_image_labels = []
+    idx = 0
+    for b in self._tracker._tracker.boards:
+      col = int(idx % 3)
+      row = int(idx / 3)
+      idx += 1
+
+      detect_image_label = QtGui.QLabel()
+      grid.addWidget(detect_image_label, row, col)
+      self._detect_image_labels.append(detect_image_label)
+
+    col = int(idx % 3)
+    row = int(idx / 3)
+    idx += 1
     
     self._input_image_label = QtGui.QLabel()
     self._input_image_label.setPixmap(QtGui.QPixmap(QtGui.QImage(320, 240, QtGui.QImage.Format_RGB16)))
-    layout.addWidget(self._input_image_label)
-
-    self._detect_image_label = QtGui.QLabel()
-    layout.addWidget(self._detect_image_label)
+    grid.addWidget(self._input_image_label, row, col)
+    #layout.addWidget(self._input_image_label)
 
     self._win.show()
-    self._win.destroyed.connect(self.app.quit)
+    #self._video_win.show()
     
     self._update_timer = QtCore.QTimer()
     self._update_timer.setInterval(1000/15)
@@ -150,11 +168,18 @@ class ExampleApp(object):
     self._tracker.put_image(self._image)
 
   def update_images(self):
-    # Update the label image
-    ri = self._tracker.recon_image()
-    if ri is not None:
-      self._detect_image_label.setPixmap(QtGui.QPixmap(QtGui.QImage(
-        ri, ri.shape[1], ri.shape[0], QtGui.QImage.Format_RGB888)))
+    # Update the label images
+    idx = 0
+    for im in self._tracker.recon_images():
+      try:
+        label = self._detect_image_labels[idx]
+        idx += 1
+
+        if im is not None:
+          label.setPixmap(QtGui.QPixmap(QtGui.QImage(
+            im, im.shape[1], im.shape[0], QtGui.QImage.Format_RGB888)))
+      except IndexError:
+        pass
 
     # Update the label image
     self._input_image_label.setPixmap(QtGui.QPixmap(QtGui.QImage(
