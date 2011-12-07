@@ -38,7 +38,7 @@ def main():
   # Detect board
   marker_size = 0.06
   markers = aruco.detect_markers(input_image, cam_params, marker_size)
-  board = aruco.detect_board(markers, board_config, cam_params, marker_size)
+  board, lik = aruco.detect_board(markers, board_config, cam_params, marker_size)
 
   arr = np.array(input_image)
 
