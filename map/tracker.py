@@ -7,7 +7,7 @@ class Tracker(object):
 
   def __init__(self, cp_file, bc_files):
     self._marker_size = 0.1 #metres
-    self._recon_pixel_size = 0.002 # metres
+    self.recon_pixel_size = 0.004 # metres
 
     recon_dim = (512, 256) # w, h
 
@@ -19,7 +19,7 @@ class Tracker(object):
       ids = config.marker_ids()
       recon_image = np.zeros((recon_dim[1],recon_dim[0],3))
       recon_mask = np.zeros((recon_dim[1],recon_dim[0],3))
-      self.boards.append((config, ids, recon_image, recon_mask))
+      self.boards.append((config, ids, recon_image, recon_mask, [None, 0]))
 
     print('Reading camera parameters from: ' + cp_file)
     self._cam_param = aruco.CameraParameters()
@@ -43,7 +43,7 @@ class Tracker(object):
     if len(markers) == 0:
       return
 
-    for config, ids, recon_image, recon_mask in self.boards:
+    for config, ids, recon_image, recon_mask, detect in self.boards:
       # Filter markers
       m = [x for x in markers if x.id() in ids]
 
@@ -52,6 +52,7 @@ class Tracker(object):
         continue
 
       b, l = aruco.detect_board(m, config, self._cam_param, self._marker_size)
+      detect[:] = (b,l)
 
       # Reject if we didn't find board
       if l < 0.1:
@@ -83,7 +84,7 @@ class Tracker(object):
 
       def plane_to_image(plane_point):
         x = np.matrix((
-          (plane_point[0]-midx)*self._recon_pixel_size, 0, (plane_point[1]-midy)*self._recon_pixel_size, 1)
+          (plane_point[0]-midx)*self.recon_pixel_size, 0, (plane_point[1]-midy)*self.recon_pixel_size, 1)
         ).transpose()
         xp = P * x
         xp = xp[0:2] / xp[2]

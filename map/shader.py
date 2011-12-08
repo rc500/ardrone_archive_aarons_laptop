@@ -123,6 +123,6 @@ class Shader:
 	# as well as euclid matrices
 	def uniform_matrixf(self, name, mat):
 		# obtian the uniform location
-		loc = glGetUniformLocation(self.Handle, name)
+		loc = glGetUniformLocation(self.handle, name)
 		# uplaod the 4x4 floating point matrix
 		glUniformMatrix4fv(loc, 1, False, (c_float * 16)(*mat))
