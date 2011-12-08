@@ -18,20 +18,22 @@ class ShaderGroup(pyglet.graphics.Group):
   def unset_state(self):
     self.shader.unbind()
 
-class Scene(pyglet.graphics.Group):
-  def __init__(self, *args, **kwargs):
-    super(Scene, self).__init__(*args, **kwargs)
-    self.batch = pyglet.graphics.Batch()
+class Floor(object):
+  def __init__(self, batch = None, group = None):
+    # Create a batch if necessary
+    if batch is None:
+      batch = pyglet.graphics.Batch()
+    self.batch = batch
 
-    self.floor_shader = Shader(
-#    vert = ['''
-#    void main() {
-#      // transform the vertex position
-#      gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
-#      // pass through the texture coordinate
-#      gl_TexCoord[0] = gl_MultiTexCoord0;
-#    }
-#    '''],
+    self.shader = Shader(
+    vert = ['''
+    void main() {
+      // transform the vertex position
+      gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
+      // pass through the texture coordinate
+      gl_TexCoord[0] = gl_MultiTexCoord0;
+    }
+    '''],
     frag = ['''
     void main() {
       vec2 f = floor(mod(4.f * gl_TexCoord[0].xy, 2));
@@ -39,12 +41,23 @@ class Scene(pyglet.graphics.Group):
       gl_FragColor = vec4(check,check,check,1);
     }
       '''])
-    self.floor_group = ShaderGroup(self.floor_shader, parent=self)
+    self.group = ShaderGroup(self.shader, parent=group)
     self.floor = self.batch.add(
-        4, pyglet.gl.GL_QUADS, self.floor_group,
+        4, pyglet.gl.GL_QUADS, self.group,
         ('v3f', (-20,-1,-20, -20,-1,20, 20,-1,20, 20,-1,-20)),
         ('t2f', (-20,-20, -20,20, 20,20, 20,-20))
     )
+
+  def draw(self):
+    self.batch.draw()
+
+
+class Scene(pyglet.graphics.Group):
+  def __init__(self, *args, **kwargs):
+    super(Scene, self).__init__(*args, **kwargs)
+    self.batch = pyglet.graphics.Batch()
+
+    self.floor = Floor(batch=self.batch, group=self)
 
     self.ry = 0
     pyglet.clock.schedule(self.update)
