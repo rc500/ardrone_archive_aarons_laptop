@@ -119,20 +119,32 @@ class QuadRotor(RenderableObject):
     self._add_rotor( 0.25*size, -0.25*size, 0.25*size + 0.5*thickness, thickness=thickness, height=height)
 
     # Add an arrow
-    self._add_arrow(origin=(0,0,0), size=size, majoraxis=(1,0,0), minoraxis=(0,0,1))
+    self._add_arrow(origin=(0,0,-0.25*size), size=size*0.35)
 
     self.set_pose()
 
   def set_euler_angles(self, theta=0, phi=0, psi=0):
-    """theta/phi/psi are specified in degrees."""
+    """theta/phi/psi are specified in degrees.
+    
+    theta in range [-90, 90]
+
+    psi in range [-180, 180]
+
+    phi in range [-180, 180]
+
+    """
 
     to_rad = 2 * pi / 360.0
-    Rtheta = rotate(theta * to_rad, (1,0,0))
-    Rphi = rotate(phi * to_rad, (0,0,-1))
-    Rpsi = rotate(psi * to_rad, (0,-1,0))
+
+    # theta and psi are direction of drone
+    R = rotate(psi * to_rad, (0,-1,0)) * rotate(theta * to_rad, (1,0,0))
+
+    # phi is roll around drone's principal axis
+    phi_axis = R * np.matrix((0,0,-1)).transpose()
+    R = rotate(phi * to_rad, phi_axis) * R
 
     M = self.group.pose_matrix
-    M[0:3,0:3] = Rpsi * Rphi * Rtheta
+    M[0:3,0:3] = R
 
   def set_origin(self, origin=(0,0,0)):
     self.group.set_origin(origin)
@@ -144,9 +156,17 @@ class QuadRotor(RenderableObject):
   def set_pose_matrix(self, m):
     self.group.set_pose(m)
 
-  def _add_arrow(self, origin, size, majoraxis, minoraxis):
-    # FIXME: Implement
-    pass
+  def _add_arrow(self, origin, size):
+    ox, oy, oz = origin
+    sc = size * 0.05
+    self.batch.add(4, GL_QUADS, self.group,
+        ('v3f', (ox+sc,oy,oz, ox+sc,oy,oz-size, ox-sc,oy,oz-size, ox-sc,oy,oz)),
+        ('n3f', (0,1,0, 0,1,0, 0,1,0, 0,1,0))
+    )
+    self.batch.add(3, GL_TRIANGLES, self.group,
+        ('v3f', (ox+2*sc,oy,oz-size, ox,oy,oz-size-2*sc, ox-2*sc,oy,oz-size)),
+        ('n3f', (0,1,0, 0,1,0, 0,1,0))
+    )
 
   def _add_rotor(self, xc, zc, outer_radius, thickness=0.05, height=0.05, subdivcount=32):
     vertices = []
@@ -414,8 +434,8 @@ class Scene(pyglet.graphics.Group):
 
         # Drone pose
         D = np.matrix(np.identity(4))
-        D[0:3,0:3] *= rotate(-0.5*pi, (0,1,0))
-        D[0:3,0:3] *= rotate(pi, (1,0,0))
+        #D[0:3,0:3] *= rotate(-0.5*pi, (0,1,0))
+        #D[0:3,0:3] *= rotate(pi, (1,0,0))
 
         self.drone.set_pose_matrix(self.board.pose() * M * D)
 
@@ -450,7 +470,7 @@ class Scene(pyglet.graphics.Group):
     glRotatef(self.ry, 0, 1, 0)
 
     glEnable(GL_DEPTH_TEST)
-    glEnable(GL_CULL_FACE)
+    #glEnable(GL_CULL_FACE)
     glColor3f(1, 0, 0)
 
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
