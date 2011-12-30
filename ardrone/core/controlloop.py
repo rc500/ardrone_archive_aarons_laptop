@@ -61,10 +61,9 @@ class ControlLoop(object):
 
     self._connection = connection
     self._reset_sequence()
-    self._vid_decoder = videopacket.Decoder()
+    self._vid_decoder = videopacket.Decoder(video_cb)
     self._flying = False
 
-    self.video_cb = video_cb
     self.navdata_cb = navdata_cb
 
     # State for navdata
@@ -138,7 +137,6 @@ class ControlLoop(object):
 
   def start_video(self):
     self._connection.viddata_cb = self._vid_decoder.decode
-    self._vid_decoder.vid_cb = self.video_cb
     self._connection.put(ControlLoop._VID, b'\x01\x00\x00\x00')
 
   def start_navdata(self):
