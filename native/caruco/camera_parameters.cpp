@@ -59,3 +59,24 @@ aruco_status_t aruco_camera_parameters_save_to_file(
   p->parameters.saveToFile(path);
   FUNC_END;
 }
+
+void aruco_camera_parameters_get_camera_matrix(
+    aruco_camera_parameters_t* parameters,
+    float* m)
+{
+  for(int r=0; r<3; ++r)
+    for(int c=0; c<3; ++c)
+    {
+      m[c+(r*3)] = parameters->parameters.CameraMatrix.at<float>(r,c);
+    }
+}
+
+void aruco_camera_parameters_get_distortion_coeffs(
+    aruco_camera_parameters_t* parameters,
+    float* m)
+{
+  for(int i=0; i<4; ++i)
+  {
+    m[i] = parameters->parameters.Distorsion.at<float>(i);
+  }
+}

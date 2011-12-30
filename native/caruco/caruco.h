@@ -137,6 +137,17 @@ void                        aruco_camera_parameters_copy_from(
 aruco_bool_t aruco_camera_parameters_is_valid(
     aruco_camera_parameters_t* parameters);
 
+/* write the 9 coefficients of the camera matrix to the array passed. The coefficients
+ * are written in C-style (i.e. row-major) ordering. */
+void aruco_camera_parameters_get_camera_matrix(
+    aruco_camera_parameters_t* parameters,
+    float* m);
+
+/* write the 4 distortion coefficients to m */
+void aruco_camera_parameters_get_distortion_coeffs(
+    aruco_camera_parameters_t* parameters,
+    float* m);
+
 /* file I/O */
 aruco_status_t aruco_camera_parameters_save_to_file(
     aruco_camera_parameters_t* parameters, const char* path);
@@ -165,6 +176,12 @@ void                        aruco_board_configuration_copy_from(
 /* accessors */
 aruco_bool_t aruco_board_configuration_is_valid(
     aruco_board_configuration_t* config);
+
+/* write ids to ids. Return number of ids in board configuration. Set ids=NULL
+ * to query how many markers are in configuration. */
+int aruco_board_configuration_marker_ids(
+    aruco_board_configuration_t* config,
+    int* ids);
 
 /* file I/O */
 aruco_status_t aruco_board_configuration_save_to_file(
@@ -201,7 +218,8 @@ aruco_status_t aruco_detect_board(
     aruco_board_configuration_t*  b_conf, /* board to detect */
     aruco_board_t*                b_detected, /* output */
     aruco_camera_parameters_t*    cp,
-    float                         marker_size_meters);
+    float                         marker_size_meters,
+    float*                        lik /* output likelihood of detection */);
 
 #ifdef __cplusplus
 }

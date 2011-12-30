@@ -84,9 +84,10 @@ _dll.aruco_board_configuration_save_to_file.restype = _Status
 _dll.aruco_board_configuration_save_to_file.argtypes = ( _Handle, ct.c_char_p )
 _dll.aruco_board_configuration_read_from_file.restype = _Status
 _dll.aruco_board_configuration_read_from_file.argtypes = ( _Handle, ct.c_char_p )
+_dll.aruco_board_configuration_marker_ids.argtypes = ( _Handle, ct.POINTER(ct.c_int) )
 
 _dll.aruco_detect_board.restype = _Status
-_dll.aruco_detect_board.argtypes = ( _Handle, _Handle, _Handle, _Handle, ct.c_float )
+_dll.aruco_detect_board.argtypes = ( _Handle, _Handle, _Handle, _Handle, ct.c_float, ct.POINTER(ct.c_float) )
 
 _dll.aruco_camera_parameters_new.restype = _Handle
 _dll.aruco_camera_parameters_free.argtypes = ( _Handle, )
@@ -98,6 +99,8 @@ _dll.aruco_camera_parameters_read_from_file.argtypes = ( _Handle, ct.c_char_p )
 _dll.aruco_camera_parameters_read_from_xml_file.restype = _Status
 _dll.aruco_camera_parameters_read_from_xml_file.argtypes = ( _Handle, ct.c_char_p )
 _dll.aruco_camera_parameters_resize.argtypes = ( _Handle, ct.POINTER(_Size) )
+_dll.aruco_camera_parameters_get_camera_matrix.argtypes = ( _Handle, ct.POINTER(ct.c_float) )
+_dll.aruco_camera_parameters_get_distortion_coeffs.argtypes = ( _Handle, ct.POINTER(ct.c_float) )
 
 _dll.aruco_marker_new.restype = _Handle
 _dll.aruco_marker_free.argtypes = ( _Handle, )
@@ -337,6 +340,13 @@ class BoardConfiguration(_HandleWrapper):
     """
     _dll.aruco_board_configuration_read_from_file(self.handle, path)
 
+  def marker_ids(self):
+    """Return a sequence of integer marker ids for this board."""
+    sz = _dll.aruco_board_configuration_marker_ids(self.handle, None)
+    ids = (ct.c_int * sz)()
+    _dll.aruco_board_configuration_marker_ids(self.handle, ids)
+    return ids[:]
+
 class CameraParameters(_HandleWrapper):
   """Parameters of the camera.
 
@@ -390,6 +400,19 @@ class CameraParameters(_HandleWrapper):
     sz = _Size()
     sz.width, sz.height = size
     _dll.aruco_camera_parameters_resize(self.handle, ct.byref(sz))
+
+  def get_camera_matrix(self):
+    m = (ct.c_float * 9)()
+    _dll.aruco_camera_parameters_get_camera_matrix(self.handle, m)
+    return ( 
+        tuple([float(x) for x in m[0:3]]),
+        tuple([float(x) for x in m[3:6]]),
+        tuple([float(x) for x in m[6:9]]) )
+
+  def get_distortion_coeffs(self):
+    m = (ct.c_float * 4)()
+    _dll.aruco_camera_parameters_get_distortion_coeffs(self.handle, m)
+    return tuple([float(x) for x in m])
 
 class Marker(_HandleWrapper):
   """This class represents a marker.
@@ -459,7 +482,8 @@ def detect_board(markers, configuration, params, marker_size):
 
   *marker_size* is the size of the marker images in metres.
 
-  Returns an instance of the Board class describing the detected board.
+  Returns *board, lik*, an instance of the Board class describing the detected
+  board and a float giving a measure of it's likelihood of being in the image.
 
   """
 
@@ -467,8 +491,9 @@ def detect_board(markers, configuration, params, marker_size):
   [mv.push_back(m) for m in markers]
 
   b = Board()
-  _dll.aruco_detect_board(mv.handle, configuration.handle, b.handle, params.handle, marker_size)
-  return b
+  lik = ct.c_float(0)
+  _dll.aruco_detect_board(mv.handle, configuration.handle, b.handle, params.handle, marker_size, ct.byref(lik))
+  return (b, lik.value)
 
 def detect_markers(image, params=None, marker_size=None):
   """Detects the markers in the image passed.

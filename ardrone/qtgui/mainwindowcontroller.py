@@ -105,6 +105,11 @@ class MainWindowController(QtCore.QObject):
     #  self._status_display.new_pose(1,2,3,4)
     #  self._status_display.new_pose(4,3,2,1)
 
+    self._tick_timer = QtCore.QTimer()
+    self._tick_timer.setInterval(25)
+    self._tick_timer.timeout.connect(self._control.tick)
+    self._tick_timer.start()
+
   def _connect_action(self, name, cb):
     # Find the action.
     action = self._widget.findChild(QtGui.QAction, name)
