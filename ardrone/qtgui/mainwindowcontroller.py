@@ -80,6 +80,7 @@ class MainWindowController(QtCore.QObject):
     else:
       log.error('No status bar found on QMainWindow.')
 
+    # Show null video frame
     self._cam_label = self._widget.findChild(QtGui.QLabel, 'camLabel')
     if self._cam_label is not None:
       self._cam_label.setPixmap(QtGui.QPixmap.fromImage(QtGui.QImage(320,240,QtGui.QImage.Format_RGB16)))
