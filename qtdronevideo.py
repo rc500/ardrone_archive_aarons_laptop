@@ -32,20 +32,20 @@ class imageViewer(object):
 
 		# Wire up Ctrl-C to call QApplication.quit()
 		signal.signal(signal.SIGINT, lambda *args: self.app.quit())
-		print "here1"
+
 		# Initialise the drone control loop and attempt to open a connection.
 		connection = platform.Connection()
 		self._control = ControlLoop(connection, video_cb=None, navdata_cb=None)
-		print "here2"
+
 		# Create a window in which to place frames
 		cv.NamedWindow(self.win_title, cv.CV_WINDOW_AUTOSIZE) #probably no need to autosize
-		print "here3"
+
 		# Set up a UDP listening socket on port 5562 which calls readData upon socket activity
 		self.socket = QtNetwork.QUdpSocket()
 		if not self.socket.bind(QtNetwork.QHostAddress.Any, 5562):
 			raise RuntimeError('Error binding to port: %s' % (self.socket.errorString()))
 		self.socket.readyRead.connect(self.readData)
-		print "here4"
+
 		# Start video on drone
 		self._control.start_video()
 		
@@ -54,7 +54,6 @@ class imageViewer(object):
 		
 	def readData(self):
 		"""Called when there is some interesting data to read on the video socket."""
-		print "here5"
 		while self.socket.hasPendingDatagrams():
 			sz = self.socket.pendingDatagramSize()
 			(data, host, port) = self.socket.readDatagram(sz)
@@ -67,19 +66,15 @@ class imageViewer(object):
 		videopacket.Decoder(self.showImage).decode(data)
 			
 	def showImage(self, data):
-		"""Displays argument image in window using openCV."""
-#		print type(data)
-		iplimage = cv.CreateImageHeader((320,240), cv.IPL_DEPTH_16S, 1)
-#		print type(cv_im)
+		"""
+		Displays argument image in window using openCV.
+		data argument must be a string containing a 16 bit unsigned RGB image (RGB16 == RGB565).
+		"""
+		
+		iplimage = cv.CreateImageHeader((320,240), cv.IPL_DEPTH_16U, 1)
 		cv.SetData(iplimage, data)
-
-#		cv.cvtColor(rgb, gray, cv.CV_RGB2GRAY)
-
-		print "here6"
-		
-		#cv.ShowImage(self.win_frame, cv.LoadImage("frame.jpg",1))
 		cv.ShowImage(self.win_title, iplimage)
-		
+				
 if (__name__ == '__main__'):
   image_app = imageViewer()
   image_app.run()
