@@ -3,7 +3,8 @@ import signal
 import sys
 import socket, time
 import cv
-#from PIL import Image
+from PIL import Image
+from numpy import array
 
 # This makes sure the path which python uses to find things when using import
 # can find all our code.
@@ -46,6 +47,9 @@ class imageViewer(object):
 			raise RuntimeError('Error binding to port: %s' % (self.socket.errorString()))
 		self.socket.readyRead.connect(self.readData)
 
+		# Create decoder object
+		self._vid_decoder = videopacket.Decoder(self.showImage)
+		
 		# Start video on drone
 		self._control.start_video()
 		
@@ -63,17 +67,19 @@ class imageViewer(object):
 			data = data.data()
 		
 		# Decode video data and pass result to showImage
-		videopacket.Decoder(self.showImage).decode(data)
+		self._vid_decoder.decode(data)
 			
 	def showImage(self, data):
 		"""
 		Displays argument image in window using openCV.
 		data argument must be a string containing a 16 bit unsigned RGB image (RGB16 == RGB565).
 		"""
-		
-		iplimage = cv.CreateImageHeader((320,240), cv.IPL_DEPTH_16U, 1)
+
+		iplimage = cv.CreateImageHeader((320,240), cv.IPL_DEPTH_8U, 2)		
+		RGBimage = cv.CreateImage((320,240), cv.IPL_DEPTH_8U, 3)
 		cv.SetData(iplimage, data)
-		cv.ShowImage(self.win_title, iplimage)
+		cv.CvtColor(iplimage, RGBimage, cv.CV_BGR5652BGR)
+		cv.ShowImage(self.win_title, RGBimage)
 				
 if (__name__ == '__main__'):
   image_app = imageViewer()
