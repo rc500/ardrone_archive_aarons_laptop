@@ -16,12 +16,31 @@ import ardrone.util.qtcompat as qt
 QtCore = qt.import_module('QtCore')
 QtNetwork = qt.import_module('QtNetwork')
 
-# Import the actual drone control stuff.
-from ardrone.core.controlloop import ControlLoop	
+# Import other objects
+from ardrone.core.controlloop import ControlLoop
 from ardrone.platform import qt as platform
-
-# Import video decoder
 import ardrone.core.videopacket as videopacket
+from ardrone.aruco import detect_markers
+
+class imageProcessor(object):
+	def __init__(self):
+		pass
+
+	def detect_markers (self, frame):
+		
+		# Convert image into aruco-friendly format (array)
+		arr = array(frame)
+		
+		# Detect and draw on markers
+		[m.draw(arr) for m in detect_markers(frame)]
+		
+		# Convert back to OpenCV-friendly format (RGB888)
+		stringImage = Image.fromarray(arr).tostring()
+		cvImage = cv.CreateImageHeader((320,240), cv.IPL_DEPTH_8U, 3)
+		cv.SetData(cvImage, stringImage)
+		
+		# Return processed image
+		return cvImage
 
 class imageViewer(object):
 
@@ -50,6 +69,9 @@ class imageViewer(object):
 		# Create decoder object
 		self._vid_decoder = videopacket.Decoder(self.showImage)
 		
+		# Create imageProcessor object
+		self._img_processor = imageProcessor()
+		
 		# Start video on drone
 		self._control.start_video()
 		
@@ -75,10 +97,18 @@ class imageViewer(object):
 		data argument must be a string containing a 16 bit unsigned RGB image (RGB16 == RGB565).
 		"""
 
+		# Create OpenCV header and read in drone video data as RGB565
 		iplimage = cv.CreateImageHeader((320,240), cv.IPL_DEPTH_8U, 2)		
-		RGBimage = cv.CreateImage((320,240), cv.IPL_DEPTH_8U, 3)
 		cv.SetData(iplimage, data)
+		
+		# Convert image to RGB888 which is more OpenCV friendly
+		RGBimage = cv.CreateImage((320,240), cv.IPL_DEPTH_8U, 3)
 		cv.CvtColor(iplimage, RGBimage, cv.CV_BGR5652BGR)
+		
+		# Add labels for any markers present
+		RGBimage = self._img_processor.detect_markers(RGBimage)
+		
+		# Show image
 		cv.ShowImage(self.win_title, RGBimage)
 				
 if (__name__ == '__main__'):
