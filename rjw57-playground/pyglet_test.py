@@ -401,10 +401,14 @@ class Scene(pyglet.graphics.Group):
     self.camera_image.blit_into(im_data, 0, 0, 0)
 
     demo_block = self.app.state('demo')
+    #vision_block = self.app.state('vision')
+
     if demo_block is not None:
       self.drone.set_euler_angles(*[demo_block[x]/1000. for x in ('theta', 'phi', 'psi')])
       self.drone.set_origin((0,demo_block['altitude']/1000. - 1.0,0))
       self.drone.set_origin((0,0,0))
+
+    if demo_block is not None:
       self.state_label.text = json.dumps(demo_block, indent=True)
     else:
       self.state_label.text = '.'
@@ -414,7 +418,7 @@ class Scene(pyglet.graphics.Group):
     except IndexError:
       board = None
 
-    if board is not None:
+    if False and board is not None:
       config, ids, recon_image, recon_mask, detect = board
       if detect[0] is not None and detect[1] > 0.1:
         # Get camera extrinsics
