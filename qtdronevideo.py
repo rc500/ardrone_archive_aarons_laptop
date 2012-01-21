@@ -28,6 +28,10 @@ class imageProcessor(object):
 
 	def detect_markers (self, frame):
 		
+		#convert prep
+		cv.SaveImage("frame.png", frame)
+		frame = Image.open("frame.png").convert('RGB')
+		
 		# Convert image into aruco-friendly format (array)
 		arr = array(frame)
 		
