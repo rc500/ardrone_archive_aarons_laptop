@@ -8,6 +8,11 @@ if(CMAKE_COMPILER_IS_GNUCC)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall")
 endif(CMAKE_COMPILER_IS_GNUCC)
 
+if("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
+  set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -fPIC"  )
+  set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_DEBUG} -fPIC"  )
+endif("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
+
 # If no default build is set, choose release with debug information
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "RelWithDebInfo")
