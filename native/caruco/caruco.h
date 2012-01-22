@@ -3,6 +3,7 @@
 
 #include <stdlib.h>
 #include <stdint.h>
+#include <aruco.h>
 
 #ifdef __cplusplus
 extern "C" {
