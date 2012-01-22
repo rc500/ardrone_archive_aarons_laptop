@@ -76,6 +76,12 @@ aruco_status_t aruco_marker_calculate_extrinsics(
     float                       marker_size, /* in meters */
     aruco_camera_parameters_t*  cp);
 
+/* determine centroid of marker */
+cv::Point aruco_marker_centroid(
+    aruco_marker_t* marker,
+    struct aruco_image_s* image,
+    aruco_bool_t write_id);
+
 /* drawing a marker into an image */
 void aruco_marker_draw(aruco_marker_t* marker,
     struct aruco_image_s* image,

@@ -27,6 +27,15 @@ int aruco_marker_id(aruco_marker_t* marker)
   return marker->marker.id;
 }
 
+cv::Point aruco_marker_centroid(
+    aruco_marker_t* marker,
+    struct aruco_image_s* image,
+    aruco_bool_t write_id);
+{
+  cv::Mat m(caruco::mat_from_image(image));
+  return marker->marker.centroid(m, write_id == ARUCO_TRUE);
+}
+
 void aruco_marker_draw(aruco_marker_t* marker,
     struct aruco_image_s* image,
     float r, float g, float b,

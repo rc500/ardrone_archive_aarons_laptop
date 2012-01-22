@@ -105,6 +105,26 @@ void Marker::draw(Mat &in, Scalar color, int lineWidth ,bool writeId)
     }
 }
 
+Point Marker::centroid(Mat &in, bool writeId)
+{
+    Point cent(0,0);
+    if (size()!=4) return cent;
+    if (writeId) {
+        char cad[100];
+        sprintf(cad,"id=%d",id);
+        //determine the centroid
+
+        for (int i=0;i<4;i++)
+        {
+            cent.x+=(*this)[i].x;
+            cent.y+=(*this)[i].y;
+        }
+        cent.x/=4.;
+        cent.y/=4.;
+    return cent;
+    }
+}
+
 /**
  */
 void Marker::calculateExtrinsics(float markerSize,const CameraParameters &CP)throw(cv::Exception)
@@ -149,6 +169,7 @@ void Marker::calculateExtrinsics(float markerSizeMeters,cv::Mat  camMatrix,cv::M
         cvSet2D( imagePoints,c,0,cvScalar((*this)[c%4].x));
         cvSet2D( imagePoints,c,1,cvScalar((*this)[c%4].y));
     }
+
     CvMat cvRvec=Rvec;
     CvMat cvTvec=Tvec;
     cvFindExtrinsicCameraParams2(objPoints, imagePoints, &cvCamMatrix, &cvDistCoeffs,&cvRvec,&cvTvec);

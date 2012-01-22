@@ -37,6 +37,10 @@ public:
      */
     void draw(cv::Mat &in, cv::Scalar color, int lineWidth=1,bool writeId=true);
 
+    /**Returns centroid of marker
+     */
+    cv::Point centroid(cv::Mat &in,bool writeId=true);
+
     /**Calculates the extrinsics (Rvec and Tvec) of the marker with respect to the camera
      * @param markerSize size of the marker side expressed in meters
      * @param CP parmeters of the camera
