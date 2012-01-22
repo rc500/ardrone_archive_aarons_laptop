@@ -39,7 +39,7 @@ public:
 
     /**Returns centroid of marker
      */
-    cv::Point centroid(cv::Mat &in,bool writeId=true);
+    cv::Point centroid();
 
     /**Calculates the extrinsics (Rvec and Tvec) of the marker with respect to the camera
      * @param markerSize size of the marker side expressed in meters

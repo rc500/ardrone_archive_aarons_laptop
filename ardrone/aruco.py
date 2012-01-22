@@ -113,7 +113,7 @@ _dll.aruco_marker_draw.argtypes = (
     _Handle, _ImagePtr,
     ct.c_float, ct.c_float, ct.c_float, ct.c_int, ct.c_int
 )
-_dll.aruco_marker_centroid.argtypes = (_Handle, _ImagePtr, ct.c_int)
+_dll.aruco_marker_centroid.argtypes = (_Handle, )
 _dll.aruco_marker_draw_3d_axis.argtypes = ( _Handle, _ImagePtr, _Handle )
 _dll.aruco_marker_draw_3d_cube.argtypes = ( _Handle, _ImagePtr, _Handle )
 
@@ -430,9 +430,9 @@ class Marker(_HandleWrapper):
     """Return an integer id for the marker."""
     return _dll.aruco_marker_id(self.handle)
 
-  def centroid(self, image, write_id = True):
+  def centroid(self):
 	"""Return a cv::Point with location of centroid of marker"""
-	return _dll.aruco_marker_centroid(self.handle, _to_image(image, allow_read_only=True),_ARUCO_TRUE if write_id else _ARUCO_FALSE)
+	return _dll.aruco_marker_centroid(self.handle)
 	
   def draw(self, image,
       color = tuple((1.0, 0.0, 0.0)),

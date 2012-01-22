@@ -105,24 +105,22 @@ void Marker::draw(Mat &in, Scalar color, int lineWidth ,bool writeId)
     }
 }
 
-Point Marker::centroid(Mat &in, bool writeId)
+Point Marker::centroid()
 {
     Point cent(0,0);
     if (size()!=4) return cent;
-    if (writeId) {
-        char cad[100];
-        sprintf(cad,"id=%d",id);
-        //determine the centroid
+    char cad[100];
+    sprintf(cad,"id=%d",id);
+    //determine the centroid
 
-        for (int i=0;i<4;i++)
-        {
-            cent.x+=(*this)[i].x;
-            cent.y+=(*this)[i].y;
-        }
-        cent.x/=4.;
-        cent.y/=4.;
-    return cent;
+    for (int i=0;i<4;i++)
+    {
+        cent.x+=(*this)[i].x;
+        cent.y+=(*this)[i].y;
     }
+    cent.x/=4.;
+    cent.y/=4.;
+    return cent;
 }
 
 /**
