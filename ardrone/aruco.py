@@ -431,9 +431,9 @@ class Marker(_HandleWrapper):
     return _dll.aruco_marker_id(self.handle)
 
   def centroid(self, image, write_id = True):
-	  """Return a cv::Point with location of centroid of marker"""
-	 return _dll.aruco_marker_centroid(self.handle, _to_image(image, allow_read_only=True),_ARUCO_TRUE if write_id else _ARUCO_FALSE)
-
+	"""Return a cv::Point with location of centroid of marker"""
+	return _dll.aruco_marker_centroid(self.handle, _to_image(image, allow_read_only=True),_ARUCO_TRUE if write_id else _ARUCO_FALSE)
+	
   def draw(self, image,
       color = tuple((1.0, 0.0, 0.0)),
       line_width = 1, write_id = True):
