@@ -78,7 +78,8 @@ aruco_status_t aruco_marker_calculate_extrinsics(
     aruco_camera_parameters_t*  cp);
 
 /* determine centroid of marker */
-cv::Point aruco_marker_centroid(aruco_marker_t* marker);
+int aruco_marker_centroid_x(aruco_marker_t* marker);
+int aruco_marker_centroid_y(aruco_marker_t* marker);
 
 /* drawing a marker into an image */
 void aruco_marker_draw(aruco_marker_t* marker,

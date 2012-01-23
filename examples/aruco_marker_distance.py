@@ -35,8 +35,10 @@ def main():
   im = Image.open(sys.argv[1]).convert('RGB')
   #arr = array(im)
   for m in detect_markers(im):
-	centroid = m.centroid()
-	print(centroid)
+	x = m.centroid_x()
+	y = m.centroid_y()
+	print(x)
+	print(y)
 
 if __name__ == '__main__':
   main()
