@@ -13,6 +13,7 @@ import os
 import sys
 from numpy import array
 from PIL import Image
+import cv
 
 # Where is this file?
 this_dir = os.path.abspath(os.path.dirname(__file__))
@@ -31,14 +32,20 @@ def main():
     print('usage: aruco.py input.png')
     sys.exit(1)
 
+  cv.NamedWindow("test",cv.CV_WINDOW_AUTOSIZE)
+  
   # This is probably the simplest possible example.
   im = Image.open(sys.argv[1]).convert('RGB')
+
+  CV_image = cv.LoadImage(sys.argv[1])
+  
   #arr = array(im)
   for m in detect_markers(im):
-	x = m.centroid_x()
-	y = m.centroid_y()
-	print(x)
-	print(y)
+	coord = (m.centroid_x(), m.centroid_y())
+	print(coord)
+	cv.Line(CV_image,(0,0),coord,cv.Scalar(1,1,1))
+
+  cv.ShowImage("test",CV_image)
 
 if __name__ == '__main__':
   main()
