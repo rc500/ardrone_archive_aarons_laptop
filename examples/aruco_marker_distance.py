@@ -46,6 +46,8 @@ def main():
 	cv.Line(CV_image,(0,0),coord,cv.Scalar(1,1,1))
 
   cv.ShowImage("test",CV_image)
+  
+  cv.WaitKey()
 
 
 if __name__ == '__main__':
