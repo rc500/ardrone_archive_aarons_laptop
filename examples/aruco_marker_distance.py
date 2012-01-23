@@ -34,16 +34,20 @@ def main():
 
   cv.NamedWindow("test",cv.CV_WINDOW_AUTOSIZE)
   
-  # This is probably the simplest possible example.
+  # Load image into required formats
   im = Image.open(sys.argv[1]).convert('RGB')
-
   CV_image = cv.LoadImage(sys.argv[1])
   
-  #arr = array(im)
+  # Find minpoint of image
+  CV_image_size = cv.GetSize(CV_image)
+  CV_image_midpoint = (CV_image_size[0]/2,CV_image_size[1]/2)
+
+  #arr = array(im) #will need this if wanting to draw onto image
+  
+  # Detect markers and draw a line from the frame center to the marker center
   for m in detect_markers(im):
 	coord = (m.centroid_x(), m.centroid_y())
-	print(coord)
-	cv.Line(CV_image,(0,0),coord,cv.Scalar(1,1,1))
+	cv.Line(CV_image,CV_image_midpoint,coord,cv.Scalar(200,200,200))
 
   cv.ShowImage("test",CV_image)
   
