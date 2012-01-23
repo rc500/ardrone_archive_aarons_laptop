@@ -10,5 +10,6 @@ Contents
   util
   qtgui
   controllers
+  aruco
 
   examples

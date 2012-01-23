@@ -80,11 +80,15 @@ class MainWindowController(QtCore.QObject):
     else:
       log.error('No status bar found on QMainWindow.')
 
+    # Show null video frame
     self._cam_label = self._widget.findChild(QtGui.QLabel, 'camLabel')
     if self._cam_label is not None:
       self._cam_label.setPixmap(QtGui.QPixmap.fromImage(QtGui.QImage(320,240,QtGui.QImage.Format_RGB16)))
     else:
       log.error('No camera label found on QMainWindow.')
+
+    # No video frame as yet
+    self._last_frame = None
 
     # Wire up our actions
     self._connect_action('actionFlatTrim', self.flat_trim)
@@ -94,12 +98,18 @@ class MainWindowController(QtCore.QObject):
     self._connect_action('actionLand', self.land)
     self._connect_action('actionStartVideo', self.start_video)
     self._connect_action('actionStartNavdata', self.start_navdata)
+    self._connect_action('actionSaveImage', self.save_image)
 
     #self._status_display = StatusDisplay()
     #self._widget.centralWidget().layout().addWidget(self._status_display.widget)
     #for i in range(40):
     #  self._status_display.new_pose(1,2,3,4)
     #  self._status_display.new_pose(4,3,2,1)
+
+    self._tick_timer = QtCore.QTimer()
+    self._tick_timer.setInterval(25)
+    self._tick_timer.timeout.connect(self._control.tick)
+    self._tick_timer.start()
 
   def _connect_action(self, name, cb):
     # Find the action.
@@ -113,7 +123,8 @@ class MainWindowController(QtCore.QObject):
 
   def _vid_cb(self, data):
     """Update the image in the camera window."""
-    self._cam_label.setPixmap(QtGui.QPixmap(QtGui.QImage(data, 320, 240, QtGui.QImage.Format_RGB16)))
+    self._last_frame = QtGui.QImage(data, 320, 240, QtGui.QImage.Format_RGB16)
+    self._cam_label.setPixmap(QtGui.QPixmap(self._last_frame))
 
   def _navdata_cb(self, block):
     if isinstance(block, navdata.DemoBlock):
@@ -167,4 +178,19 @@ class MainWindowController(QtCore.QObject):
     log.info('Start navdata')
     self._control.start_navdata()
 
+  @qt.Slot()
+  def save_image(self):
+    if self._last_frame is None:
+      log.error('No video frame to save')
+      return
+
+    # Search for the next available video image filename
+    i=0
+    imagepath = os.path.abspath('image_%06d.png' % i)
+    while os.path.exists(imagepath):
+      i += 1
+      imagepath =  os.path.abspath('image_%06d.png' % i)
+
+    log.info('Saving image to: ' + imagepath)
+    self._last_frame.save(imagepath)
 

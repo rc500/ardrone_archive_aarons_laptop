@@ -297,9 +297,11 @@ class ChecksumBlock(ct.LittleEndianStructure):
   ]
 
   def json(self):
+    """Return a representation of this block formatted as a JSON string."""
     return json.dumps({ 'type': 'checksum', 'checksum': self.checksum })
 
   def valid(self):
+    """Check the block's header for the appropriate type tag."""
     return self.header.id == NAVDATA_CKS_TAG.value
 
 class DemoBlock(ct.LittleEndianStructure):
@@ -350,6 +352,7 @@ class DemoBlock(ct.LittleEndianStructure):
   ]
 
   def json(self):
+    """Return a representation of this block formatted as a JSON string."""
     json_fields = [
         'ctrl_state', 'vbat_flying_percentage', 'theta', 'phi', 'psi',
         'altitude', 'vx', 'vy', 'vz', 'num_frames',
@@ -360,6 +363,7 @@ class DemoBlock(ct.LittleEndianStructure):
     return json.dumps(json_dict)
 
   def valid(self):
+    """Check the block's header for the appropriate type tag."""
     return self.header.id == NAVDATA_DEMO_TAG.value
   
 class IPhoneAnglesBlock(ct.LittleEndianStructure):
@@ -388,6 +392,7 @@ class IPhoneAnglesBlock(ct.LittleEndianStructure):
   ]
 
   def json(self):
+    """Return a representation of this block formatted as a JSON string."""
     json_fields = [ 'enable', 'ax', 'ay', 'az', 'elapsed' ]
     json_dict = { 'type': 'iphoneangles' }
     for field_name in json_fields:
@@ -395,6 +400,7 @@ class IPhoneAnglesBlock(ct.LittleEndianStructure):
     return json.dumps(json_dict)
 
   def valid(self):
+    """Check the block's header for the appropriate type tag."""
     return self.header.id == NAVDATA_IPHONE_ANGLES_TAG.value
  
 class VisionDetectBlock(ct.LittleEndianStructure):
@@ -441,5 +447,6 @@ class VisionDetectBlock(ct.LittleEndianStructure):
     return json.dumps({ 'type': 'visiondetect', 'features': features })
 
   def valid(self):
+    """Check the block's header for the appropriate type tag."""
     return self.header.id == NAVDATA_VISION_DETECT_TAG.value
 

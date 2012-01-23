@@ -23,10 +23,27 @@ class ConnectionError(Exception):
     return str(self.value)
 
 class ControlLoop(object):
-  """A control loop.
+  """A control loop for the drone. Initialises navdata and video streams.
+
+  You must call the connect and disconnect methods on the control loop before
+  trying any control methods.
+
+  *host* is the IP address of the drone
+
+  *control_host* is the IP address to which decoded packets will be sent
+
+  *video_cb* is a callable which will be passed a sequence of bytes in
+  RGB565 (==RGB16) format for each video frame.
+
+  If non-None, navdata_cb is a callable which will be passed a block as
+  defined in ardrone.core.navdata (e.g. DmoBlock, VisionDetectBlock, etc) as
+  and when verified navdata packets arrive.
+
+  >>> from ..platform import dummy
+  >>> con = dummy.Connection()
+  >>> cl = ControlLoop(con)
 
   """
-
   # Connection numbers
   _AT = 1
   _NAV = 2
@@ -41,33 +58,12 @@ class ControlLoop(object):
       host='192.168.1.1', control_host='127.0.0.1',
       at_port=5556, nav_port=5554, vid_port=5555, config_port=5559,
       control_port=5560, control_data_port=5561,video_data_port=5562):
-    """Initialse the control loop with a connection.
 
-    You must call the connect and disconnect methods on the control loop before
-    trying any control methods.
-
-    *host* is the IP address of the drone
-
-    *control_host* is the IP address to which decoded packets will be sent
-
-    Set video_cb to a callable which will be passed a sequence of bytes in
-    RGB565 (==RGB16) format for each video frame.
-
-    If non-None, navdata_cb is a callable which will be passed a block as
-    defined in ardrone.core.navdata (e.g. DmoBlock, VisionDetectBlock, etc) as
-    and when verified navdata packets arrive.
-
-    >>> from ..platform import dummy
-    >>> con = dummy.Connection()
-    >>> cl = ControlLoop(con)
-
-    """
     self._connection = connection
     self._reset_sequence()
-    self._vid_decoder = videopacket.Decoder()
+    self._vid_decoder = videopacket.Decoder(video_cb)
     self._flying = False
 
-    self.video_cb = video_cb
     self.navdata_cb = navdata_cb
 
     # State for navdata
@@ -93,16 +89,22 @@ class ControlLoop(object):
     self._connection.open(ControlLoop._CONTROL_DATA, (control_host, control_data_port), (None, 3456, None))
     self._connection.open(ControlLoop._VIDEO_DATA, (control_host, video_data_port), (None, 3457, None))
   
+    self._config_current = None
     self._config_to_send = []
+    self._config_ack_timeout = 0
   
+  def tick(self):
+    if self._config_ack_timeout > 0:
+      self._config_ack_timeout -= 1
+
   def bootstrap(self):
     """Initialise all the drone data streams."""
     log.info('Bootstrapping communication with the drone.')
     self.reset()
     self.flat_trim()
-    #self.get_config()
     self.start_navdata()
     self.start_video()
+    self.get_config()
 
   def get_config(self):
     """Ask the drone for it's configuration."""
@@ -141,7 +143,6 @@ class ControlLoop(object):
 
   def start_video(self):
     self._connection.viddata_cb = self._vid_decoder.decode
-    self._vid_decoder.vid_cb = self.video_cb
     self._connection.put(ControlLoop._VID, b'\x01\x00\x00\x00')
 
   def start_navdata(self):
@@ -164,45 +165,53 @@ class ControlLoop(object):
       log.error('Got invalid navdata packet')
       return
 
-    # Dev. guide pp. 40: watchdog state
-    watchdog_state = (ndh.state & navdata.ARDRONE_COM_WATCHDOG_MASK) != 0
-    if watchdog_state:
-      #log.info('Watchdog')
-      # this is a case where the sequence counter should be reset
+    if ndh.sequence == 1:
       self._last_navdata_sequence = 0
-      self._connection.put(ControlLoop._AT, at.comwdg()) 
 
-    #if (ndh.state & navdata.ARDRONE_COM_LOST_MASK) != 0:
-    #  # Dev. guide pp. 40: lost communication
-    #  log.warning('Lost connection, re-establishing navdata connection.')
-    #  self._last_navdata_sequence = 0
-    #  self.send_config()
-    #  self.start_navdata()
-
-    if (ndh.state & navdata.ARDRONE_NAVDATA_BOOTSTRAP) != 0:
-      # Is the AR_DRONE_NAVDATA_BOOSTRAP status bit set (Dev. guide fig 7.1)
-      log.debug('Navdata booststrap')
-      self.send_config()
-      key, value = self._config_to_send[0]
-      log.info('Sending: %s = %s' % (key, value))
-      self._send(at.config(key, value))
-
-    if (ndh.state & navdata.ARDRONE_COMMAND_MASK) != 0:
-      log.debug('ACK command')
-      self._send(at.ctrl(5))
-      self._config_to_send = self._config_to_send[1:]
-
-    if len(self._config_to_send) > 0:
-      key, value = self._config_to_send[0]
-      log.debug('Sending: %s = %s' % (key, value))
-      self._send(at.config(key, value))
-
+    # Check the packet sequence number
     if ndh.sequence <= self._last_navdata_sequence:
       log.error('Dropping out of sequence navdata packet: %s' % (ndh.sequence,))
       return
 
     # Record the sequence number
     self._last_navdata_sequence = ndh.sequence
+
+    # Dev. guide pp. 40: lost communication
+    if (ndh.state & navdata.ARDRONE_COM_LOST_MASK) != 0:
+      log.warning('Lost connection, re-establishing navdata connection.')
+      self._last_navdata_sequence = 0
+      self.start_navdata()
+      return
+
+    # Dev. guide pp. 40: watchdog state
+    # this is a case where the sequence counter should be reset
+    if (ndh.state & navdata.ARDRONE_COM_WATCHDOG_MASK) != 0:
+      self._last_navdata_sequence = 0
+      self._connection.put(ControlLoop._AT, at.comwdg()) 
+
+    # Is the AR_DRONE_NAVDATA_BOOSTRAP status bit set (Dev. guide fig 7.1)
+    if (ndh.state & navdata.ARDRONE_NAVDATA_BOOTSTRAP) != 0:
+      if self._config_ack_timeout == 0:
+        log.info('Navdata booststrap')
+        if len(self._config_to_send) == 0:
+          self._config_current = ('general:navdata_demo', True)
+          self._config_ack_timeout = 30
+          self.send_config()
+
+    if (ndh.state & navdata.ARDRONE_COMMAND_MASK) != 0:
+      self._send(at.ctrl(5))
+      self._config_ack_timeout = 0
+      self._config_current = None
+
+    if len(self._config_to_send) > 0 and self._config_ack_timeout == 0 and self._config_current is None:
+      self._config_current = self._config_to_send[0]
+      self._config_to_send = self._config_to_send[1:]
+
+    if self._config_current is not None and self._config_ack_timeout == 0:
+      key, value = self._config_current
+      log.info('Sending: %s = %s' % (key, value))
+      self._send(at.config(key, value))
+      self._config_ack_timeout = 30
 
     # Record flying state
     self._flying = (ndh.state & navdata.ARDRONE_FLY_MASK) != 0
@@ -216,9 +225,10 @@ class ControlLoop(object):
         self.navdata_cb(packet)
 
   def send_config(self):
+    self._config_to_send = []
 #    self._config_to_send.append(('general:navdata_demo', True))
     self._config_to_send.append(('general:navdata_demo', False)) # required for video detect
-    self._config_to_send.append(('video:video_channel', 2))    
+    self._config_to_send.append(('video:video_channel', 0))    
     #self._config_to_send.append(('video:video_bitrate_control_mode', '1')) # Dynamic
     #self._config_to_send.append(('video:video_codec', '64'))
     self._config_to_send.append(('general:vision_enable', True))

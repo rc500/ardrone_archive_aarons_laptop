@@ -52,6 +52,7 @@
    <addaction name="actionHover"/>
    <addaction name="actionStartVideo"/>
    <addaction name="actionStartNavdata"/>
+   <addaction name="actionSaveImage"/>
   </widget>
   <action name="actionFlatTrim">
    <property name="text">
@@ -107,6 +108,17 @@
    </property>
    <property name="shortcut">
     <string>N</string>
+   </property>
+  </action>
+  <action name="actionSaveImage">
+   <property name="text">
+    <string>Save Image</string>
+   </property>
+   <property name="toolTip">
+    <string>Save a single frame from the video to disk as a PNG file.</string>
+   </property>
+   <property name="shortcut">
+    <string>S</string>
    </property>
   </action>
  </widget>

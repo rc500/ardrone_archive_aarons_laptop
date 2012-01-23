@@ -2,10 +2,10 @@
 Parsing video packets
 =====================
 
-.. warning:: This module is a work in progress!
+This module uses the ``libp264`` native library shipped with the source to
+decode video packets from the drone.
 
 """
-
 from .. import native
 
 import ctypes as ct
@@ -17,15 +17,12 @@ log = logging.getLogger()
 class Decoder(object):
   """A simple object which maintains a raw decoded image form of video packets sent to it.
 
+  *vid_cb* is a callable which will be called with a sequence of bytes
+  corresponding to the raw decoded video frame. If ``None``, no attempt is
+  made to call it.
+
   """
   def __init__(self, vid_cb = None):
-    """Initialise the decoder.
-
-    *vid_cb* is a callable which will be called with a sequence of bytes
-    corresponding to the raw decoded video frame. If ``None``, no attempt is
-    made to call it.
-
-    """
     self.data = []
     self.vid_cb = vid_cb
     self._handle = None

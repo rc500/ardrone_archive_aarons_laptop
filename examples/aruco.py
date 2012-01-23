@@ -1,10 +1,20 @@
+"""
+``aruco.py``: using the aruco bindings
+--------------------------------------
+
+This is a simple example program which takes two command-line arguments: the
+input image to load which contains aruco markers and an output image filename
+to write a copy of the input image with the detected marker positions drawn
+into it.
+
+"""
 import logging
 logging.basicConfig(level = logging.DEBUG)
 
 import os
 import sys
+from numpy import array
 from PIL import Image
-import numpy as np
 
 # Where is this file?
 this_dir = os.path.abspath(os.path.dirname(__file__))
@@ -12,23 +22,22 @@ this_dir = os.path.abspath(os.path.dirname(__file__))
 # Insert a path to load modules from relative to this file
 sys.path.insert(0, os.path.abspath(os.path.join(this_dir, '..')))
 
-# Load the ardrone modules
-import ardrone.aruco as aruco
+# Load the aruco module.
+from ardrone.aruco import detect_markers
 
 def main():
+  """The main entry point of the program."""
+
+  # Check the command-line arcuments.
   if len(sys.argv) < 3:
     print('usage: aruco.py input.png output.png')
-    return False
+    sys.exit(1)
 
-  arr = np.array(Image.open(sys.argv[1]).convert("RGB"))
-  detector = aruco.MarkerDetector()
-  markers = detector.detect(arr)
-  for m in markers:
-    m.draw(arr)
+  # This is probably the simplest possible example.
+  im = Image.open(sys.argv[1]).convert('RGB')
+  arr = array(im)
+  [m.draw(arr) for m in detect_markers(im)]
   Image.fromarray(arr).save(sys.argv[2], 'PNG')
 
-  return True
-
 if __name__ == '__main__':
-  if not main():
-    sys.exit(1)
+  main()
