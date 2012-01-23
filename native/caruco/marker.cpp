@@ -27,10 +27,16 @@ int aruco_marker_id(aruco_marker_t* marker)
   return marker->marker.id;
 }
 
-cv::Point aruco_marker_centroid(
+int aruco_marker_centroid_x(
     aruco_marker_t* marker)
 {
-  return marker->marker.centroid();
+  return marker->marker.centroid_x();
+}
+
+int aruco_marker_centroid_y(
+    aruco_marker_t* marker)
+{
+  return marker->marker.centroid_y();
 }
 
 void aruco_marker_draw(aruco_marker_t* marker,
