@@ -4,7 +4,7 @@
 
 This example program takes one command-line argument: the input image to
 load which contains aruco markers. The centroid of these markers are then
-output to terminal.
+output to terminal and shown on an image relative to the frame center.
 """
 import logging
 logging.basicConfig(level = logging.DEBUG)
