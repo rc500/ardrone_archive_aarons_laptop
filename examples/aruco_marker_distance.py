@@ -13,6 +13,7 @@ import os
 import sys
 from numpy import array
 from PIL import Image
+import cv
 
 # Where is this file?
 this_dir = os.path.abspath(os.path.dirname(__file__))
@@ -31,12 +32,27 @@ def main():
     print('usage: aruco.py input.png')
     sys.exit(1)
 
-  # This is probably the simplest possible example.
+  cv.NamedWindow("test",cv.CV_WINDOW_AUTOSIZE)
+  
+  # Load image into required formats
   im = Image.open(sys.argv[1]).convert('RGB')
-  #arr = array(im)
+  CV_image = cv.LoadImage(sys.argv[1])
+  
+  # Find minpoint of image
+  CV_image_size = cv.GetSize(CV_image)
+  CV_image_midpoint = (CV_image_size[0]/2,CV_image_size[1]/2)
+
+  #arr = array(im) #will need this if wanting to draw onto image
+  
+  # Detect markers and draw a line from the frame center to the marker center
   for m in detect_markers(im):
-	centroid = m.centroid()
-	print(centroid)
+	coord = (m.centroid_x(), m.centroid_y())
+	cv.Line(CV_image,CV_image_midpoint,coord,cv.Scalar(200,200,200))
+
+  cv.ShowImage("test",CV_image)
+  
+  cv.WaitKey()
+
 
 if __name__ == '__main__':
   main()
