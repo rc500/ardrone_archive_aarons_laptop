@@ -7,22 +7,25 @@ import numpy as np
 import sys
 
 #load greyscale image
-img = cv.LoadImageM("frame1.jpg",cv.CV_LOAD_IMAGE_GRAYSCALE)
+img = cv.LoadImageM("frame2.jpg",cv.CV_LOAD_IMAGE_GRAYSCALE)
 #load colour image for displaying
-im = cv.LoadImageM("frame1.jpg");
+im = cv.LoadImageM("frame2.jpg");
 
-###creates map for corner detection
-##
-##corners = cv.CreateImage(cv.GetSize(img), cv.IPL_DEPTH_32F, 1)
-##cv.PreCornerDetect(img, corners, apertureSize=3)
-##
-##for y in range(0, im.height):
-## for x in range(0, im.width):
-##  crnr = cv.Get2D(corners, y, x) # get the x,y value
-##  # check the corner detector response
-##  if crnr[0] > 10e-06:
-##   # draw a small circle on the original image
-##   cv.Circle(im,(x,y),2,cv.RGB(0,0 ,255))
+cv.Smooth(img, img, cv.CV_GAUSSIAN,15)
+
+
+#creates map for corner detection
+
+corners = cv.CreateImage(cv.GetSize(img), cv.IPL_DEPTH_32F, 1)
+cv.PreCornerDetect(img, corners, apertureSize=3)
+
+for y in range(0, im.height):
+ for x in range(0, im.width):
+  crnr = cv.Get2D(corners, y, x) # get the x,y value
+  # check the corner detector response
+  if crnr[0] > 10e-06:
+   # draw a small circle on the original image
+   cv.Circle(im,(x,y),2,cv.RGB(0,0 ,255))
 
 # harris edge detector
 harris_dst = cv.CreateMat(img.height,img.width, cv.CV_32FC1)

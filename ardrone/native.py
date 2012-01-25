@@ -26,7 +26,7 @@ def load_dll(name):
   native_dir = os.path.join(this_dir, 'native')
 
   for lib_dir in ['', 'bin', 'lib']:
-    for suffix in ['', '.so']:
+    for suffix in ['', '.so', '.dll']:
       dllpath = os.path.join(native_dir, lib_dir, name + suffix)
       if os.path.exists(dllpath):
         try:
