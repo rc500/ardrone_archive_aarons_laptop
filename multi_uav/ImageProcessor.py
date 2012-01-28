@@ -8,38 +8,13 @@ from PIL import Image
 sys.path.insert(0, os.path.abspath('..'))
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-# Import qt modules (platform independant)
-import ardrone.util.qtcompat as qt
-QtNetwork = qt.import_module('QtNetwork')
-
-import ardrone.core.videopacket as Videopacket
 from ardrone.aruco import detect_markers
 
 class ImageProcessor(object):
 	def __init__(self,drone_id):
-
-		# Set up a UDP listening socket on port 5562 which calls readData upon socket activity
-		self.socket = QtNetwork.QUdpSocket()
-		if not self.socket.bind(QtNetwork.QHostAddress.Any, 5562):
-			raise RuntimeError('Error binding to port: %s' % (self.socket.errorString()))
-		self.socket.readyRead.connect(self.readData)
 	
 		# --- INITIALISE APPLICATION OBJECTS ----
 		self._im_viewer = ImageViewer(drone_id)
-		self._vid_decoder = Videopacket.Decoder(self.process)
-		
-	def readData(self):
-		"""Called when there is some interesting data to read on the video socket."""
-		while self.socket.hasPendingDatagrams():
-			sz = self.socket.pendingDatagramSize()
-			(data, host, port) = self.socket.readDatagram(sz)
-
-		# Some hack to account for PySide vs. PyQt differences
-		if qt.USES_PYSIDE:
-			data = data.data()
-		
-		# Decode video data and pass result to the ImageProcessor instance
-		self._vid_decoder.decode(data)
 
 	def process(self,data):
 
