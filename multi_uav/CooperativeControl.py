@@ -16,5 +16,4 @@ class CooperativeControl(object):
 
 		pass
 
-	def run(self):
-		pass
+

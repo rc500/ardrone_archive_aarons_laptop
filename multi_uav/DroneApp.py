@@ -40,4 +40,4 @@ class DroneApp(object):
 		self._coop_control = CooperativeControl.CooperativeControl(self._pos_control_1)  # Will want to add in _drone2 in time
 
 	def run(self):
-		self._coop_control.run()
+		self.app.exec_()
