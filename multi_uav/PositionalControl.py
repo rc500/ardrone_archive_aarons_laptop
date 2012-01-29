@@ -44,9 +44,9 @@ class PositionalControl(object):
 	def readControlData(self):
 	    """Called when there is some interesting data to read on the control socket."""
 	
-	    while self.socket.hasPendingDatagrams():
-	      sz = self.socket.pendingDatagramSize()
-	      (data, host, port) = self.socket.readDatagram(sz)
+	    while self.socket_control.hasPendingDatagrams():
+	      sz = self.socket_control.pendingDatagramSize()
+	      (data, host, port) = self.socket_control.readDatagram(sz)
 	
 	      # Some hack to account for PySide vs. PyQt differences
 	      if qt.USES_PYSIDE:
@@ -55,19 +55,19 @@ class PositionalControl(object):
 	      # Parse the packet
 	      packet = json.loads(data.decode())
 	
-		#Run height control if packet contains height information
-	      if packet['type'] == 'demo':
-			height = packet['altitude']
-			height_control(height)
+		  #Run height control if packet contains height information
+	      #if packet['type'] == 'demo':
+			#height = packet['altitude']
+			#height_control(height)
 	
 	      ## Print it prettily
-	      #print(json.dumps(packet, indent=True))
+	      print(json.dumps(packet, indent=True))
 	      		
 	def readVideoData(self):
 		"""Called when there is some interesting data to read on the video socket."""
-		while self.socket.hasPendingDatagrams():
-			sz = self.socket.pendingDatagramSize()
-			(data, host, port) = self.socket.readDatagram(sz)
+		while self.socket_video.hasPendingDatagrams():
+			sz = self.socket_video.pendingDatagramSize()
+			(data, host, port) = self.socket_video.readDatagram(sz)
 
 		# Some hack to account for PySide vs. PyQt differences
 		if qt.USES_PYSIDE:
