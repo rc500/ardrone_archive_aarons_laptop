@@ -23,7 +23,7 @@ class PositionalControl(object):
 		self._control=_control
 
 		# --- INITIALISE APPLICATION OBJECTS ----
-		self._im_proc = ImageProcessor.ImageProcessor(drone_id)
+		self._im_proc = ImageProcessor.ImageProcessor(self,drone_id)
 		self._vid_decoder = Videopacket.Decoder(self._im_proc.process)
 				
 		# Start video on drone
@@ -77,5 +77,6 @@ class PositionalControl(object):
 		self._vid_decoder.decode(data)
 		
 	def update(self,distance):
+		
 		self.marker_distance = distance
 		print(self.marker_distance)
