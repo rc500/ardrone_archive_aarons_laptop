@@ -25,14 +25,10 @@ class ImageProcessor(object):
 		# Convert image to RGB888 which is more OpenCV friendly
 		CV_image = cv.CreateImage((320,240), cv.IPL_DEPTH_8U, 3)
 		cv.CvtColor(ipl_image, CV_image, cv.CV_BGR5652BGR)
-				
-		# Convert prep - MAKE THIS BETTER
-		cv.SaveImage("frame.png", CV_image)
-		RGB_image = Image.open("frame.png").convert('RGB')
-  
-		# Convert image into aruco-friendly format (array)
-		# arr = array(RGB_image) #will need this if wanting to draw onto image using aruco library
-				
+
+		# Convert image to required format for marker detection library
+		RGB_image = Image.fromstring("L", cv.GetSize(CV_image), CV_image.tostring()).convert('RGB')
+		
 		# Find midpoint of image
 		CV_image_size = cv.GetSize(CV_image)
 		CV_image_midpoint = (CV_image_size[0]/2,CV_image_size[1]/2)
@@ -42,11 +38,6 @@ class ImageProcessor(object):
 			coord = (m.centroid_x(), m.centroid_y())
 			cv.Line(CV_image,CV_image_midpoint,coord,cv.Scalar(200,200,200))		
 
-		# Convert back to OpenCV-friendly format (RGB888)
-		#stringImage = Image.fromarray(arr).tostring()
-		#cvImage = cv.CreateImageHeader((320,240), cv.IPL_DEPTH_8U, 3)
-		#cv.SetData(cvImage, stringImage)
-		
 		# Show processed image
 		self._im_viewer.show(CV_image)
 
