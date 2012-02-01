@@ -38,7 +38,7 @@ def main():
   im = Image.open(sys.argv[1]).convert('RGB')
   CV_image = cv.LoadImage(sys.argv[1])
   
-  # Find minpoint of image
+  # Find midpoint of image
   CV_image_size = cv.GetSize(CV_image)
   CV_image_midpoint = (CV_image_size[0]/2,CV_image_size[1]/2)
 
