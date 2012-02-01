@@ -83,7 +83,9 @@ class ExampleApp(object):
     arr = np.fromstring(raw_video_frame,dtype=np.uint16).astype(np.uint32)
     arr = 0xFF000000 + ((arr & 0xF800) >> 8) + ((arr & 0x07E0) << 5) + ((arr & 0x001F) << 19)
     im1=Image.fromstring('RGBA', (width,height), arr, 'raw', 'RGBA', 0, 1)
-    im1.save('frame2.jpg')
+    im1.save('s2.jpg')
+    
+    
 
 
   def socketReadyRead(self):
