@@ -54,11 +54,9 @@ class ImageProcessor(object):
 		for m in detect_markers(PIL_image):
 			marker_center = (m.centroid_x(), m.centroid_y())
 			cv.Line(CV_image,CV_image_midpoint,marker_center,cv.Scalar(200,200,200))		
-			print("here")
 			# Update relative position
 			relative_position = (marker_center[0] - CV_image_midpoint[0], marker_center[1] - CV_image_midpoint[1])
 			self._update.update(relative_position)
-			print (relative_position)
 			
 		# Show processed image
 		self._im_viewer.show(CV_image)
