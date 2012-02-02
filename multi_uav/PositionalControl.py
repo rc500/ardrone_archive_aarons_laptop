@@ -9,6 +9,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 # Import qt modules (platform independant)
 import ardrone.util.qtcompat as qt
+QtCore = qt.import_module('QtCore')
 QtNetwork = qt.import_module('QtNetwork')
 
 from . import ImageProcessor
@@ -19,7 +20,7 @@ class PositionalControl(object):
 	The core drone control object which contains functions to control the position of an individual drone.
 	This is done through the ControlLoop object.
 	"""
-
+	
 	marker_distance = (0,0)
 	state = {
 	                'roll': 0.0,
@@ -31,6 +32,8 @@ class PositionalControl(object):
 	                'hover': True,
 	                                };
 	
+	packet = {"type":"initialise"}
+	
 	def __init__(self,drone_id,_control,pseudo_network):
 		# --- ASSIGN POINTERS ---
 		self._control=_control
@@ -39,7 +42,7 @@ class PositionalControl(object):
 		# --- INITIALISE APPLICATION OBJECTS ----
 		self._im_proc = ImageProcessor.ImageProcessor(self,drone_id)
 		self._vid_decoder = Videopacket.Decoder(self._im_proc.process)
-		self._network = NetworkManager(self._vid_decoder,self._pseudo_network)
+		self._network = NetworkManager(self._vid_decoder,self._pseudo_network,self)
 		
 		# Start video and navdata stream on drone
 		self._control.start_video()
@@ -49,8 +52,7 @@ class PositionalControl(object):
 		self._control.reset()
 
 		# --- INITIALISE CONTROL OBJECTS ---
-		self._height_control = ProportionalController(0.02)
-		self._roll_control = ProportionalController(0.02)
+		#self._roll_control = ProportionalController(0.02,self)
 
 	def take_off(self):
 		self._control.flat_trim()
@@ -60,13 +62,18 @@ class PositionalControl(object):
 		self._control.land()
 		
 	def set_altitude(self,r):
-		self.state['altitude'] = self._height_control.get_control(self.packet['altitude'],r)
-		_network.sendControl(self.state)		
+		self._height_control = ProportionalController(0.02,self)
+		self._height_control.get_control(r)
+		#self.state['gas'] = self._height_control.get_control(self.packet['altitude'],r)
+		#self._network.sendControl(self.state)
 
 	def update(self,distance):
 		self.marker_distance = distance
 		print(self.marker_distance)
-		
+	
+	def update_packet(self,packet):
+		self.packet = packet
+			
 class NetworkManager(object):
 	"""
 	A class which manages the sending and receiving of packets over the network.
@@ -78,15 +85,14 @@ class NetworkManager(object):
 	HOST, HOST2, PORT_SEND, PORT_CONTROL, PORT_VIDEO, PORT_STATUS = ('127.0.0.1', '192.168.1.1', 5560, 5561, 5562, 5557)
 	seq = 0
 
-	packet = {"type":"initialise"}
-	
-	def __init__(self,_vid_decoder,_pseudo_network):
+	def __init__(self,_vid_decoder,_pseudo_network,_update):
 		"""
 		Initialise the class
 		"""
 		# Pointer assignment
 		self._vid_decoder = _vid_decoder
 		self._pseudo_network = _pseudo_network
+		self._update = _update
 		
 		# Set up a UDP listening socket on port for control data
 		self.socket_control = QtNetwork.QUdpSocket()
@@ -127,14 +133,17 @@ class NetworkManager(object):
 			# Some hack to account for PySide vs. PyQt differences
 			if qt.USES_PYSIDE:
 				data = data.data()
-	        
-			#Run height control if packet contains height information
-			if self.packet['type'] == 'demo':
-				# Parse the packet
-				self.packet = json.loads(data.decode())
-				# Print it prettily
-				print(json.dumps(self.packet, indent=True))
 
+	        # Parse the packet
+			self.packet = json.loads(data.decode())
+			
+			# Keep packet if it contains status information
+			if self.packet['type'] == 'demo':
+				self._update.update_packet(self.packet)
+				#Print it prettily
+				#print(json.dumps(self.packet, indent=True))
+
+			# Update status of the Control Network when ready
 			if self.ready_control == False:
 				print("Control Ready")
 				self.sendStatus('ControlReady')
@@ -149,7 +158,7 @@ class NetworkManager(object):
 
 			# Some hack to account for PySide vs. PyQt differences
 			if qt.USES_PYSIDE:
-				data = data.data()
+					data = data.data()
 		
 			# Decode video data and pass result to the ImageProcessor instance
 			self._vid_decoder.decode(data)
@@ -172,12 +181,23 @@ class ProportionalController(object):
 		
 	correction_step = 0.1
 
-	def __init__(self,k=0.02):
+	def __init__(self,k,_control):
 		self.k = k
-		
-	def get_control(self,y,r):
+		self._control = _control
+
+		# Create a little 'heartbeat' timer that will call heartbeat() every so often.
+		self.heartbeat_timer = QtCore.QTimer()
+		self.heartbeat_timer.setInterval(20) # ms
+		self.heartbeat_timer.timeout.connect(self.heartbeat)
+    
+	def get_control(self,r):
+		self.r = r
+		self.heartbeat_timer.start()
+
+	def heartbeat(self):
+		y = self._control.packet['altitude']
 		#implement proportional control
-		error = r-y
+		error = self.r-y
 		#print('Current error is', error)
 		psuedo_error = error * self.k
 		correction = self.correction_step * psuedo_error
@@ -186,8 +206,10 @@ class ProportionalController(object):
 		elif correction <= -1:
 			correction = -1
 		print ("correction = " + str(correction))
-		return correction
 		
+		self._control.state['gas'] = correction
+		self._control._network.sendControl(self._control.state)
+
 class LeadLagController(object):
 
 	"""
