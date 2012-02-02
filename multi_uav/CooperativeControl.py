@@ -25,21 +25,19 @@ class CooperativeControl(object):
 	
 	def update_status(self,data):
 		if data == 'ControlReady':
-			print("Coop caught Control Ready; ready is at %r" % (self.ready,))
-			self.ready = self.ready - 1
-		
-		if data == 'VideoReady':
-			self.ready = self.ready - 1
-			
+				self.ready = self.ready - 1
+				print("Coop caught Control Ready; awaiting %r more processes to initialise" % self.ready)
+
+		if data == 'VideoReady':			
+				self.ready = self.ready - 1
+				print("Coop caught Video Ready; awaiting %r more processes to initialise" % self.ready)	
+
 		if self.ready == 0:
-			self.main()
+			self.start()
 		
-	def main(self):
-		print("here")
+	def start(self):
+		print("Entered main")
 		self._drone1.take_off()
-		time.sleep(3.0)
-		self._drone1.land()
-		sys.exit()
 
 
 class NetworkManager(object):
@@ -72,19 +70,18 @@ class NetworkManager(object):
 		"""
 		Called when there is some interesting data to read on the status socket
 		"""
-		
-		print("Status packet caught")
+
 		while self.socket_status.hasPendingDatagrams():
 			sz = self.socket_status.pendingDatagramSize()
 			(data, host, port) = self.socket_status.readDatagram(sz)
 	
 			if data == 'ControlReady':
-				print("Coop caught Control Ready; ready is at %r", self.ready)
 				self.ready = self.ready - 1
+				print("Coop caught Control Ready; awaiting %r more processes to initialise" % self.ready)
 			
 			if data == 'VideoReady':
-				
 				self.ready = self.ready - 1
+				print("Coop caught Video Ready; awaiting %r more processes to initialise" % self.ready)
 			
 			if self.ready == 0:
 				_coop.main()
