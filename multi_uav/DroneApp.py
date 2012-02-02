@@ -12,7 +12,7 @@ from ardrone.core.controlloop import ControlLoop
 from ardrone.platform import qt as platform
 from . import PositionalControl
 from . import CooperativeControl
-
+import time
 # Import qt modules (platform independant)
 import ardrone.util.qtcompat as qt
 QtCore = qt.import_module('QtCore')
@@ -34,10 +34,18 @@ class DroneApp(object):
 		self._drone1 = ControlLoop(connection)
 		#self._drone2 = ? #for now
 		
+		# Initialise Status ports
+		host='192.168.1.1'
+		STATUS_PORT = 5557
+		connection.open(8, (host, STATUS_PORT), (None, STATUS_PORT, None))
+
 		# --- INITIALISE APPLICATION OBJECTS ----
-		self._pos_control_1 = PositionalControl.PositionalControl(1,self._drone1)
+		self._pos_control_1 = PositionalControl.PositionalControl(1,self._drone1,self)
 #		self._pos_control_2 = PositionalControl.PositionalControl(2,self._drone2)
 		self._coop_control = CooperativeControl.CooperativeControl(self._pos_control_1)  # Will want to add in _drone2 in time
 
 	def run(self):
 		self.app.exec_()
+		
+	def update_status(self,data):
+		self._coop_control.update_status(data)
