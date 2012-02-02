@@ -54,9 +54,7 @@ class PositionalControl(object):
 
 	def take_off(self):
 		self._control.flat_trim()
-		time.sleep(3.0)
 		self._control.take_off()
-		time.sleep(4.0)
 
 	def land(self):
 		self._control.land()
@@ -80,6 +78,8 @@ class NetworkManager(object):
 	HOST, HOST2, PORT_SEND, PORT_CONTROL, PORT_VIDEO, PORT_STATUS = ('127.0.0.1', '192.168.1.1', 5560, 5561, 5562, 5557)
 	seq = 0
 
+	packet = {"type":"initialise"}
+	
 	def __init__(self,_vid_decoder,_pseudo_network):
 		"""
 		Initialise the class
@@ -112,8 +112,8 @@ class NetworkManager(object):
 	def sendStatus(self,status):
 		# Send status over the network
 		#self.sock.sendto(status, (self.HOST2, self.PORT_STATUS))
+		print("Status sent")		
 		self._pseudo_network.update_status(status)
-		print("Status sent")
 
 	def readControlData(self):
 		"""
@@ -129,17 +129,17 @@ class NetworkManager(object):
 				data = data.data()
 	        
 			#Run height control if packet contains height information
-#			if self.packet['type'] == 'demo':
+			if self.packet['type'] == 'demo':
 				# Parse the packet
-			self.packet = json.loads(data.decode())
-			
+				self.packet = json.loads(data.decode())
+				# Print it prettily
+				print(json.dumps(self.packet, indent=True))
+
 			if self.ready_control == False:
 				print("Control Ready")
 				self.sendStatus('ControlReady')
 				self.ready_control = True
 				
-			## Print it prettily
-			#print(json.dumps(self.packet, indent=True))
 	      		
 	def readVideoData(self):
 		"""Called when there is some interesting data to read on the video socket."""
