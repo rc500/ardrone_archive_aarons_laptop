@@ -129,6 +129,12 @@ class ControlLoop(object):
     """
     self._send(at.ref(take_off = False, reset = False))
  
+  def view_camera(self,channel):
+	r""" Set camera channel to stream from drone.
+	
+	"""
+	self._send(at.zap(channel))
+	
   def hover(self):
     r"""Send a hover command.
 
@@ -137,7 +143,8 @@ class ControlLoop(object):
 
   def reset(self):
     r"""Send a reset command to the drone.
-
+    Forward facing camera = channel 0
+    Downward facing camera = channel 1
     """
     self._send(at.ref(reset = True))
 
@@ -228,7 +235,7 @@ class ControlLoop(object):
     self._config_to_send = []
 #    self._config_to_send.append(('general:navdata_demo', True))
     self._config_to_send.append(('general:navdata_demo', False)) # required for video detect
-    self._config_to_send.append(('video:video_channel', 0))    
+#    self._config_to_send.append(('video:video_channel', 0))    
     #self._config_to_send.append(('video:video_bitrate_control_mode', '1')) # Dynamic
     #self._config_to_send.append(('video:video_codec', '64'))
     self._config_to_send.append(('general:vision_enable', True))
