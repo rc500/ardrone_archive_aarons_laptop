@@ -23,32 +23,20 @@ class ImageProcessor(object):
 
 		# --- OPEN_CV FORMAT ---
 		# Create OpenCV header and read in drone video data as RGB565
-		ipl_image = cv.CreateImageHeader((320,240), cv.IPL_DEPTH_8U, 2)		
+		ipl_image = cv.CreateImageHeader((320,240), cv.IPL_DEPTH_8U, 2)		# Downward camera size is actually 176x144
 		cv.SetData(ipl_image, data)
 		# Convert image to RGB888 which is more OpenCV friendly
 		CV_image = cv.CreateImage((320,240), cv.IPL_DEPTH_8U, 3)
 		cv.CvtColor(ipl_image, CV_image, cv.CV_BGR5652BGR)
 
 		# --- ARUCO FORMAT ---
-		# Convert from rgb565 to rgb888 using PIL
-		#arr = np.fromstring(data,dtype=np.uint16).astype(np.uint32)
-		#arr = 0xFF000000 + ((arr & 0xF800) >> 8) + ((arr & 0x07E0) << 5) + ((arr & 0x001F) << 19)
-		#PIL_image=Image.fromstring('RGB', (320,240), arr, 'raw', 'RGB', 0, 1)
-		# Convert to RGB for aruco
-		#aruco_image = PIL_image.convert('RGB')
-		
-		#buff = StringIO.StringIO()
-		#buff.write(data)
-		#buff.seek(0)
-		#PIL_image = Image.open(buff)
-		#aruco_image = PIL_image.convert('RGB')
-		
 		PIL_image = self.cv2array(CV_image)
 		
 		# Find midpoint of image
 		CV_image_size = cv.GetSize(CV_image)
-		CV_image_midpoint = (CV_image_size[0]/2,CV_image_size[1]/2)
-
+		#CV_image_midpoint = (CV_image_size[0]/2,CV_image_size[1]/2)
+		CV_image_midpoint = (176/2,144/2) # need to use this for downward facing camera as image does not take up whole 320x240 but is decoded as such
+		
 		# Detect and draw on marker centerpoints - currently only works for one at a time
 		for m in detect_markers(PIL_image):
 			marker_center = (m.centroid_x(), m.centroid_y())
