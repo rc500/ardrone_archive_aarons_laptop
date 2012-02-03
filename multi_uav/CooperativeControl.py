@@ -14,6 +14,8 @@ QtNetwork = qt.import_module('QtNetwork')
 
 class CooperativeControl(object):
 
+	phase = 0
+	
 	def __init__(self,_drone1): # Will want to add in _drone2 in time
 		# --- INITIALISE APPLICATION OBJECTS ----
 		#self._status_viewer = # add at some point
@@ -22,10 +24,27 @@ class CooperativeControl(object):
 		self._drone1 = _drone1
 		
 	def start(self):
-		print("Entered main")
+		print("Program started")
+		
+		# Phase 1 - take off to a height
+		self.phase = 1
 		self._drone1.take_off()
 		self._drone1.set_altitude(1000)
 
+	def next_phase(self):
+		"""
+		Moves onto next phase
+		"""
+		self.phase = self.phase + 1
+		if self.phase == 2:
+			# Phase 2 - correct to marker
+			self.correct_to_marker()
+			
+	def correct_to_marker(self):
+		print("-----------------------------------------------Marker correction started--------------------------------------------------")
+		# Insert marker correction code here - requires use of downward facing camera first
+		pass
+		
 class NetworkManager(object):
 	"""
 	A class which manages the sending and receiving of packets over the network.
@@ -53,12 +72,14 @@ class NetworkManager(object):
 
 	def readStatusData(self):
 		"""
-		Called when there is some interesting data to read on the status socket
+		Called when there is some interesting data to read on the status socket.
+		Calls the next phase functions when desired status is achieved.
 		"""
 		while self.socket_status.hasPendingDatagrams():
 			sz = self.socket_status.pendingDatagramSize()
 			(data, host, port) = self.socket_status.readDatagram(sz)
 	
+			## --- INITIALISING STATUS CHECKS --- ##
 			if data == 'ControlReady':
 				self.ready = self.ready - 1
 				print("Coop caught Control Ready; awaiting %r more processes to initialise" % self.ready)
@@ -69,3 +90,9 @@ class NetworkManager(object):
 			
 			if self.ready == 0:
 				self._coop.start()
+				self.ready = 1 # to make sure this isn't called again
+
+			## --- CONTROL STATUS CHECK --- ##
+			if data == 'ControlAchieved':
+				self._coop.next_phase()
+				

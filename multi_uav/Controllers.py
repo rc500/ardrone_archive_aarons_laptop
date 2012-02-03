@@ -17,7 +17,8 @@ class Controller(object):
 	"""
 		
 	correction_step = 0.1
-
+	error_count = 0
+	
 	def __init__(self,_control,feedback_type,output_type):
 		# Assign pointers
 		self._control = _control
@@ -51,10 +52,28 @@ class Controller(object):
 		# --- calculations would be here ---#
 
 		# Don't forget to add
+		# self.check_error(error)
 		# self.output(output)
 		# at the end
 		pass
 		
+	def check_error(self,error):
+		"""
+		Checks whether the error is within acceptable limits.
+		If it is within limits then the controller has achieved its goal and posts this status to the network.
+		"""
+
+		# Check whether error is within limits
+		if error <= 0.1 and error >= -0.1:
+			self.error_count = self.error_count + 1
+		else:
+			self.error_count = 0
+		
+		# If error within limits for a suitable length of time then it has achieved its goal
+		if self.error_count == 40:
+			# Post status
+			self._control._network.sendStatus('ControlAchieved')
+			
 	def output(self,output):
 		# Print the output
 		print ("correction = " + str(output))
@@ -62,7 +81,7 @@ class Controller(object):
 		# Send the update to the drone, via the structure in PositionalControl (so it has a copy)
 		self._control.state[self.output_type] = output
 		self._control._network.sendControl(self._control.state)
-		
+
 class ProportionalController(Controller):
 	"""
 	Implementation of a proportional controller which takes a position and returns a correcting velocity
@@ -89,8 +108,9 @@ class ProportionalController(Controller):
 			correction = 1
 		elif correction <= -1:
 			correction = -1
-			
+		
 		# Continue as per Controller base class
+		self.check_error(correction)
 		self.output(correction)
 		
 class LeadLagController(object):
