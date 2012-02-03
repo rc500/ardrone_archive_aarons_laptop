@@ -35,9 +35,9 @@ class DroneApp(object):
 		#self._drone2 = ? #for now
 		
 		# Initialise Status ports
-		host='192.168.1.1'
-		STATUS_PORT = 5557
-		connection.open(8, (host, STATUS_PORT), (None, STATUS_PORT, None))
+		#host='192.168.1.1'
+		#STATUS_PORT = 5557
+		#connection.open(8, (host, STATUS_PORT), (None, STATUS_PORT, None))
 
 		# --- INITIALISE APPLICATION OBJECTS ----
 		self._pos_control_1 = PositionalControl.PositionalControl(1,self._drone1,self)
@@ -46,6 +46,3 @@ class DroneApp(object):
 
 	def run(self):
 		self.app.exec_()
-		
-	def update_status(self,data):
-		self._coop_control.update_status(data)

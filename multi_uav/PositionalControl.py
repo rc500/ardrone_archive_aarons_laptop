@@ -78,11 +78,14 @@ class NetworkManager(object):
 	"""
 	A class which manages the sending and receiving of packets over the network.
 	It stores the relevant data of received packets and sends packets when requested.
+	
+	IP address of drone: 192.168.1.1
+	Localhost: 127.0.0.1
 	"""
 	ready_control = False
 	ready_video = False
 	
-	HOST, HOST2, PORT_SEND, PORT_CONTROL, PORT_VIDEO, PORT_STATUS = ('127.0.0.1', '192.168.1.1', 5560, 5561, 5562, 5557)
+	HOST, PORT_SEND, PORT_CONTROL, PORT_VIDEO, PORT_STATUS = ('127.0.0.1', 5560, 5561, 5562, 5563)
 	seq = 0
 
 	def __init__(self,_vid_decoder,_pseudo_network,_update):
@@ -117,9 +120,9 @@ class NetworkManager(object):
 	
 	def sendStatus(self,status):
 		# Send status over the network
-		#self.sock.sendto(status, (self.HOST2, self.PORT_STATUS))
+		self.sock.sendto(status, (self.HOST, self.PORT_STATUS))
 		print("Status sent")		
-		self._pseudo_network.update_status(status)
+		#self._pseudo_network.update_status(status)
 
 	def readControlData(self):
 		"""
