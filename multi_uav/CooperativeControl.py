@@ -23,7 +23,7 @@ class CooperativeControl(object):
 		
 	def start(self):
 		print("Entered main")
-#		self._drone1.take_off()
+		self._drone1.take_off()
 		self._drone1.set_altitude(1000)
 
 class NetworkManager(object):

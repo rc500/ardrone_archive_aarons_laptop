@@ -12,6 +12,7 @@ import ardrone.util.qtcompat as qt
 QtCore = qt.import_module('QtCore')
 QtNetwork = qt.import_module('QtNetwork')
 
+from . import Controllers as Controller
 from . import ImageProcessor
 import ardrone.core.videopacket as Videopacket
 
@@ -62,10 +63,8 @@ class PositionalControl(object):
 		self._control.land()
 		
 	def set_altitude(self,r):
-		self._height_control = ProportionalController(0.02,self)
-		self._height_control.get_control(r)
-		#self.state['gas'] = self._height_control.get_control(self.packet['altitude'],r)
-		#self._network.sendControl(self.state)
+		self._height_control = Controller.ProportionalController(self,'altitude','gas',0.02)
+		self._height_control.start_control(r)
 
 	def update(self,distance):
 		self.marker_distance = distance
@@ -170,88 +169,3 @@ class NetworkManager(object):
 				print("Video Ready")
 				self.sendStatus('VideoReady')
 				self.ready_video = True
-				
-
-class ProportionalController(object):
-	"""
-	Implementation of a proportional controller which takes a position and returns a correcting velocity
-	
-	CONTROLLER:
-	G(s) = K
-	
-	The controller output magnitude is hard limited to 1
-	"""
-		
-	correction_step = 0.1
-
-	def __init__(self,k,_control):
-		self.k = k
-		self._control = _control
-
-		# Create a little 'heartbeat' timer that will call heartbeat() every so often.
-		self.heartbeat_timer = QtCore.QTimer()
-		self.heartbeat_timer.setInterval(20) # ms
-		self.heartbeat_timer.timeout.connect(self.heartbeat)
-    
-	def get_control(self,r):
-		self.r = r
-		self.heartbeat_timer.start()
-
-	def heartbeat(self):
-		y = self._control.packet['altitude']
-		#implement proportional control
-		error = self.r-y
-		#print('Current error is', error)
-		psuedo_error = error * self.k
-		correction = self.correction_step * psuedo_error
-		if correction >= 1:
-			correction = 1
-		elif correction <= -1:
-			correction = -1
-		print ("correction = " + str(correction))
-		
-		self._control.state['gas'] = correction
-		self._control._network.sendControl(self._control.state)
-
-class LeadLagController(object):
-
-	"""
-	Implementation of a lead-lag controller which takes a position and returns a correcting velocity
-	
-	ANALOGUE CONTROLLER:
-	G(s) = (s + a) / (s + b)
-	
-	DIGITAL CONTORLLER:
-			z(2 + aT) + (1 - aT)
-	G(z) =  --------------------
-			z(2 + bT) + (1 - bT)
-	
-	DIFFERENCE EQUATION:
-						x[k-1]	 y[k-1]	   y[k]
-	x[k] =    (1-bT){ -	------ + ------ + ------ }
-						2 + bT	 2 + aT	  1 - aT
-	"""
-               
-	def __init__(self,a,b,T):
-		self.a = a
-		self.b = b
-		self.T = T
-		self.x = 0		# x[k-1]
-		self.y = (0,0)	# y[k-1],y[k]
-
-	def get_control(self,y):
-		# Update latest output
-		self.y[1] = y
-		
-		# Calculate x[k]
-		part_1 = -1 * (1-(self.b*self.T))
-		part_2a = self.x / (2 + (self.b * self.T))
-		part_2b = self.y[0] / (2 + (self.a * self.T))
-		part_2c = self.y[1] / (1 - (self.a * self.T))
-		self.x = part_1 * (part_2a + part_2b + part_2c)
-		
-		# Update y
-		self.y[0] = self.y[1]
-		
-		# Return x
-		return self.x
