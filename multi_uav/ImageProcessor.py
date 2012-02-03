@@ -43,8 +43,7 @@ class ImageProcessor(object):
 		#PIL_image = Image.open(buff)
 		#aruco_image = PIL_image.convert('RGB')
 		
-		cv.SaveImage("frame.png",CV_image)
-		PIL_image = Image.open("frame.png").convert('RGB')
+		PIL_image = self.cv2array(CV_image)
 		
 		# Find midpoint of image
 		CV_image_size = cv.GetSize(CV_image)
@@ -60,6 +59,25 @@ class ImageProcessor(object):
 			
 		# Show processed image
 		self._im_viewer.show(CV_image)
+		
+	def cv2array(self,im):
+		depth2dtype = {
+        cv.IPL_DEPTH_8U: 'uint8',
+        cv.IPL_DEPTH_8S: 'int8',
+        cv.IPL_DEPTH_16U: 'uint16',
+        cv.IPL_DEPTH_16S: 'int16',
+        cv.IPL_DEPTH_32S: 'int32',
+        cv.IPL_DEPTH_32F: 'float32',
+        cv.IPL_DEPTH_64F: 'float64',}
+
+		arrdtype=im.depth
+		a = np.fromstring(
+		im.tostring(),
+        dtype=depth2dtype[im.depth],
+        count=im.width*im.height*im.nChannels)
+         
+		a.shape = (im.height,im.width,im.nChannels)
+		return a
 
 class ImageViewer(object):
 	
