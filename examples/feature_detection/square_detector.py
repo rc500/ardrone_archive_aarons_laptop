@@ -7,9 +7,9 @@ import numpy as np
 import sys
 
 #load greyscale image
-img = cv.LoadImageM("s2.jpg",cv.CV_LOAD_IMAGE_GRAYSCALE)
+img = cv.LoadImageM("bx5.jpg",cv.CV_LOAD_IMAGE_GRAYSCALE)
 #load colour image for displaying
-im = cv.LoadImageM("s2.jpg");
+im = cv.LoadImageM("bx5.jpg");
 
 #canny edge detector
 edges= cv.CreateImage(cv.GetSize(img), 8, 1)
