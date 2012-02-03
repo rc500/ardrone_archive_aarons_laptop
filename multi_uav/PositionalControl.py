@@ -45,9 +45,12 @@ class PositionalControl(object):
 		self._vid_decoder = Videopacket.Decoder(self._im_proc.process)
 		self._network = NetworkManager(self._vid_decoder,self._pseudo_network,self)
 		
+		# Configure drone camera
+		self._control.view_camera(1) # channel 1 = downward facing camera
+		
 		# Start video and navdata stream on drone
-		self._control.start_video()
 		self._control.start_navdata()
+		self._control.start_video()
 				
 		# Reset drone
 		self._control.reset()
