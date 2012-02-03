@@ -17,7 +17,7 @@ class CooperativeControl(object):
 	def __init__(self,_drone1): # Will want to add in _drone2 in time
 		# --- INITIALISE APPLICATION OBJECTS ----
 		#self._status_viewer = # add at some point
-		self._network = NetworkManager(self) # Why doesn't this work?
+		self._network = NetworkManager(self)
 		
 		self._drone1 = _drone1
 		
