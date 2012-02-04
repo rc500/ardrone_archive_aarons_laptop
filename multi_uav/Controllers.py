@@ -30,7 +30,7 @@ class Controller(object):
 		
 		# Create a little 'heartbeat' timer that will call heartbeat() every so often.
 		self.heartbeat_timer = QtCore.QTimer()
-		self.heartbeat_timer.setInterval(20) # ms
+		self.heartbeat_timer.setInterval(5) # ms
 		self.heartbeat_timer.timeout.connect(self.heartbeat)
 
 		# Debug initialisation
@@ -120,46 +120,55 @@ class ProportionalController(Controller):
 		# Continue as per Controller base class
 		self.check_error(correction)
 		self.output(correction)
-		
-class LeadLagController(object):
-# Not yet implemented with Controller base class yet
+
+class LeadLagController(Controller):
 	"""
 	Implementation of a lead-lag controller which takes a position and returns a correcting velocity
 	
 	ANALOGUE CONTROLLER:
-	G(s) = (s + a) / (s + b)
+	G(s) = (as + 1) / (bs + 1)
 	
 	DIGITAL CONTORLLER:
-			z(2 + aT) + (1 - aT)
-	G(z) =  --------------------
-			z(2 + bT) + (1 - bT)
+			zT + (z-1)a
+	G(z) =  ------------
+			zT + (z-1)b
 	
 	DIFFERENCE EQUATION:
-						x[k-1]	 y[k-1]	   y[k]
-	x[k] =    (1-bT){ -	------ + ------ + ------ }
-						2 + bT	 2 + aT	  1 - aT
+			  1
+	y[k] =  -----  { (y[k-1] * b) - (e[k-1] * a) + (e[k] * (T+a)) }
+			(T+b)
 	"""
-               
-	def __init__(self,a,b,T):
+
+	def __init__(self,_control,feedback_type,output_type,a,b,T,hard_limit=1):
+		# Set up controller parameters
 		self.a = a
 		self.b = b
 		self.T = T
-		self.x = 0		# x[k-1]
-		self.y = (0,0)	# y[k-1],y[k]
 
-	def get_control(self,y):
-		# Update latest output
-		self.y[1] = y
+		# Set up calculation variables
+		self.yk = 0		# y[k-1]
+		self.e = [0,0]	# e[k-1],e[k]
+
+		# Initialise as Controller base class
+		Controller.__init__(self, _control,feedback_type,output_type,hard_limit)
 		
-		# Calculate x[k]
-		part_1 = -1 * (1-(self.b*self.T))
-		part_2a = self.x / (2 + (self.b * self.T))
-		part_2b = self.y[0] / (2 + (self.a * self.T))
-		part_2c = self.y[1] / (1 - (self.a * self.T))
-		self.x = part_1 * (part_2a + part_2b + part_2c)
+	def heartbeat(self):
+		# Debug heartbeat
+		#print ("%s beat" % self.output_type)
 		
-		# Update y
-		self.y[0] = self.y[1]
+		# Update latest error
+		self.e[1] = self.r - self.y()
 		
-		# Return x
-		return self.x
+		# Calculate y[k]
+		part_1 = 1 / (self.T + self.b)
+		part_2a = self.yk * self.b
+		part_2b = self.e[0] * self.a
+		part_2c = self.e[1] * (self.T + self.a)
+		self.yk = part_1 * (part_2a - part_2b + part_2c)
+		
+		# Update error
+		self.e[0] = self.e[1]
+		
+		# Continue as per Controller base class
+		self.check_error(self.yk)
+		self.output(self.yk)
