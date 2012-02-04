@@ -77,8 +77,8 @@ class PositionalControl(object):
 		self.commanded_state['hover'] = False
 		
 		# Initiate roll and pitch controllers
-		self._marker_control_roll = Controller.LeadLagController(self,'marker_distance_x','roll',0.001,0.12,0.04,0.005)
-		self._marker_control_pitch = Controller.LeadLagController(self,'marker_distance_y','pitch',0.001,0.12,0.04,0.005)
+		self._marker_control_roll = Controller.LeadLagController(self,'marker_distance_x','roll',0.001,0.15,0.025,0.07)
+		self._marker_control_pitch = Controller.LeadLagController(self,'marker_distance_y','pitch',0.001,0.15,0.025,0.07)
 		
 		# Start control
 		self._marker_control_roll.start_control(0)
