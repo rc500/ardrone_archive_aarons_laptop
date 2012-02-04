@@ -63,7 +63,6 @@ class PositionalControl(object):
 		self._control.reset()
 		
 	def take_off(self):
-		self._control.flat_trim()
 		self._control.take_off()
 
 	def land(self):
@@ -78,8 +77,8 @@ class PositionalControl(object):
 		self.commanded_state['hover'] = False
 		
 		# Initiate roll and pitch controllers
-		self._marker_control_roll = Controller.LeadLagController(self,'marker_distance_x','roll',0.2,0.15,0.05,0.02)
-		self._marker_control_pitch = Controller.LeadLagController(self,'marker_distance_y','pitch',0.2,0.15,0.05,0.02)
+		self._marker_control_roll = Controller.LeadLagController(self,'marker_distance_x','roll',0.001,0.12,0.04,0.005)
+		self._marker_control_pitch = Controller.LeadLagController(self,'marker_distance_y','pitch',0.001,0.12,0.04,0.005)
 		
 		# Start control
 		self._marker_control_roll.start_control(0)
@@ -114,6 +113,7 @@ class NetworkManager(object):
 	"""
 	ready_control = False
 	ready_video = False
+	ready_takeoff = False
 	
 	HOST, PORT_SEND, PORT_CONTROL, PORT_VIDEO, PORT_STATUS = ('127.0.0.1', 5560, 5561, 5562, 5563)
 	seq = 0
@@ -182,7 +182,12 @@ class NetworkManager(object):
 				self.sendStatus('ControlReady')
 				self.ready_control = True
 				
-	      		
+	      	# Update status of take_off being complete
+	      	#if self.ready_takeoff == False:
+			#	if self.packet['altitude'] >= 300:
+			#		self.sendStatus('take_off success')
+			#		self.ready_takeoff = True
+				
 	def readVideoData(self):
 		"""Called when there is some interesting data to read on the video socket."""
 		while self.socket_video.hasPendingDatagrams():

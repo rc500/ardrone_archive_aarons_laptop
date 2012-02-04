@@ -29,17 +29,25 @@ class CooperativeControl(object):
 		# Phase 1 - take off to a height
 		self.phase = 1
 		self._drone1.take_off()
-		self._drone1.set_altitude(1000)
-
+		self.alt()
+		
 	def next_phase(self):
 		"""
 		Moves onto next phase
 		"""
 		self.phase = self.phase + 1
-		if self.phase == 2:
-			# Phase 2 - correct to marker
-			self.correct_to_marker()
+		
+		#if self.phase == 2:
+		#	# Phase 2 - hover at height
+		#	self.alt()
 			
+		if self.phase == 2:
+			# Phase 3 - correct to marker
+			self.correct_to_marker()
+	
+	def alt(self):
+		self._drone1.set_altitude(1000)
+		
 	def correct_to_marker(self):
 		print("Marker correction started")
 		self._drone1.hold_marker()
@@ -92,6 +100,9 @@ class NetworkManager(object):
 				self.ready = 1 # to make sure this isn't called again
 
 			## --- CONTROL STATUS CHECK --- ##
+			#if data == 'take_off success' and self.ready == 1:
+			#	self.__coop.next_phase()
+			#	self.ready = 2
+				
 			if data == 'gas control achieved':
 				self._coop.next_phase()
-				

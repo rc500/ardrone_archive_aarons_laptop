@@ -124,6 +124,7 @@ class ProportionalController(Controller):
 class LeadLagController(Controller):
 	"""
 	Implementation of a lead-lag controller which takes a position and returns a correcting velocity
+	Controller also pre-compensates by a value of K
 	
 	ANALOGUE CONTROLLER:
 	G(s) = (as + 1) / (bs + 1)
@@ -139,11 +140,12 @@ class LeadLagController(Controller):
 			(T+b)
 	"""
 
-	def __init__(self,_control,feedback_type,output_type,a,b,T,hard_limit=1):
+	def __init__(self,_control,feedback_type,output_type,k,a,b,T,hard_limit=1):
 		# Set up controller parameters
 		self.a = a
 		self.b = b
 		self.T = T
+		self.k = k
 
 		# Set up calculation variables
 		self.yk = 0		# y[k-1]
@@ -156,8 +158,8 @@ class LeadLagController(Controller):
 		# Debug heartbeat
 		#print ("%s beat" % self.output_type)
 		
-		# Update latest error
-		self.e[1] = self.r - self.y()
+		# Update latest error with pre-compensation
+		self.e[1] = self.k * (self.r - self.y())
 		
 		# Calculate y[k]
 		part_1 = 1 / (self.T + self.b)
