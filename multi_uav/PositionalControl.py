@@ -23,7 +23,8 @@ class PositionalControl(object):
 	"""
 	
 	marker_distance = (0,0)
-	state = {
+
+	commanded_state = {
 	                'roll': 0.0,
 	                'pitch': 0.0,
 	                'yaw': 0.0,
@@ -33,7 +34,11 @@ class PositionalControl(object):
 	                'hover': True,
 	                                };
 	
-	packet = {"type":"initialise"}
+	current_state = {
+					"type": "initialise",
+					'marker_distance_x': 0.0,
+					'marker_distance_y': 0.0,
+									};
 	
 	def __init__(self,drone_id,_control,pseudo_network):
 		# --- ASSIGN POINTERS ---
@@ -54,10 +59,9 @@ class PositionalControl(object):
 				
 		# Reset drone
 		self._control.reset()
-
-		# --- INITIALISE CONTROL OBJECTS ---
-		#self._roll_control = ProportionalController(0.02,self)
-
+		self._control.reset()
+		self._control.reset()
+		
 	def take_off(self):
 		self._control.flat_trim()
 		self._control.take_off()
@@ -69,12 +73,36 @@ class PositionalControl(object):
 		self._height_control = Controller.ProportionalController(self,'altitude','gas',0.02)
 		self._height_control.start_control(r)
 
+	def hold_marker(self):
+		# Stop the drone hovering by itself
+		self.commanded_state['hover'] = False
+		
+		# Initiate roll and pitch controllers
+		self._marker_control_roll = Controller.ProportionalController(self,'marker_distance_x','roll',0.02,0.015)
+		self._marker_control_pitch = Controller.ProportionalController(self,'marker_distance_y','pitch',0.02,0.015)
+		
+		# Start control
+		self._marker_control_roll.start_control(0)
+		self._marker_control_pitch.start_control(0)
+		
+	
 	def update(self,distance):
+		# Keep a separate record of distance from marker
 		self.marker_distance = distance
-		print(self.marker_distance)
+		
+		# Update object's record of drone state
+		self.current_state['marker_distance_x'] = -1 * distance[0]
+		self.current_state['marker_distance_y'] = -1 * distance[1]
+		
+		# Print to console
+		#print(self.marker_distance)
 	
 	def update_packet(self,packet):
-		self.packet = packet
+		# Update object's record of drone state with new information
+		self.current_state = packet
+		
+		# Copy back in marker distance information
+		self.update(self.marker_distance)
 			
 class NetworkManager(object):
 	"""
@@ -117,13 +145,13 @@ class NetworkManager(object):
 	def sendControl(self,data):
 		# Send state to the drone
 		self.seq += 1
-		#print('state is', json.dumps({'seq': self.seq, 'state': self.state}))
+		#print('state is', json.dumps({'seq': self.seq, 'state': data}))
 		self.sock.sendto(json.dumps({'seq': self.seq, 'state': data}), (self.HOST, self.PORT_SEND)) 
 	
 	def sendStatus(self,status):
 		# Send status over the network
 		self.sock.sendto(status, (self.HOST, self.PORT_STATUS))
-		print("Status sent")		
+		print("Status sent: %s" % status)		
 		#self._pseudo_network.update_status(status)
 
 	def readControlData(self):

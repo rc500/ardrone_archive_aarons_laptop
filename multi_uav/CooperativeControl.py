@@ -41,9 +41,8 @@ class CooperativeControl(object):
 			self.correct_to_marker()
 			
 	def correct_to_marker(self):
-		print("-----------------------------------------------Marker correction started--------------------------------------------------")
-		# Insert marker correction code here - requires use of downward facing camera first
-		pass
+		print("Marker correction started")
+		self._drone1.hold_marker()
 		
 class NetworkManager(object):
 	"""
@@ -93,6 +92,6 @@ class NetworkManager(object):
 				self.ready = 1 # to make sure this isn't called again
 
 			## --- CONTROL STATUS CHECK --- ##
-			if data == 'ControlAchieved':
+			if data == 'gas control achieved':
 				self._coop.next_phase()
 				

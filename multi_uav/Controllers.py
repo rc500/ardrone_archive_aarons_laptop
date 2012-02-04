@@ -19,19 +19,23 @@ class Controller(object):
 	correction_step = 0.1
 	error_count = 0
 	
-	def __init__(self,_control,feedback_type,output_type):
+	def __init__(self,_control,feedback_type,output_type,hard_limit=1):
 		# Assign pointers
 		self._control = _control
 
 		# Assign types
 		self.feedback_type = feedback_type
 		self.output_type = output_type
-
+		self.hard_limit = hard_limit
+		
 		# Create a little 'heartbeat' timer that will call heartbeat() every so often.
 		self.heartbeat_timer = QtCore.QTimer()
 		self.heartbeat_timer.setInterval(20) # ms
 		self.heartbeat_timer.timeout.connect(self.heartbeat)
 
+		# Debug initialisation
+		print ("%s control object initiated" % (self.feedback_type))
+		
 	def start_control(self,r):
 		# Assign control reference
 		self.r = r
@@ -45,7 +49,7 @@ class Controller(object):
 
 	def y(self):
 		# Fetch feedback value
-		y = self._control.packet[self.feedback_type]
+		y = self._control.current_state[self.feedback_type]
 		return y
 
 	def heartbeat(self):
@@ -72,15 +76,22 @@ class Controller(object):
 		# If error within limits for a suitable length of time then it has achieved its goal
 		if self.error_count == 40:
 			# Post status
-			self._control._network.sendStatus('ControlAchieved')
+			self._control._network.sendStatus('%s control achieved' %self.output_type)
 			
 	def output(self,output):
+		# Hard limit output
+		if output >= self.hard_limit:
+			output = self.hard_limit
+		elif output <= -1 * self.hard_limit:
+			output = -1 * self.hard_limit
+			
 		# Print the output
-		print ("correction = " + str(output))
+		print ("%s correction = %s" % (self.output_type,output))
+		
 		
 		# Send the update to the drone, via the structure in PositionalControl (so it has a copy)
-		self._control.state[self.output_type] = output
-		self._control._network.sendControl(self._control.state)
+		self._control.commanded_state[self.output_type] = output
+		self._control._network.sendControl(self._control.commanded_state)
 
 class ProportionalController(Controller):
 	"""
@@ -88,26 +99,23 @@ class ProportionalController(Controller):
 	
 	CONTROLLER:
 	G(s) = K
-	
-	The controller output magnitude is hard limited to 1
 	"""
 		
-	def __init__(self,_control,feedback_type,output_type,k):
+	def __init__(self,_control,feedback_type,output_type,k,hard_limit=1):
 		# Set up controller parameters
 		self.k = k
 
 		# Initialise as Controller base class
-		Controller.__init__(self, _control,feedback_type,output_type)
+		Controller.__init__(self, _control,feedback_type,output_type,hard_limit)
 		
 	def heartbeat(self):
+		# Debug heartbeat
+		#print ("%s beat" % self.output_type)
+		
 		# Calculate output value
 		error = self.r-self.y()
 		psuedo_error = error * self.k
 		correction = self.correction_step * psuedo_error
-		if correction >= 1:
-			correction = 1
-		elif correction <= -1:
-			correction = -1
 		
 		# Continue as per Controller base class
 		self.check_error(correction)
