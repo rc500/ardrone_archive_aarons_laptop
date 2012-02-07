@@ -4,8 +4,9 @@ import signal
 import sys
 import socket, time
 import png
+import cv
 import numpy as np
-from PIL import Image
+from PIL import Image   
 import zlib   
 
 import logging
@@ -15,6 +16,7 @@ import logging
 # This makes sure the path which python uses to find things when using import
 # can find all our code.
 sys.path.insert(0, os.path.abspath('..'))
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
                                    
 from ardrone.core import videopacket
@@ -44,6 +46,7 @@ class ExampleApp(object):
 
     # This wires up Ctrl-C to call QApplication.quit()
     signal.signal(signal.SIGINT, lambda *args: self.app.quit())
+ 
     # Create a little 'heartbeat' timer that will call heartbeat() every so often.
     self.heartbeat_timer = QtCore.QTimer()
     self.heartbeat_timer.setInterval(50) # ms
@@ -63,6 +66,7 @@ class ExampleApp(object):
     #constructor for png encoder: size of image to be encoded 320x240
     self.writer=png.Writer(width,height)
 
+
     
   def run(self):
     self.app.exec_()
@@ -80,9 +84,7 @@ class ExampleApp(object):
     arr = np.fromstring(raw_video_frame,dtype=np.uint16).astype(np.uint32)
     arr = 0xFF000000 + ((arr & 0xF800) >> 8) + ((arr & 0x07E0) << 5) + ((arr & 0x001F) << 19)
     im1=Image.fromstring('RGBA', (width,height), arr, 'raw', 'RGBA', 0, 1)
-    im1.save('s2.jpg')
-    
-    
+    im1.save('frame.jpg')
 
 
   def socketReadyRead(self):
@@ -100,6 +102,9 @@ class ExampleApp(object):
 
       #decode the data
       self._vid_decoder.decode(data)
+      
+ 
+
                   
 if (__name__ == '__main__'):
   example_app = ExampleApp()
