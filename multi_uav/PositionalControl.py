@@ -9,8 +9,10 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 # Import qt modules (platform independant)
 import ardrone.util.qtcompat as qt
+QtCore = qt.import_module('QtCore')
 QtNetwork = qt.import_module('QtNetwork')
 
+from . import Controllers as Controller
 from . import ImageProcessor
 import ardrone.core.videopacket as Videopacket
 
@@ -19,9 +21,10 @@ class PositionalControl(object):
 	The core drone control object which contains functions to control the position of an individual drone.
 	This is done through the ControlLoop object.
 	"""
-
+	
 	marker_distance = (0,0)
-	state = {
+
+	commanded_state = {
 	                'roll': 0.0,
 	                'pitch': 0.0,
 	                'yaw': 0.0,
@@ -31,6 +34,12 @@ class PositionalControl(object):
 	                'hover': True,
 	                                };
 	
+	current_state = {
+					"type": "initialise",
+					'marker_distance_x': 0.0,
+					'marker_distance_y': 0.0,
+									};
+	
 	def __init__(self,drone_id,_control,pseudo_network):
 		# --- ASSIGN POINTERS ---
 		self._control=_control
@@ -39,54 +48,84 @@ class PositionalControl(object):
 		# --- INITIALISE APPLICATION OBJECTS ----
 		self._im_proc = ImageProcessor.ImageProcessor(self,drone_id)
 		self._vid_decoder = Videopacket.Decoder(self._im_proc.process)
-		self._network = NetworkManager(self._vid_decoder,self._pseudo_network)
+		self._network = NetworkManager(self._vid_decoder,self._pseudo_network,self)
+		
+		# Configure drone camera
+		self._control.view_camera(1) # channel 1 = downward facing camera
 		
 		# Start video and navdata stream on drone
-		self._control.start_video()
 		self._control.start_navdata()
+		self._control.start_video()
 				
 		# Reset drone
 		self._control.reset()
-
-		# --- INITIALISE CONTROL OBJECTS ---
-		self._height_control = ProportionalController(0.02)
-		self._roll_control = ProportionalController(0.02)
-
+		self._control.reset()
+		self._control.reset()
+		
 	def take_off(self):
-		self._control.flat_trim()
-		time.sleep(3.0)
 		self._control.take_off()
-		time.sleep(4.0)
 
 	def land(self):
 		self._control.land()
 		
 	def set_altitude(self,r):
-		self.state['altitude'] = self._height_control.get_control(self.packet['altitude'],r)
-		_network.sendControl(self.state)		
+		self._height_control = Controller.ProportionalController(self,'altitude','gas',0.02)
+		self._height_control.start_control(r)
 
-	def update(self,distance):
-		self.marker_distance = distance
-		print(self.marker_distance)
+	def hold_marker(self):
+		# Stop the drone hovering by itself
+		self.commanded_state['hover'] = False
 		
+		# Initiate roll and pitch controllers
+		self._marker_control_roll = Controller.LeadLagController(self,'marker_distance_x','roll',0.001,0.15,0.025,0.07)
+		self._marker_control_pitch = Controller.LeadLagController(self,'marker_distance_y','pitch',0.001,0.15,0.025,0.07)
+		
+		# Start control
+		self._marker_control_roll.start_control(0)
+		self._marker_control_pitch.start_control(0)
+		
+	
+	def update(self,distance):
+		# Keep a separate record of distance from marker
+		self.marker_distance = distance
+		
+		# Update object's record of drone state
+		self.current_state['marker_distance_x'] = -1 * distance[0]
+		self.current_state['marker_distance_y'] = -1 * distance[1]
+		
+		# Print to console
+		#print(self.marker_distance)
+	
+	def update_packet(self,packet):
+		# Update object's record of drone state with new information
+		self.current_state = packet
+		
+		# Copy back in marker distance information
+		self.update(self.marker_distance)
+			
 class NetworkManager(object):
 	"""
 	A class which manages the sending and receiving of packets over the network.
 	It stores the relevant data of received packets and sends packets when requested.
+	
+	IP address of drone: 192.168.1.1
+	Localhost: 127.0.0.1
 	"""
 	ready_control = False
 	ready_video = False
+	ready_takeoff = False
 	
-	HOST, HOST2, PORT_SEND, PORT_CONTROL, PORT_VIDEO, PORT_STATUS = ('127.0.0.1', '192.168.1.1', 5560, 5561, 5562, 5557)
+	HOST, PORT_SEND, PORT_CONTROL, PORT_VIDEO, PORT_STATUS = ('127.0.0.1', 5560, 5561, 5562, 5563)
 	seq = 0
 
-	def __init__(self,_vid_decoder,_pseudo_network):
+	def __init__(self,_vid_decoder,_pseudo_network,_update):
 		"""
 		Initialise the class
 		"""
 		# Pointer assignment
 		self._vid_decoder = _vid_decoder
 		self._pseudo_network = _pseudo_network
+		self._update = _update
 		
 		# Set up a UDP listening socket on port for control data
 		self.socket_control = QtNetwork.QUdpSocket()
@@ -106,14 +145,14 @@ class NetworkManager(object):
 	def sendControl(self,data):
 		# Send state to the drone
 		self.seq += 1
-		#print('state is', json.dumps({'seq': self.seq, 'state': self.state}))
+		#print('state is', json.dumps({'seq': self.seq, 'state': data}))
 		self.sock.sendto(json.dumps({'seq': self.seq, 'state': data}), (self.HOST, self.PORT_SEND)) 
 	
 	def sendStatus(self,status):
 		# Send status over the network
-		#self.sock.sendto(status, (self.HOST2, self.PORT_STATUS))
-		self._pseudo_network.update_status(status)
-		print("Status sent")
+		self.sock.sendto(status, (self.HOST, self.PORT_STATUS))
+		print("Status sent: %s" % status)		
+		#self._pseudo_network.update_status(status)
 
 	def readControlData(self):
 		"""
@@ -127,20 +166,28 @@ class NetworkManager(object):
 			# Some hack to account for PySide vs. PyQt differences
 			if qt.USES_PYSIDE:
 				data = data.data()
-	        
-			#Run height control if packet contains height information
-#			if self.packet['type'] == 'demo':
-				# Parse the packet
+
+	        # Parse the packet
 			self.packet = json.loads(data.decode())
 			
+			# Keep packet if it contains status information
+			if self.packet['type'] == 'demo':
+				self._update.update_packet(self.packet)
+				#Print it prettily
+				#print(json.dumps(self.packet, indent=True))
+
+			# Update status of the Control Network when ready
 			if self.ready_control == False:
 				print("Control Ready")
 				self.sendStatus('ControlReady')
 				self.ready_control = True
 				
-			## Print it prettily
-			#print(json.dumps(self.packet, indent=True))
-	      		
+	      	# Update status of take_off being complete
+	      	#if self.ready_takeoff == False:
+			#	if self.packet['altitude'] >= 300:
+			#		self.sendStatus('take_off success')
+			#		self.ready_takeoff = True
+				
 	def readVideoData(self):
 		"""Called when there is some interesting data to read on the video socket."""
 		while self.socket_video.hasPendingDatagrams():
@@ -149,7 +196,7 @@ class NetworkManager(object):
 
 			# Some hack to account for PySide vs. PyQt differences
 			if qt.USES_PYSIDE:
-				data = data.data()
+					data = data.data()
 		
 			# Decode video data and pass result to the ImageProcessor instance
 			self._vid_decoder.decode(data)
@@ -158,75 +205,3 @@ class NetworkManager(object):
 				print("Video Ready")
 				self.sendStatus('VideoReady')
 				self.ready_video = True
-				
-
-class ProportionalController(object):
-	"""
-	Implementation of a proportional controller which takes a position and returns a correcting velocity
-	
-	CONTROLLER:
-	G(s) = K
-	
-	The controller output magnitude is hard limited to 1
-	"""
-		
-	correction_step = 0.1
-
-	def __init__(self,k=0.02):
-		self.k = k
-		
-	def get_control(self,y,r):
-		#implement proportional control
-		error = r-y
-		#print('Current error is', error)
-		psuedo_error = error * self.k
-		correction = self.correction_step * psuedo_error
-		if correction >= 1:
-			correction = 1
-		elif correction <= -1:
-			correction = -1
-		print ("correction = " + str(correction))
-		return correction
-		
-class LeadLagController(object):
-
-	"""
-	Implementation of a lead-lag controller which takes a position and returns a correcting velocity
-	
-	ANALOGUE CONTROLLER:
-	G(s) = (s + a) / (s + b)
-	
-	DIGITAL CONTORLLER:
-			z(2 + aT) + (1 - aT)
-	G(z) =  --------------------
-			z(2 + bT) + (1 - bT)
-	
-	DIFFERENCE EQUATION:
-						x[k-1]	 y[k-1]	   y[k]
-	x[k] =    (1-bT){ -	------ + ------ + ------ }
-						2 + bT	 2 + aT	  1 - aT
-	"""
-               
-	def __init__(self,a,b,T):
-		self.a = a
-		self.b = b
-		self.T = T
-		self.x = 0		# x[k-1]
-		self.y = (0,0)	# y[k-1],y[k]
-
-	def get_control(self,y):
-		# Update latest output
-		self.y[1] = y
-		
-		# Calculate x[k]
-		part_1 = -1 * (1-(self.b*self.T))
-		part_2a = self.x / (2 + (self.b * self.T))
-		part_2b = self.y[0] / (2 + (self.a * self.T))
-		part_2c = self.y[1] / (1 - (self.a * self.T))
-		self.x = part_1 * (part_2a + part_2b + part_2c)
-		
-		# Update y
-		self.y[0] = self.y[1]
-		
-		# Return x
-		return self.x

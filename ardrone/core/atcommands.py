@@ -244,6 +244,17 @@ def ctrl(mode, filesize=0):
   """
   return __at('CTRL', ct.c_int32(mode), ct.c_int32(filesize))
 
+def zap(channel):
+  """Generate the ZAP AT command.
+
+  This command is undocumented and has been derrived by looking at the SDK
+  source code.
+
+  This command sets to video stream to either the forward facing camera (channel = 0) or downward facing camera (channel = 1).
+  
+  """
+  return __at('ZAP', ct.c_int32(channel))
+
 def __next_sequence():
   """Return the next sequence number for the AT command.
 
