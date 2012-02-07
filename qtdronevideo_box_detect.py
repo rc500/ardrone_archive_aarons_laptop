@@ -41,9 +41,29 @@ normal_state = {
       'hover': True,
 }
 
-run_away_state = {
+turn_left_state = {
       'roll': 0.0,
-      'pitch': 0.3,
+      'pitch': 0.0,
+      'yaw': -1.0,
+      'gas': 0.0,
+      'take_off': False,
+      'reset': False,
+      'hover': False,
+}
+
+turn_right_state = {
+      'roll': 0.0,
+      'pitch': 0.0,
+      'yaw': 1.0,
+      'gas': 0.0,
+      'take_off': False,
+      'reset': False,
+      'hover': False,
+}
+
+move_forward_state = {
+      'roll': 0.0,
+      'pitch':-0.3,
       'yaw': 0.0,
       'gas': 0.0,
       'take_off': False,
@@ -123,7 +143,22 @@ class imageProcessor(object):
                   seq=seq.h_next()
   
                 if found_box:
-                    send_state(run_away_state)
+                   i=1     
+                   while i<100:     
+                    send_state(turn_right_state)
+                    i=i+1
+                   i=1 
+                   while i<50:     
+                    send_state(move_forward_state)
+                    i=i+1
+                   i=1 
+                   while i<95:     
+                    send_state(turn_left_state)
+                    i=i+1
+                   i=1 
+                   while i<60:     
+                    send_state(move_forward_state)
+                    i=i+1                     
                 else:
                     send_state(normal_state)
 
