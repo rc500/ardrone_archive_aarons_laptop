@@ -1,0 +1,6 @@
+This software is Copyright (C) 2011, 2012 by the authors listed in the
+CONTRIBUTORS.txt file.
+
+With the exception of any files under 'native' the code in this distribution
+may be copied and redistributed under the terms set out in the LICENSE-2.0.txt
+file.
