@@ -35,11 +35,13 @@ class PositionalControl(object):
 	                                };
 	
 	current_state = {
-					"type": "initialise",
+					'type': 'initialise',
+					'drone_id' : 0,
 					'marker_distance_x': 0.0,
 					'marker_distance_y': 0.0,
+					'gas_stable' : False,
 									};
-	
+							
 	def __init__(self,drone_id,_control,pseudo_network):
 		# --- ASSIGN POINTERS ---
 		self._control=_control
@@ -59,7 +61,11 @@ class PositionalControl(object):
 				
 		# Reset drone
 		self._control.reset()
-		self._control.reset()
+		
+		# Keep drone_id
+		self.current_state['drone_id'] = drone_id
+		
+	def reset(self):
 		self._control.reset()
 		
 	def take_off(self):
@@ -69,7 +75,7 @@ class PositionalControl(object):
 		self._control.land()
 		
 	def set_altitude(self,r):
-		self._height_control = Controller.ProportionalController(self,'altitude','gas',0.02)
+		self._height_control = Controller.ProportionalController(self,'altitude','gas','gas_stable',0.02)
 		self._height_control.start_control(r)
 
 	def hold_marker(self):
@@ -77,8 +83,8 @@ class PositionalControl(object):
 		self.commanded_state['hover'] = False
 		
 		# Initiate roll and pitch controllers
-		self._marker_control_roll = Controller.LeadLagController(self,'marker_distance_x','roll',0.001,0.15,0.025,0.07)
-		self._marker_control_pitch = Controller.LeadLagController(self,'marker_distance_y','pitch',0.001,0.15,0.025,0.07)
+		self._marker_control_roll = Controller.LeadLagController(self,'marker_distance_x','roll','roll_stable',0.001,0.15,0.025,0.07)
+		self._marker_control_pitch = Controller.LeadLagController(self,'marker_distance_y','pitch','pitch_stable',0.001,0.15,0.025,0.07)
 		
 		# Start control
 		self._marker_control_roll.start_control(0)
@@ -86,9 +92,6 @@ class PositionalControl(object):
 		
 	
 	def update(self,distance):
-		# Keep a separate record of distance from marker
-		self.marker_distance = distance
-		
 		# Update object's record of drone state
 		self.current_state['marker_distance_x'] = -1 * distance[0]
 		self.current_state['marker_distance_y'] = -1 * distance[1]
@@ -97,12 +100,36 @@ class PositionalControl(object):
 		#print(self.marker_distance)
 	
 	def update_packet(self,packet):
-		# Update object's record of drone state with new information
-		self.current_state = packet
+		"""
+		Update local knowledge of drone state and change the drone's status appropriately.
+		"""
+		# Update object's record of drone state with new information (without deleting old information)
+		self.current_state = dict(self.current_state.items() + packet.items())
+				
+	def update_status(self):
+		"""
+		Compiles a status message for the CooperativeController object.
+		status_message = 
+					{
+					'airborne': False
+					'height_stable':False
+					}
+		"""
+		# drone_id
+		status_message = {'drone_id':self.current_state['drone_id']}
 		
-		# Copy back in marker distance information
-		self.update(self.marker_distance)
-			
+		# airborne
+		if self.current_state['altitude'] >= 300:
+			status_message['airborne'] = True
+		else:
+			status_message['airborne'] = False
+		
+		# height_stable
+		status_message['height_stable'] = self.current_state['gas_stable']
+		#print(status_message)
+		# Send status
+		self._network.sendStatus(status_message)
+
 class NetworkManager(object):
 	"""
 	A class which manages the sending and receiving of packets over the network.
@@ -150,9 +177,9 @@ class NetworkManager(object):
 	
 	def sendStatus(self,status):
 		# Send status over the network
-		self.sock.sendto(status, (self.HOST, self.PORT_STATUS))
-		print("Status sent: %s" % status)		
-		#self._pseudo_network.update_status(status)
+		#self.sock.sendto(status, (self.HOST, self.PORT_STATUS))
+		self._pseudo_network.send_status(status) # Cannot send dicts over network - time to change implementation - this is just a temporary bodge
+		#print("Status sent: %s" % status)
 
 	def readControlData(self):
 		"""
@@ -181,12 +208,6 @@ class NetworkManager(object):
 				print("Control Ready")
 				self.sendStatus('ControlReady')
 				self.ready_control = True
-				
-	      	# Update status of take_off being complete
-	      	#if self.ready_takeoff == False:
-			#	if self.packet['altitude'] >= 300:
-			#		self.sendStatus('take_off success')
-			#		self.ready_takeoff = True
 				
 	def readVideoData(self):
 		"""Called when there is some interesting data to read on the video socket."""
