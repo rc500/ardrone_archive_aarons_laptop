@@ -161,14 +161,19 @@ class imageProcessor(object):
                    while i<75:     
                     send_state(move_forward_state)
                     i=i+1
+                   i=1 
+                   while i<90:     
+                    send_state(turn_left_state)
+                    i=i+1
+                   i=1                     
                    #rotate again to face boxes 
                    i=1 
                    while i<95:     
-                    send_state(turn_left_state)
+                    send_state(turn_right_state)
                     i=i+1                    
                     
                 else:
-                    send_state(normal_state)
+                    send_state(move_forward_state)
 
                 return im  
  
