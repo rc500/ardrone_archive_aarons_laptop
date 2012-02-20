@@ -5,11 +5,12 @@ import ImageFilter
 import cv
 import numpy as np
 import sys
+import math
 
 #load greyscale image
-img = cv.LoadImage("or4.jpg",cv.CV_LOAD_IMAGE_GRAYSCALE)
+img = cv.LoadImage("bx5.jpg",cv.CV_LOAD_IMAGE_GRAYSCALE)
 #load colour image for displaying
-im = cv.LoadImage("or4.jpg");
+im = cv.LoadImage("bx5.jpg");
 
 #canny edge detector
 edges= cv.CreateImage(cv.GetSize(img), 8, 1)
@@ -32,24 +33,25 @@ cv.DrawContours(im, seq, (255,0,0), (0,255,0), 20,1)
 #find external contours
 seq_ext=cv.FindContours(edges, storage,cv.CV_RETR_EXTERNAL,cv.CV_CHAIN_APPROX_SIMPLE,(0, 0))
 
-
 while seq:
   #do not take into account external countours
   if not(list(seq)==list(seq_ext)):
-   polygon=cv.ApproxPoly(list(seq), storage,cv.CV_POLY_APPROX_DP,0,0)
+   perim= cv.ArcLength(seq) #contour perimeter
+   area=cv.ContourArea(seq) #contour area
+   polygon=cv.ApproxPoly(list(seq), storage,cv.CV_POLY_APPROX_DP,perim*0.02,0)
    sqr=cv.BoundingRect(polygon,0)
-   #Only keep rectangles big enough to be of interest
-   #Only keep concave rectangles
-   if ( cv.CheckContourConvexity(polygon))& (float(sqr[2]*sqr[3])/(edges.height*edges.width)>0.1):#(abs(sqr[2]-sqr[3])<((sqr[2]+sqr[3])/4)): 
-    cv.PolyLine(im,[polygon], True, (0,255,0),2, cv.CV_AA, 0)
+   #Only keep rectangles big enough to be of interest,
+   #that have an appropriate width/height ratio
+   #and whose area is close enogh to that of the approximated rectangle
+   if  (float(sqr[2]*sqr[3])/(edges.height*edges.width)>0.1) & (abs(sqr[2]-sqr[3])<((sqr[2]+sqr[3])/4))& (area/float(sqr[2]*sqr[3])>0.7): 
+    #cv.PolyLine(im,[polygon], True, (0,255,0),2, cv.CV_AA, 0)
     cv.Rectangle(im,(sqr[0],sqr[1]),(sqr[0]+sqr[2],sqr[1]+sqr[3]),(255,0,255),1,8,0)
-    print sqr[2],sqr[3]
+    print sqr[2],sqr[3], len(seq)
   else:
     seq_ext=seq_ext.h_next()   
   #h_next: points to sequences om the same level
   seq=seq.h_next()
 
-  
 
 
 

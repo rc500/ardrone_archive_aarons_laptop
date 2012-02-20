@@ -64,10 +64,14 @@ class imageProcessor(object):
                 while seq:
                   #do not take into account external countours
                   if not(list(seq)==list(seq_ext)):
-                   polygon=cv.ApproxPoly(list(seq), storage,cv.CV_POLY_APPROX_DP,0,0)
+                   perim= cv.ArcLength(seq) #contour perimeter
+                   area=cv.ContourArea(seq) #contour area      
+                   polygon=cv.ApproxPoly(list(seq), storage,cv.CV_POLY_APPROX_DP,perim*0.02,0)
                    sqr=cv.BoundingRect(polygon,0)
-                   #Only keep rectangles big enough to be of interest and are concave
-                   if (not cv.CheckContourConvexity(polygon)) & (float(sqr[2]*sqr[3])/(edges.height*edges.width)>0.1): 
+                   #Only keep rectangles big enough to be of interest,
+                   #that have an appropriate width/height ratio
+                   #and whose area is close enough to that of the approximated rectangle
+                   if (float(sqr[2]*sqr[3])/(edges.height*edges.width)>0.1)&(abs(sqr[2]-sqr[3])<((sqr[2]+sqr[3])/4))& (area/float(sqr[2]*sqr[3])>0.7): 
                     cv.PolyLine(im,[polygon], True, (0,0,255),2, cv.CV_AA, 0)
                     cv.Rectangle(im,(sqr[0],sqr[1]),(sqr[0]+sqr[2],sqr[1]+sqr[3]),(255,0,255),1,8,0) 
                     if (sqr[2]>120) or (sqr[3]>80):
