@@ -12,6 +12,8 @@ from ardrone.core.controlloop import ControlLoop
 from ardrone.platform import qt as platform
 from . import PositionalControl
 from . import CooperativeControl
+from . import network_config as config
+
 import time
 # Import qt modules (platform independant)
 import ardrone.util.qtcompat as qt
@@ -30,9 +32,10 @@ class DroneApp(object):
 
 		# ---- DRONES SETUP ----
 		# Initialialise a control loop and attempt to open connection to first drone
-		connection = platform.Connection()
-		self._drone1 = ControlLoop(connection)
-		#self._drone2 = ? #for now
+		connection1 = platform.Connection()
+		connection2 = platform.Connection()
+		self._drone1 = ControlLoop(connection1, host=config.drone1['host'], control_host=config.control_host, at_port=config.drone1['at_port'], nav_port=config.drone1['nav_port'], vid_port=config.drone1['vid_port'], config_port=config.drone1['config_port'], control_port=config.drone1['control_port'], control_data_port=config.drone1['control_data_port'], video_data_port=config.drone1['video_data_port'])
+		self._drone2 = ControlLoop(connection2, host=config.drone2['host'], control_host=config.control_host, at_port=config.drone2['at_port'], nav_port=config.drone2['nav_port'], vid_port=config.drone2['vid_port'], config_port=config.drone2['config_port'], control_port=config.drone2['control_port'], control_data_port=config.drone2['control_data_port'], video_data_port=config.drone2['video_data_port'])
 		
 		# --- INITIALISE APPLICATION OBJECTS ----
 		self._pos_control_1 = PositionalControl.PositionalControl(1,self._drone1,self)
