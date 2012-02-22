@@ -57,7 +57,7 @@ class ControlLoop(object):
       video_cb=None, navdata_cb=None,
       host='192.168.1.1', control_host='127.0.0.1',
       at_port=5556, nav_port=5554, vid_port=5555, config_port=5559,
-      control_port=5560, control_data_port=5561,video_data_port=5562):
+      control_port=5560, control_data_port=5561,video_data_port=5562,control_data_listening_port=3456,video_data_listening_port=3457):
 
     self._connection = connection
     self._reset_sequence()
@@ -86,8 +86,8 @@ class ControlLoop(object):
     self._connection.open(ControlLoop._VID, (host, vid_port), (None, vid_port, self._got_video))
     self._connection.open(ControlLoop._CONTROL, (host, control_port), (None, control_port, self._got_control))
     self._connection.open(ControlLoop._CONFIG, (host, config_port), (None, config_port, self._got_config))
-    self._connection.open(ControlLoop._CONTROL_DATA, (control_host, control_data_port), (None, 3456, None))
-    self._connection.open(ControlLoop._VIDEO_DATA, (control_host, video_data_port), (None, 3457, None))
+    self._connection.open(ControlLoop._CONTROL_DATA, (control_host, control_data_port), (None, control_data_listening_port, None))
+    self._connection.open(ControlLoop._VIDEO_DATA, (control_host, video_data_port), (None, video_data_listening_port, None))
   
     self._config_current = None
     self._config_to_send = []
