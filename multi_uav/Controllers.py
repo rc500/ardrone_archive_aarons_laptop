@@ -19,7 +19,7 @@ class Controller(object):
 	correction_step = 0.1
 	error_count = 0
 	
-	def __init__(self,_control,feedback_type,output_type,hard_limit=1):
+	def __init__(self,_control,feedback_type,output_type,update_key,hard_limit=1):
 		# Assign pointers
 		self._control = _control
 
@@ -27,6 +27,7 @@ class Controller(object):
 		self.feedback_type = feedback_type
 		self.output_type = output_type
 		self.hard_limit = hard_limit
+		self.update_key = update_key
 		
 		# Create a little 'heartbeat' timer that will call heartbeat() every so often.
 		self.heartbeat_timer = QtCore.QTimer()
@@ -74,9 +75,13 @@ class Controller(object):
 			self.error_count = 0
 		
 		# If error within limits for a suitable length of time then it has achieved its goal
-		if self.error_count == 40:
-			# Post status
-			self._control._network.sendStatus('%s control achieved' %self.output_type)
+		if self.error_count == 200:
+			# Update state
+			print ("Error within limits for %s" % self.output_type)
+			self._control.current_state[self.update_key] = True
+			# Update status
+			self._control.update_status()
+
 			
 	def output(self,output):
 		# Hard limit output
@@ -86,8 +91,7 @@ class Controller(object):
 			output = -1 * self.hard_limit
 			
 		# Print the output
-		print ("%s correction = %s" % (self.output_type,output))
-		
+#		print ("%s correction = %s" % (self.output_type,output))
 		
 		# Send the update to the drone, via the structure in PositionalControl (so it has a copy)
 		self._control.commanded_state[self.output_type] = output
@@ -101,12 +105,12 @@ class ProportionalController(Controller):
 	G(s) = K
 	"""
 		
-	def __init__(self,_control,feedback_type,output_type,k,hard_limit=1):
+	def __init__(self,_control,feedback_type,output_type,update_key,k,hard_limit=1):
 		# Set up controller parameters
 		self.k = k
 
 		# Initialise as Controller base class
-		Controller.__init__(self, _control,feedback_type,output_type,hard_limit)
+		Controller.__init__(self, _control,feedback_type,output_type,update_key,hard_limit)
 		
 	def heartbeat(self):
 		# Debug heartbeat
@@ -140,7 +144,7 @@ class LeadLagController(Controller):
 			(T+b)
 	"""
 
-	def __init__(self,_control,feedback_type,output_type,k,a,b,T,hard_limit=1):
+	def __init__(self,_control,feedback_type,output_type,update_key,k,a,b,T,hard_limit=1):
 		# Set up controller parameters
 		self.a = a
 		self.b = b
@@ -152,7 +156,7 @@ class LeadLagController(Controller):
 		self.e = [0,0]	# e[k-1],e[k]
 
 		# Initialise as Controller base class
-		Controller.__init__(self, _control,feedback_type,output_type,hard_limit)
+		Controller.__init__(self, _control,feedback_type,output_type,update_key,hard_limit)
 		
 	def heartbeat(self):
 		# Debug heartbeat
