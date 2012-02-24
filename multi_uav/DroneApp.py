@@ -38,9 +38,9 @@ class DroneApp(object):
 		self._drone2 = ControlLoop(connection2, **config.drone2)
 		
 		# --- INITIALISE APPLICATION OBJECTS ----
-		self._pos_control_1 = PositionalControl.PositionalControl(1,self._drone1,self)
-#		self._pos_control_2 = PositionalControl.PositionalControl(2,self._drone2)
-		self._coop_control = CooperativeControl.CooperativeControl((1,),self._pos_control_1)  # Will want to add in _drone2 in time
+		self._pos_control_1 = PositionalControl.PositionalControl(2,self._drone1,self, config.drone1)
+		self._pos_control_2 = PositionalControl.PositionalControl(1,self._drone2,self, config.drone2)
+		self._coop_control = CooperativeControl.CooperativeControl((1,),self._pos_control_2)  # Will want to add in _drone2 in time
 
 	def run(self):
 		self.app.exec_()

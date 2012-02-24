@@ -40,9 +40,10 @@ class PositionalControl(object):
 					'marker_distance_x': 0.0,
 					'marker_distance_y': 0.0,
 					'gas_stable' : False,
+					'altitude' : 0.0,
 									};
 							
-	def __init__(self,drone_id,_control,pseudo_network):
+	def __init__(self,drone_id,_control,pseudo_network,network_config):
 		# --- ASSIGN POINTERS ---
 		self._control=_control
 		self._pseudo_network = pseudo_network
@@ -50,7 +51,7 @@ class PositionalControl(object):
 		# --- INITIALISE APPLICATION OBJECTS ----
 		self._im_proc = ImageProcessor.ImageProcessor(self,drone_id)
 		self._vid_decoder = Videopacket.Decoder(self._im_proc.process)
-		self._network = NetworkManager(self._vid_decoder,self._pseudo_network,self)
+		self._network = NetworkManager(self._vid_decoder,self._pseudo_network,self,network_config)
 		
 		# Configure drone camera
 		self._control.view_camera(1) # channel 1 = downward facing camera
@@ -142,10 +143,9 @@ class NetworkManager(object):
 	ready_video = False
 	ready_takeoff = False
 	
-	HOST, PORT_SEND, PORT_CONTROL, PORT_VIDEO, PORT_STATUS = ('127.0.0.1', 5560, 5561, 5562, 5563)
 	seq = 0
 
-	def __init__(self,_vid_decoder,_pseudo_network,_update):
+	def __init__(self,_vid_decoder,_pseudo_network,_update,config):
 		"""
 		Initialise the class
 		"""
@@ -154,15 +154,18 @@ class NetworkManager(object):
 		self._pseudo_network = _pseudo_network
 		self._update = _update
 		
+		# Variable assignment
+		self.config = config
+		
 		# Set up a UDP listening socket on port for control data
 		self.socket_control = QtNetwork.QUdpSocket()
-		if not self.socket_control.bind(QtNetwork.QHostAddress.Any, self.PORT_CONTROL):
+		if not self.socket_control.bind(QtNetwork.QHostAddress.Any, self.config['control_data_port']):
 			raise RuntimeError('Error binding to port: %s' % (self.socket_control.errorString()))
 		self.socket_control.readyRead.connect(self.readControlData)
     
 		# Set up a UDP listening socket on port for video data
 		self.socket_video = QtNetwork.QUdpSocket()
-		if not self.socket_video.bind(QtNetwork.QHostAddress.Any, self.PORT_VIDEO):
+		if not self.socket_video.bind(QtNetwork.QHostAddress.Any, self.config['video_data_port']):
 			raise RuntimeError('Error binding to port: %s' % (self.socket_video.errorString()))
 		self.socket_video.readyRead.connect(self.readVideoData)
 
@@ -173,7 +176,7 @@ class NetworkManager(object):
 		# Send state to the drone
 		self.seq += 1
 		#print('state is', json.dumps({'seq': self.seq, 'state': data}))
-		self.sock.sendto(json.dumps({'seq': self.seq, 'state': data}), (self.HOST, self.PORT_SEND)) 
+		self.sock.sendto(json.dumps({'seq': self.seq, 'state': data}), (self.config['host'], self.config['control_port']))
 	
 	def sendStatus(self,status):
 		# Send status over the network
