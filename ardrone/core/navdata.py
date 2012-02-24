@@ -39,6 +39,9 @@ NAVDATA_HEADER = ct.c_int32(0x55667788)
 """The navdata demo tag for an option packet. (Lifted from navdata.c)"""
 NAVDATA_DEMO_TAG = ct.c_int16(0)
 
+"""The navdata vision tag for an option packet. (Lifted from navdata_keys.h)"""
+NAVDATA_VISION_TAG = ct.c_int16(13)
+
 """The navdata vision detect tag for an option packet. (Lifted from navdata.c)"""
 NAVDATA_VISION_DETECT_TAG = ct.c_int16(16)
 
@@ -164,6 +167,10 @@ def split(data):
       ipa = IPhoneAnglesBlock.from_buffer_copy(option_data)
       assert(ipa.valid())
       options.append(ipa)
+    elif obh.id == NAVDATA_VISION_TAG.value:
+      v = VisionBlock.from_buffer_copy(option_data)
+      assert(v.valid())
+      options.append(v)
     else:
       log.debug('Unknown navdata option tag: %s' % (obh.id,))
 
@@ -402,7 +409,93 @@ class IPhoneAnglesBlock(ct.LittleEndianStructure):
   def valid(self):
     """Check the block's header for the appropriate type tag."""
     return self.header.id == NAVDATA_IPHONE_ANGLES_TAG.value
- 
+   
+class Velocities(ct.LittleEndianStructure):
+  _fields_ = [
+      ('x', ct.c_float),
+      ('y', ct.c_float),
+      ('z', ct.c_float),
+  ]
+
+  def json(self):
+    json_fields = [ 'x', 'y', 'z' ]
+    json_dict = { }
+    for field_name in json_fields:
+      json_dict[field_name] = getattr(self, field_name)
+    return json.dumps(json_dict)
+
+class VisionBlock(ct.LittleEndianStructure):
+  """A block of vision related values. This has been lifted directly from the navdata.h
+  file in the SDK since it is undocumented.
+
+  """
+  _fields_ = [
+      ('header', OptionBlockHeader),
+      ('vision_state', ct.c_uint32),
+      ('vision_misc', ct.c_int32),
+      ('vision_phi_trim', ct.c_float),
+      ('vision_phi_ref_prop', ct.c_float),
+      ('vision_theta_trim', ct.c_float),
+      ('vision_theta_ref_prop', ct.c_float),
+
+      ('new_raw_picture', ct.c_int32),
+      ('theta_capture', ct.c_float),
+      ('phi_capture', ct.c_float),
+      ('psi_capture', ct.c_float),
+      ('altitude_capture', ct.c_int32),
+      ('time_capture', ct.c_uint32), # time in TSECDEC format (see config.h)
+
+      ('body_v', Velocities),
+
+      ('delta_phi', ct.c_float),
+      ('delta_theta', ct.c_float),
+      ('delta_psi', ct.c_float),
+
+      ('gold_defined', ct.c_uint32),
+      ('gold_reset', ct.c_uint32),
+      ('gold_x', ct.c_float),
+      ('gold_y', ct.c_float),
+  ]
+
+  def json(self):
+    """Return a representation of this block formatted as a JSON string."""
+    json_fields = [
+        'vision_state',
+        'vision_misc',
+        'vision_phi_trim',
+        'vision_phi_ref_prop',
+        'vision_theta_trim',
+        'vision_theta_ref_prop',
+
+        'new_raw_picture',
+        'theta_capture',
+        'phi_capture',
+        'psi_capture',
+        'altitude_capture',
+        'time_capture',
+
+        'delta_phi',
+        'delta_theta',
+        'delta_psi',
+
+        'gold_defined',
+        'gold_reset',
+        'gold_x',
+        'gold_y',
+    ]
+
+    json_dict = { 'type': 'vision' }
+    for field_name in json_fields:
+      json_dict[field_name] = getattr(self, field_name)
+
+    json_dict['body_v'] = json.loads(self.body_v.json())
+
+    return json.dumps(json_dict)
+
+  def valid(self):
+    """Check the block's header for the appropriate type tag."""
+    return self.header.id == NAVDATA_VISION_TAG.value
+
 class VisionDetectBlock(ct.LittleEndianStructure):
   """A block of vision detector data. This has been lifted directly from the
   navdata.c file in the SDK since it is undocumented.

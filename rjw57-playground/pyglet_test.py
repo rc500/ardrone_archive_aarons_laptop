@@ -2,6 +2,7 @@ from math import sqrt, sin, cos, pi
 import numpy as np
 import cv2
 import ctypes
+import json
 
 from pyglet.gl import *
 import pyglet
@@ -92,10 +93,10 @@ class QuadRotor(RenderableObject):
       float diffuse = dot(normal, vec3(1,1,1)/sqrt(3.));
 
       // port left, starboard green
-      vec3 colour = (gl_Vertex.z < 0.) ? vec3(1,0,0) : vec3(0,1,0);
+      vec3 colour = (gl_Vertex.x < 0.) ? vec3(1,0,0) : vec3(0,1,0);
 
       // front blue
-      colour.z = (gl_Vertex.x > 0.) ? 1. : 0.;
+      colour.z = (gl_Vertex.z < 0.) ? 1. : 0.;
 
       gl_FrontColor.rgb = clamp(diffuse, 0., 1.) * colour;
     }
@@ -109,18 +110,44 @@ class QuadRotor(RenderableObject):
     self.group = SetPoseGroup(self.shader, ShaderGroup(self.shader, group))
 
     # Generate rotors - the origin is roughly the centre of gravity with the
-    # +xve xaxis being the camera axis
+    # -ve z-axis being the camera axis
     thickness = 0.012
     height = 0.025
-    self._add_rotor(-0.5*size, -0.25*size, 0.25*size + 0.5*thickness, thickness=thickness, height=height)
-    self._add_rotor(-0.5*size,  0.25*size, 0.25*size + 0.5*thickness, thickness=thickness, height=height)
-    self._add_rotor( 0. *size,  0.25*size, 0.25*size + 0.5*thickness, thickness=thickness, height=height)
-    self._add_rotor( 0. *size, -0.25*size, 0.25*size + 0.5*thickness, thickness=thickness, height=height)
+    self._add_rotor(-0.25*size, -0.25*size, 0.25*size + 0.5*thickness, thickness=thickness, height=height)
+    self._add_rotor(-0.25*size,  0.25*size, 0.25*size + 0.5*thickness, thickness=thickness, height=height)
+    self._add_rotor( 0.25*size,  0.25*size, 0.25*size + 0.5*thickness, thickness=thickness, height=height)
+    self._add_rotor( 0.25*size, -0.25*size, 0.25*size + 0.5*thickness, thickness=thickness, height=height)
 
     # Add an arrow
-    self._add_arrow(origin=(0,0,0), size=size, majoraxis=(1,0,0), minoraxis=(0,0,1))
+    self._add_arrow(origin=(0,0,-0.25*size), size=size*0.35)
 
     self.set_pose()
+
+  def set_euler_angles(self, theta=0, phi=0, psi=0):
+    """theta/phi/psi are specified in degrees.
+    
+    theta in range [-90, 90]
+
+    psi in range [-180, 180]
+
+    phi in range [-180, 180]
+
+    """
+
+    to_rad = 2 * pi / 360.0
+
+    # theta and psi are direction of drone
+    R = rotate(psi * to_rad, (0,-1,0)) * rotate(theta * to_rad, (1,0,0))
+
+    # phi is roll around drone's principal axis
+    phi_axis = R * np.matrix((0,0,-1)).transpose()
+    R = rotate(phi * to_rad, phi_axis) * R
+
+    M = self.group.pose_matrix
+    M[0:3,0:3] = R
+
+  def set_origin(self, origin=(0,0,0)):
+    self.group.set_origin(origin)
 
   def set_pose(self, origin=(0,0,0), yaw=0, pitch=0, roll=0):
     self.group.set_origin(origin)
@@ -129,9 +156,17 @@ class QuadRotor(RenderableObject):
   def set_pose_matrix(self, m):
     self.group.set_pose(m)
 
-  def _add_arrow(self, origin, size, majoraxis, minoraxis):
-    # FIXME: Implement
-    pass
+  def _add_arrow(self, origin, size):
+    ox, oy, oz = origin
+    sc = size * 0.05
+    self.batch.add(4, GL_QUADS, self.group,
+        ('v3f', (ox+sc,oy,oz, ox+sc,oy,oz-size, ox-sc,oy,oz-size, ox-sc,oy,oz)),
+        ('n3f', (0,1,0, 0,1,0, 0,1,0, 0,1,0))
+    )
+    self.batch.add(3, GL_TRIANGLES, self.group,
+        ('v3f', (ox+2*sc,oy,oz-size, ox,oy,oz-size-2*sc, ox-2*sc,oy,oz-size)),
+        ('n3f', (0,1,0, 0,1,0, 0,1,0))
+    )
 
   def _add_rotor(self, xc, zc, outer_radius, thickness=0.05, height=0.05, subdivcount=32):
     vertices = []
@@ -284,27 +319,67 @@ class Plane(RenderableObject):
     self.posegroup.set_axes(x,y,z)
     self.posegroup.set_origin(origin)
 
+class OrthoGroup(pyglet.graphics.Group):
+  def set_state(self):
+    glMatrixMode(GL_MODELVIEW)
+    glPushMatrix()
+    glLoadIdentity()
+    glMatrixMode(GL_PROJECTION)
+    glPushMatrix()
+    glLoadIdentity()
+    v = self.viewport()
+    gluOrtho2D(v[0],v[0]+v[2],v[1],v[1]+v[3])
+
+  def unset_state(self):
+    glMatrixMode(GL_PROJECTION)
+    glPopMatrix()
+    glMatrixMode(GL_MODELVIEW)
+    glPopMatrix()
+
+  def viewport(self):
+    v = (ctypes.c_float * 4)()
+    glGetFloatv(GL_VIEWPORT, v)
+    return v
+
+  def __eq__(self, other):
+    """Groups are always equal."""
+    return True
+
 class Scene(pyglet.graphics.Group):
   def __init__(self, app, *args, **kwargs):
     super(Scene, self).__init__(*args, **kwargs)
     self.app = app
     self.batch = pyglet.graphics.Batch()
 
-    self.floor = Plane(batch=self.batch, group=self, xsize=20, zsize=20)
+    self.backgroup = pyglet.graphics.OrderedGroup(0, self)
+    self.frontgroup = pyglet.graphics.OrderedGroup(1, self)
+
+    self.floor = Plane(batch=self.batch, group=self.backgroup, xsize=20, zsize=20)
     self.floor.set_pose(origin=(0,-1,0), xaxis=(1,0,0), zaxis=(0,0,1))
 
-    self.board = Plane(batch=self.batch, group=self, xsize=20, zsize=20)
+    self.board = Plane(batch=self.batch, group=self.backgroup, xsize=20, zsize=20)
     self.board.set_pose(origin=(1,0,0), xaxis=(0,0,-1), zaxis=(0,1,0))
 
-    self.drone = QuadRotor(batch=self.batch, group=self)
+    self.drone = QuadRotor(batch=self.batch, group=self.backgroup)
     self.drone.set_pose(origin=(0,-1,0))
 
     self.texture_bin = pyglet.image.atlas.TextureBin(1024,1024)
     self.board_image = None
 
     im = self.app.cam_image()
-    im_data = pyglet.image.ImageData(im.shape[1], im.shape[0], 'RGB', str(im.data))
+    im_data = pyglet.image.ImageData(im.shape[1], im.shape[0], 'RGB', str(im.data), -im.shape[1]*3)
     self.camera_image = self.texture_bin.add(im_data)
+    self.orthogroup = OrthoGroup(self.frontgroup)
+    self.camera_sprite = pyglet.sprite.Sprite(
+        self.camera_image,
+        batch=self.batch, group=self.orthogroup)
+
+    self.state_label = pyglet.text.Label('.',
+        font_name='Courier New',
+        font_size=12,
+        x=10, y=10, anchor_y='top', color=(192,0,192,255),
+        multiline=True, width=100,
+        batch=self.batch, group=self.orthogroup)
 
     self.rx = 20
     self.ry = 80
@@ -313,38 +388,37 @@ class Scene(pyglet.graphics.Group):
     pyglet.clock.schedule(self.update)
   
   def draw(self):
+    v = self.orthogroup.viewport()
+    self.camera_sprite.x = v[2]-320
+    self.camera_sprite.y = v[3]-240
+    self.state_label.y = v[3]-10
+    self.state_label.width = 0.66*v[2]-v[0]
     self.batch.draw()
-
-    glMatrixMode(GL_MODELVIEW)
-    glPushMatrix()
-    glLoadIdentity()
-    glMatrixMode(GL_PROJECTION)
-    glPushMatrix()
-    glLoadIdentity()
-
-    v = (ctypes.c_float * 4)()
-    glGetFloatv(GL_VIEWPORT, v)
-    gluOrtho2D(v[0],v[0]+v[2],v[1]+v[3],v[1])
-
-    glColor3f(1,1,1)
-    self.camera_image.blit(0,0)
-
-    glMatrixMode(GL_PROJECTION)
-    glPopMatrix()
-    glMatrixMode(GL_MODELVIEW)
-    glPopMatrix()
 
   def update(self, dt):
     im = self.app.cam_image()
-    im_data = pyglet.image.ImageData(im.shape[1], im.shape[0], 'RGB', str(im.data))
+    im_data = pyglet.image.ImageData(im.shape[1], im.shape[0], 'RGB', str(im.data), -im.shape[1]*3)
     self.camera_image.blit_into(im_data, 0, 0, 0)
+
+    demo_block = self.app.state('demo')
+    #vision_block = self.app.state('vision')
+
+    if demo_block is not None:
+      self.drone.set_euler_angles(*[demo_block[x]/1000. for x in ('theta', 'phi', 'psi')])
+      self.drone.set_origin((0,demo_block['altitude']/1000. - 1.0,0))
+      self.drone.set_origin((0,0,0))
+
+    if demo_block is not None:
+      self.state_label.text = json.dumps(demo_block, indent=True)
+    else:
+      self.state_label.text = '.'
 
     try:
       board = self.app.boards()[0]
     except IndexError:
       board = None
 
-    if board is not None:
+    if False and board is not None:
       config, ids, recon_image, recon_mask, detect = board
       if detect[0] is not None and detect[1] > 0.1:
         # Get camera extrinsics
@@ -364,8 +438,8 @@ class Scene(pyglet.graphics.Group):
 
         # Drone pose
         D = np.matrix(np.identity(4))
-        D[0:3,0:3] *= rotate(-0.5*pi, (0,1,0))
-        D[0:3,0:3] *= rotate(pi, (1,0,0))
+        #D[0:3,0:3] *= rotate(-0.5*pi, (0,1,0))
+        #D[0:3,0:3] *= rotate(pi, (1,0,0))
 
         self.drone.set_pose_matrix(self.board.pose() * M * D)
 
@@ -402,10 +476,11 @@ class Scene(pyglet.graphics.Group):
     glEnable(GL_DEPTH_TEST)
     #glEnable(GL_CULL_FACE)
     glColor3f(1, 0, 0)
+
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+    glEnable(GL_BLEND)
     
     glDisable(GL_LIGHTING)
-    glEnable(GL_LIGHT0)
-    glEnable(GL_LIGHT1)
 
 class MainWindow(pyglet.window.Window):
   def __init__(self, app, *args, **kwargs):

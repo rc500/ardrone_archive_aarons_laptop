@@ -62,8 +62,8 @@ turn_right_state = {
 }
 
 move_forward_state = {
-      'roll':-0.02,
-      'pitch': 0.01,
+      'roll':0.0,#0.0,
+      'pitch': -0.1,
       'yaw': 0.0,
       'gas': -0.01,
       'take_off': False,
@@ -144,31 +144,12 @@ class imageProcessor(object):
                   seq=seq.h_next()
   
                 if found_box:
-                  #send_state(normal_state)
-                   i=1     
-                   while i<95:     
-                    send_state(turn_right_state)
-                    i=i+1
-                   i=1 
-                   while i<45:     
-                    send_state(move_forward_state)
-                    i=i+1
-                   i=1 
-                   while i<90:     
+                  i=1
+                  while i<45:
                     send_state(turn_left_state)
                     i=i+1
-                   i=1 
-                   while i<75:     
-                    send_state(move_forward_state)
-                    i=i+1
-                   #rotate again to face boxes 
-                   i=1 
-                   while i<95:     
-                    send_state(turn_left_state)
-                    i=i+1                    
-                    
                 else:
-                    send_state(normal_state)
+                    send_state(move_forward_state)
 
                 return im  
  

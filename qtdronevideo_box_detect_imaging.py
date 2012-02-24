@@ -23,70 +23,6 @@ from ardrone.core.controlloop import ControlLoop
 from ardrone.platform import qt as platform
 import ardrone.core.videopacket as videopacket
 
-"""A global socket object which can be used to send commands to the GUI program."""
-sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
-"""A global sequence counter. The GUI uses this to determine if two commands
-have been received in the wrong order: the command with the largest (latest)
-sequence will always 'win'."""
-seq = 0
-
-normal_state = {
-      'roll': 0.0,
-      'pitch': 0.0,
-      'yaw': 0.0,
-      'gas': -0.03,
-      'take_off': False,
-      'reset': False,
-      'hover': True,
-}
-
-turn_left_state = {
-      'roll': 0.0,
-      'pitch': 0.0,
-      'yaw': -1.0,
-      'gas': 0.0,
-      'take_off': False,
-      'reset': False,
-      'hover': False,
-}
-
-turn_right_state = {
-      'roll': 0.0,
-      'pitch': 0.0,
-      'yaw': 1.0,
-      'gas': 0.0,
-      'take_off': False,
-      'reset': False,
-      'hover': False,
-}
-
-move_forward_state = {
-      'roll':-0.02,
-      'pitch': 0.01,
-      'yaw': 0.0,
-      'gas': -0.01,
-      'take_off': False,
-      'reset': False,
-      'hover': False,
-}
-
-
-def send_state(state):
-  """Send the state dictionary to the drone GUI.
-
-  state is a dictionary with (at least) the keys roll, pitch, yaw, gas,
-  take_off, reset and hover. The first four are floating point values on the
-  interval [-1,1] which specify the setting of the corresponding attitude
-  angle/vertical speed. The last three are True or False to indicate if that
-  virtual 'button' is pressed.
-
-  """
-  global seq, sock
-  seq += 1
-  HOST, PORT = ('127.0.0.1', 5560)
-  print('state is', json.dumps({'seq': seq, 'state': state}))
-  sock.sendto(json.dumps({'seq': seq, 'state': state}), (HOST, PORT))
 
 class imageProcessor(object):
         def __init__(self):
@@ -128,15 +64,26 @@ class imageProcessor(object):
                 while seq:
                   #do not take into account external countours
                   if not(list(seq)==list(seq_ext)):
-                   polygon=cv.ApproxPoly(list(seq), storage,cv.CV_POLY_APPROX_DP,0,0)
+                   perim= cv.ArcLength(seq) #contour perimeter
+                   area=cv.ContourArea(seq) #contour area      
+                   polygon=cv.ApproxPoly(list(seq), storage,cv.CV_POLY_APPROX_DP,perim*0.02,0)
                    sqr=cv.BoundingRect(polygon,0)
-                   #Only keep rectangles big enough to be of interest and are concave
-                   if (not cv.CheckContourConvexity(polygon)) & (float(sqr[2]*sqr[3])/(edges.height*edges.width)>0.1): 
+                   #Only keep rectangles big enough to be of interest,
+                   #that have an appropriate width/height ratio
+                   #and whose area is close enough to that of the approximated rectangle
+                   if (float(sqr[2]*sqr[3])/(edges.height*edges.width)>0.1)&(abs(sqr[2]-sqr[3])<((sqr[2]+sqr[3])/4))& (area/float(sqr[2]*sqr[3])>0.7): 
                     cv.PolyLine(im,[polygon], True, (0,0,255),2, cv.CV_AA, 0)
-                    cv.Rectangle(im,(sqr[0],sqr[1]),(sqr[0]+sqr[2],sqr[1]+sqr[3]),(255,0,255),1,8,0) 
-                    if (sqr[2]>120) or (sqr[3]>80):
+                    cv.Rectangle(im,(sqr[0],sqr[1]),(sqr[0]+sqr[2],sqr[1]+sqr[3]),(255,0,255),1,8,0)
+                    r=cv.Get2D(im,int(round(img.width/2)),int(round(img.height/2)))[2]
+                    g=cv.Get2D(im,int(round(img.width/2)),int(round(img.height/2)))[1]
+                    b=cv.Get2D(im,int(round(img.width/2)),int(round(img.height/2)))[0]
+                    print g
+                    if ((sqr[2]>120) or (sqr[3]>80)) and (g>50.0)  :
+                          if ((b/g)<0.6): 
                             print 'warning', sqr[2],sqr[3]
                             found_box = True
+                            print cv.Get2D(im,int(round(img.width/2)),int(round(img.height/2)))
+                            
                   else:
                     #move on to the next outter contour      
                     seq_ext=seq_ext.h_next()   
@@ -144,31 +91,8 @@ class imageProcessor(object):
                   seq=seq.h_next()
   
                 if found_box:
-                  #send_state(normal_state)
-                   i=1     
-                   while i<95:     
-                    send_state(turn_right_state)
-                    i=i+1
-                   i=1 
-                   while i<45:     
-                    send_state(move_forward_state)
-                    i=i+1
-                   i=1 
-                   while i<90:     
-                    send_state(turn_left_state)
-                    i=i+1
-                   i=1 
-                   while i<75:     
-                    send_state(move_forward_state)
-                    i=i+1
-                   #rotate again to face boxes 
-                   i=1 
-                   while i<95:     
-                    send_state(turn_left_state)
-                    i=i+1                    
-                    
-                else:
-                    send_state(normal_state)
+                  print'too close'
+
 
                 return im  
  

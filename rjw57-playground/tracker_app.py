@@ -9,6 +9,7 @@ import Queue
 
 import cv2.cv as cv
 import numpy as np
+import json
 
 #from . import videopacket
 #self._vid_decoder = videopacket.Decoder()
@@ -26,6 +27,8 @@ QtCore = qt.import_module('QtCore')
 QtNetwork = qt.import_module('QtNetwork')
 
 from ardrone.core.videopacket import Decoder
+
+import threading
 
 # Load the tracker module
 from tracker import Tracker
@@ -78,30 +81,38 @@ class TrackerApp(object):
     # video frame is available.
     self._decoder = Decoder(self.video_frame_decoded)
 
-    # Set up a UDP listening socket on port 5562.
-    self.socket = QtNetwork.QUdpSocket()
-    if not self.socket.bind(QtNetwork.QHostAddress.Any, 5562):
-      raise RuntimeError('Error binding to port: %s' % (self.socket.errorString()))
-    self.socket.readyRead.connect(self.socketReadyRead)
+    # Set up a UDP listening socket on port 5561 for data packets.
+    self.state_socket = QtNetwork.QUdpSocket()
+    if not self.state_socket.bind(QtNetwork.QHostAddress.Any, 5561):
+      raise RuntimeError('Error binding to port: %s' % (self.state_socket.errorString()))
+    self.state_socket.readyRead.connect(self.stateSocketReadyRead)
+
+    # Set up a UDP listening socket on port 5562 for video frames.
+    self.video_socket = QtNetwork.QUdpSocket()
+    if not self.video_socket.bind(QtNetwork.QHostAddress.Any, 5562):
+      raise RuntimeError('Error binding to port: %s' % (self.video_socket.errorString()))
+    self.video_socket.readyRead.connect(self.videoSocketReadyRead)
 
     # the input raw video is a 2-byte per pixel image encoded as a RGB565 format.
     self._raw_image_mat = cv.CreateMatHeader(240, 320, cv.CV_8UC2)
 
     # we convert the image to this 3-byte per pixel RGB888 format
+    self._image_lock = threading.Lock()
     self._image = cv.CreateMat(240, 320, cv.CV_8UC3)
 
-#    self._input_label = QtGui.QLabel()
-#    self._input_label.setWindowTitle('Video stream')
-#    self._input_label.setPixmap(QtGui.QPixmap(QtGui.QImage(320, 240, QtGui.QImage.Format_RGB16)))
-#    self._input_label.show()
-# 
-#    self._update_timer = QtCore.QTimer()
-#    self._update_timer.setInterval(1000/15)
-#    self._update_timer.timeout.connect(self.update_images)
-#    self._update_timer.start()
+    self._states_lock = threading.Lock()
+    self._states = { }
   
   def cam_image(self):
-    return np.array(self._image)
+    with self._image_lock:
+      return np.array(self._image, copy=True)
+
+  def state(self, typename):
+    with self._states_lock:
+      if typename in self._states:
+        return self._states[typename]
+      else:
+        return None
 
   def boards(self):
     return self._tracker.boards()
@@ -112,17 +123,31 @@ class TrackerApp(object):
   def run(self):
     self.app.exec_()
 
-#  def update_images(self):
-#    # Update the label image
-#    self._input_label.setPixmap(QtGui.QPixmap(QtGui.QImage(
-#      self._image.tostring(), 320, 240, QtGui.QImage.Format_RGB888)))
+  def stateSocketReadyRead(self):
+    """Called when there is some interesting data to read on the state socket."""
 
-  def socketReadyRead(self):
-    """Called when there is some interesting data to read on the control socket."""
+    while self.state_socket.hasPendingDatagrams():
+      sz = self.state_socket.pendingDatagramSize()
+      (data, host, port) = self.state_socket.readDatagram(sz)
 
-    while self.socket.hasPendingDatagrams():
-      sz = self.socket.pendingDatagramSize()
-      (data, host, port) = self.socket.readDatagram(sz)
+      # Some hack to account for PySide vs. PyQt differences
+      if qt.USES_PYSIDE:
+        data = data.data()
+  
+      # Parse the packet
+      packet = json.loads(data.decode())
+
+      # Store the packet
+      if 'type' in packet:
+        with self._states_lock:
+          self._states[packet['type']] = packet
+
+  def videoSocketReadyRead(self):
+    """Called when there is some interesting data to read on the video socket."""
+
+    while self.video_socket.hasPendingDatagrams():
+      sz = self.video_socket.pendingDatagramSize()
+      (data, host, port) = self.video_socket.readDatagram(sz)
 
       # Some hack to account for PySide vs. PyQt differences
       if qt.USES_PYSIDE:
@@ -145,7 +170,8 @@ class TrackerApp(object):
     # Colour convert. We can only colour convert in opencv from BGR565, not
     # RGB565. Luckily, the two wrongs average out to a right if we treat this
     # image as BGR from now on.
-    cv.CvtColor(self._raw_image_mat, self._image, cv.CV_BGR5652RGB)
+    with self._image_lock:
+      cv.CvtColor(self._raw_image_mat, self._image, cv.CV_BGR5652RGB)
 
     self._tracker.put_image(self._image)
 
