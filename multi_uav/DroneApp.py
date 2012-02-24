@@ -27,9 +27,6 @@ class DroneApp(object):
 		# Create a QtCoreApplication loop (NB remember to use QApplication instead if wanting GUI features)
 		self.app = QtCore.QCoreApplication(sys.argv)
 
-		# Wire up Ctrl-C to call QApplication.quit()
-		signal.signal(signal.SIGINT, lambda *args: self.app.quit())
-
 		# ---- DRONES SETUP ----
 		# Initialialise a control loop and attempt to open connection to first drone
 		connection1 = platform.Connection()
@@ -38,12 +35,21 @@ class DroneApp(object):
 		self._drone2 = ControlLoop(connection2, **config.drone2)
 		
 		# --- INITIALISE APPLICATION OBJECTS ----
-		self._pos_control_1 = PositionalControl.PositionalControl(2,self._drone1,self, config.drone1)
-		self._pos_control_2 = PositionalControl.PositionalControl(1,self._drone2,self, config.drone2)
-		self._coop_control = CooperativeControl.CooperativeControl((1,),self._pos_control_2)  # Will want to add in _drone2 in time
+		self._pos_control_1 = PositionalControl.PositionalControl(1,self._drone1,self,config.drone1)
+		self._pos_control_2 = PositionalControl.PositionalControl(2,self._drone2,self,config.drone2)
+		self._coop_control = CooperativeControl.CooperativeControl((1,2,),(self._pos_control_1,self._pos_control_2,))
+
+		# Wire up Ctrl-C to safely land drones and end the application
+		signal.signal(signal.SIGINT, lambda *args: self.finish())
 
 	def run(self):
 		self.app.exec_()
+	
+	def finish(self):
+		# NB - Currently Drones are landed in an unconfirmed way (i.e. commands are sent and being on the ground is not confirmed - this should be done via states)
+		self._pos_control_1.land()
+		self._pos_control_2.land()
+		self.app.quit()
 
 	def send_status(self,status):
 		self._coop_control._network.readStatusData_pseudo(status)

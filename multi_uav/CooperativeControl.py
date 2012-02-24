@@ -14,17 +14,19 @@ QtNetwork = qt.import_module('QtNetwork')
 
 class CooperativeControl(object):
 
-	def __init__(self,drones,_drone1): # Will want to add in _drone2 in time
+	def __init__(self,drones,drone_controllers): # Will want to add in _drone2 in time
 		# --- STORE VARIABLES ---
 		self.drones = drones # tuple of drone ids
-
+		
 		# --- INITIALISE APPLICATION OBJECTS ----
 		#self._status_viewer = # add at some point
 		self._network = NetworkManager(self)
-		self._drone1 = _drone1
 		
 		# First state
-		self._state = GroundState(self,self._drone1)
+		self._state = CommunicationState(self,drone_controllers)
+		
+		# Start program
+		self.start()
 		
 	def start(self):
 		print("Program started")
@@ -60,6 +62,7 @@ class State(object):
 	
 	drone_properties =
 					{
+					'talking': False
 					'airborne': False
 					'height_stable':False
 					# etc.
@@ -67,16 +70,28 @@ class State(object):
 					
 	state_properties = [#drone1_properties,drone2_properties,...]
 	"""
-	drone_properties = {
-						'airborne':False,
-						'height_stable':False,
-						};
-					
-	state_properties = [drone_properties,] # [drone_1, drone_2, etc.]
 
-	def __init__(self,_coop,_drone1):
+	def __init__(self,_coop,drone_controllers):
+		
+		# Variables
+		self.drone_properties = {
+							'talking':False,
+							'airborne':False,
+							'height_stable':False,
+							};
+		
+		self.state_properties = [{
+							'talking':False,
+							'airborne':False,
+							'height_stable':False,
+							},{
+							'talking':False,
+							'airborne':False,
+							'height_stable':False,
+							},] # [drone_1, drone_2, etc.]
+
 		# Assign pointers
-		self._drone1 = _drone1
+		self.drone_controllers = drone_controllers # NB - actually a tuple of pointers
 		self._coop = _coop
 		
 	def update(self,status):
@@ -96,23 +111,28 @@ class State(object):
 		Check the exit conditions against the state_properties.
 		If state requires changing, return the new state id.
 		"""
-		exit_state = False
+		exit_state = []
 		
 		# Check exit condition
 		for drone_id in self._coop.drones:
-			#print(drone_id)
+			exit_state.append(False) # Initialise a bool for each drone
+			#print("Drone: %s" %drone_id)
 			for key in self.exit_conditions[drone_id-1].keys():
-				#print(key)
-				#print(self.exit_conditions,self.state_properties)
+				#print("Property: '%s'" %key)
+				#print(self.state_properties)
 				#print(self.exit_conditions[drone_id-1][key],self.state_properties[drone_id-1][key])
 				if self.exit_conditions[drone_id-1][key] == self.state_properties[drone_id-1][key]:
-					exit_state = True
+					exit_state[drone_id-1] = True # Set flag for respective drone
 				else:
-					exit_state = False
-					return (False,)
-		if exit_state == True:
+					exit_state[drone_id-1] = False # Set flag for respective drone	
+					#return (False,) # Leave loop as don't care about meeting rest of conditions
+					
+		# Only change state is all exit conditions have been met
+		exit_state.sort()
+		if exit_state[0] == True: # Don't actually need this line and line above
 			print("Exiting State")
 			return (True,self.next_state())
+		return (False,)
 	
 	def next_state(self):
 		# Be sure to return pointer to next state
@@ -121,11 +141,50 @@ class State(object):
 	def action(self):
 		pass
 
+class CommunicationState(State):
+	"""
+	ID = 0
+	
+	The CommunicationState for when the drones are not verified as being in contact with the network.
+	State entry requirements: -
+	State purpose: to get drones communicating
+	State exit: when drones are on and communicating
+	
+	State exit conditions:
+		talking == True
+	"""
+		
+	exit_conditions = [{'talking':True},{'talking':True},] #[drone1,drone2,...]
+
+	def __init__(self, *args, **kwargs):
+		# Initialise as per State base class
+		State.__init__(self, *args, **kwargs)
+
+		# Setup timer to enable repeated checks of drone communication status
+		self.check_timer = QtCore.QTimer()
+		self.check_timer.setInterval(1000) # ms
+		self.check_timer.timeout.connect(self.check)
+		
+	def next_state(self):
+		# Create next state
+		return GroundState(self._coop,self.drone_controllers)
+	
+	def action(self):
+		# Check for change in drone status
+		print("In Communication State")
+		self.check_timer.start()
+	
+	def check(self):
+		# Update status of drones
+		for drone in self.drone_controllers:
+			print ("calling update status %s" %drone)
+			drone.update_status()
+			
 class GroundState(State):
 	"""
 	ID = 1
 	
-	The CooperativeController state for when the drones are not airborne.
+	The GroundState state for when the drones are not airborne.
 	State entry requirements: drones are on and able to communicate with the controller.
 	State purpose: to get drones airborne
 	State exit: when drones are airborne
@@ -134,9 +193,9 @@ class GroundState(State):
 		airborne == True for all drones
 	"""
 
-	exit_conditions = [{'airborne':True},] #[drone1,drone2,...]
+	exit_conditions = [{'airborne':True},{'airborne':True}] #[drone1,drone2,...]
 
-	def __init__(self,_coop,_drone1):
+	def __init__(self,_coop,drone_controllers):
 		# Setup timer to enable repeated attempts to reset and take off the drones at given intervals
 		self.reset_timer = QtCore.QTimer()
 		self.reset_timer.setInterval(5000) # ms
@@ -151,11 +210,11 @@ class GroundState(State):
 		self.check_timer.timeout.connect(self.check)
 
 		# Initialise as per State base class
-		State.__init__(self,_coop,_drone1)
+		State.__init__(self,_coop,drone_controllers)
 
 	def next_state(self):
 		# Create next state
-		return HoverState(self._coop,self._drone1)
+		return HoverState(self._coop,self.drone_controllers)
 		
 	def action(self):
 		# Start trying to take off drones
@@ -165,21 +224,24 @@ class GroundState(State):
 	def reset(self):
 		print("beat-reset")
 		# Reset then try to take off
-		self._drone1.reset()
+		for drone in self.drone_controllers:
+			drone.reset()
 		self.reset_timer.stop()
 		self.takeoff_timer.start()
 		
 	def take_off(self):
 		print("beat-takeoff")
 		# Try to take off then reset (should be enough delay before reset for state to exit if take off actually works)
-		self._drone1.take_off()
+		for drone in self.drone_controllers:
+			drone.take_off()
 		self.takeoff_timer.stop()
 		self.check_timer.start()
 
 	def check(self):
 		print("beat-check")
 		# Check state
-		self._drone1.update_status()
+		for drone in self.drone_controllers:
+			drone.update_status()
 		self.check_timer.stop()
 		self.reset_timer.start()
 
@@ -196,21 +258,21 @@ class HoverState(State):
 		height_stable == True for all drones
 	"""
 
-	exit_conditions = [{'height_stable':True},] #[drone1,drone2,...]
+	exit_conditions = [{'height_stable':True},{'height_stable':True},] #[drone1,drone2,...]
 
-	def __init__(self,_coop,_drone1):
+	def __init__(self,_coop,drone_controllers):
 		# Initialise as per State base class
-		State.__init__(self,_coop,_drone1)
-		print("Hover state created")
+		State.__init__(self,_coop,drone_controllers)
 		
 	def next_state(self):
 		# Create next state
-		return MarkerState(self._coop,self._drone1)
+		return MarkerState(self._coop,self.drone_controllers)
 		
 	def action(self):
 		# Start trying to stablise the drones' height
 		print("In Hover State")
-		self._drone1.set_altitude(1000)
+		for drone in self.drone_controllers:
+			drone.set_altitude(1000)
 
 class MarkerState(State):
 	"""
@@ -225,34 +287,32 @@ class MarkerState(State):
 		above_marker == True for all drones
 	"""
 
-	exit_conditions = [{'airborne':False},] #[drone1,drone2,...]
+	exit_conditions = [{'airborne':False},{'airborne':False},] #[drone1,drone2,...]
 
-	def __init__(self,_coop,_drone1):
+	def __init__(self,_coop,drone_controllers):
 		# Initialise as per State base class
-		State.__init__(self,_coop,_drone1)
+		State.__init__(self,_coop,drone_controllers)
 
 	def next_state(self):
 		# Create next state
-		return MarkerState(self._coop,self._drone1)
+		return MarkerState(self._coop,self.drone_controllers)
 		
 	def action(self):
 		# Stablise the drone over a marker
 		print("In Marker State")
-		self._drone1.hold_marker()
+		for drone in self.drone_controllers:
+			drone.hold_marker()
 					
 class NetworkManager(object):
 	"""
 	A class which manages the sending and receiving of packets over the network.
 	It stores the relevant data of received packets and sends packets when requested.
 	
-	IP address of drone: 192.168.1.1
+	IP address of drone: config.['host']
 	Localhost: 127.0.0.1
 	"""
 	
-	ready = 2
 	
-	PORT_STATUS = 5563
-
 	def __init__(self,initialiser):
 		"""
 		Initialise the class
@@ -260,51 +320,29 @@ class NetworkManager(object):
 		self._coop = initialiser
 		
 		# Set up a UDP listening socket on port for status data
-		self.socket_status = QtNetwork.QUdpSocket()
-		if not self.socket_status.bind(QtNetwork.QHostAddress.Any, self.PORT_STATUS):
-			raise RuntimeError('Error binding to port: %s' % (self.socket_status.errorString()))
-		self.socket_status.readyRead.connect(self.readStatusData)
+#		self.socket_status = QtNetwork.QUdpSocket()
+#		if not self.socket_status.bind(QtNetwork.QHostAddress.Any, self.PORT_STATUS):
+#			raise RuntimeError('Error binding to port: %s' % (self.socket_status.errorString()))
+#		self.socket_status.readyRead.connect(self.readStatusData)
 
 	def readStatusData_pseudo(self,data):
 		# Call CooperativeControl with status message if it is a dictionary data structure
 		if type(data)==type({}):
 			self._coop.update(data)
-		
-		## --- INITIALISING STATUS CHECKS --- ##
-		if data == 'ControlReady':
-			self.ready = self.ready - 1
-			print("Coop caught Control Ready; awaiting %r more processes to initialise" % self.ready)
-		
-		if data == 'VideoReady':
-			self.ready = self.ready - 1
-			print("Coop caught Video Ready; awaiting %r more processes to initialise" % self.ready)
-		
-		if self.ready == 0:
-			self._coop.start()
-			self.ready = 1 # to make sure this isn't called again
-
-	def readStatusData(self):
-		"""
-		Called when there is some interesting data to read on the status socket.
-		The status message is passed onto CooperativeControl object for processing.
-		"""
-		while self.socket_status.hasPendingDatagrams():
-			sz = self.socket_status.pendingDatagramSize()
-			(data, host, port) = self.socket_status.readDatagram(sz)
+		else:
+			print("rogue status message received")
+			
+	#def readStatusData(self):
+		#"""
+		#Called when there is some interesting data to read on the status socket.
+		#The status message is passed onto CooperativeControl object for processing.
+		#"""
+		#while self.socket_status.hasPendingDatagrams():
+			#sz = self.socket_status.pendingDatagramSize()
+			#(data, host, port) = self.socket_status.readDatagram(sz)
 	
-			# Call CooperativeControl with status message if it is a dictionary data structure
-			if type(data)==type({}):
-				self._coop.update(data)
-			
-			## --- INITIALISING STATUS CHECKS --- ##
-			if data == 'ControlReady':
-				self.ready = self.ready - 1
-				print("Coop caught Control Ready; awaiting %r more processes to initialise" % self.ready)
-			
-			if data == 'VideoReady':
-				self.ready = self.ready - 1
-				print("Coop caught Video Ready; awaiting %r more processes to initialise" % self.ready)
-			
-			if self.ready == 0:
-				self._coop.start()
-				self.ready = 1 # to make sure this isn't called again
+			## Call CooperativeControl with status message if it is a dictionary data structure
+			#if type(data)==type({}):
+				#self._coop.update(data)
+			#else:
+				#print("rogue status message received")

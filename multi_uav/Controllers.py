@@ -16,10 +16,11 @@ class Controller(object):
 	Class forming the base functionality of a controller
 	"""
 		
-	correction_step = 0.1
-	error_count = 0
-	
 	def __init__(self,_control,feedback_type,output_type,update_key,hard_limit=1):
+		# Variables
+		self.error_count = 0
+		self.correction_step = 0.1
+		
 		# Assign pointers
 		self._control = _control
 
@@ -67,9 +68,9 @@ class Controller(object):
 		Checks whether the error is within acceptable limits.
 		If it is within limits then the controller has achieved its goal and posts this status to the network.
 		"""
-
+		print ("check_error: %s" %error)
 		# Check whether error is within limits
-		if error <= 0.1 and error >= -0.1:
+		if error <= 0.5 and error >= -0.5:
 			self.error_count = self.error_count + 1
 		else:
 			self.error_count = 0
@@ -91,10 +92,11 @@ class Controller(object):
 			output = -1 * self.hard_limit
 			
 		# Print the output
-#		print ("%s correction = %s" % (self.output_type,output))
+		print ("%s correction = %s" % (self.output_type,output))
 		
 		# Send the update to the drone, via the structure in PositionalControl (so it has a copy)
 		self._control.commanded_state[self.output_type] = output
+		print (self._control.commanded_state[self.output_type])
 		self._control._network.sendControl(self._control.commanded_state)
 
 class ProportionalController(Controller):

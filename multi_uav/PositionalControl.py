@@ -16,25 +16,18 @@ from . import Controllers as Controller
 from . import ImageProcessor
 import ardrone.core.videopacket as Videopacket
 
+import logging 
+#logging.basicConfig(level=logging.DEBUG)
+
 class PositionalControl(object):
 	"""
 	The core drone control object which contains functions to control the position of an individual drone.
 	This is done through the ControlLoop object.
 	"""
 	
-	marker_distance = (0,0)
-
-	commanded_state = {
-	                'roll': 0.0,
-	                'pitch': 0.0,
-	                'yaw': 0.0,
-	                'gas': 0.0,
-	                'take_off': False,
-	                'reset': False,
-	                'hover': True,
-	                                };
-	
-	current_state = {
+	def __init__(self,drone_id,_control,pseudo_network,network_config):
+		# --- INITIALISE VARIABLES ---
+		self.current_state = {
 					'type': 'initialise',
 					'drone_id' : 0,
 					'marker_distance_x': 0.0,
@@ -42,8 +35,23 @@ class PositionalControl(object):
 					'gas_stable' : False,
 					'altitude' : 0.0,
 									};
+
+		self.commanded_state = {
+	                'roll': 0.0,
+	                'pitch': 0.0,
+	                'yaw': 0.0,
+	                'gas': 0.0,
+	                'take_off': False,
+	                'reset': False,
+	                'hover': True,
+                     };
+		
+		self.control_network_activity_flag = False
+		self.video_network_activity_flag = False
+		
+		self.marker_distance = (0,0)	
 							
-	def __init__(self,drone_id,_control,pseudo_network,network_config):
+	           
 		# --- ASSIGN POINTERS ---
 		self._control=_control
 		self._pseudo_network = pseudo_network
@@ -65,9 +73,13 @@ class PositionalControl(object):
 		
 		# Keep drone_id
 		self.current_state['drone_id'] = drone_id
-		
+	
+		print ("PositionalControl init finished for %s"	% drone_id)
+	
 	def reset(self):
-		self._control.reset()
+		# Check the drone isn't airborne before reseting
+		if self.current_state['altitude'] < 100.0:
+			self._control.reset()
 		
 	def take_off(self):
 		self._control.take_off()
@@ -112,12 +124,16 @@ class PositionalControl(object):
 		Compiles a status message for the CooperativeController object.
 		status_message = 
 					{
+					'talking':False
 					'airborne': False
 					'height_stable':False
 					}
 		"""
 		# drone_id
 		status_message = {'drone_id':self.current_state['drone_id']}
+		
+		# talking
+		status_message['talking'] = self.control_network_activity_flag and self.video_network_activity_flag
 		
 		# airborne
 		if self.current_state['altitude'] >= 300:
@@ -127,8 +143,9 @@ class PositionalControl(object):
 		
 		# height_stable
 		status_message['height_stable'] = self.current_state['gas_stable']
-		#print(status_message)
+		
 		# Send status
+		#print ("Sending state : %s" % status_message)
 		self._network.sendStatus(status_message)
 
 class NetworkManager(object):
@@ -136,26 +153,30 @@ class NetworkManager(object):
 	A class which manages the sending and receiving of packets over the network.
 	It stores the relevant data of received packets and sends packets when requested.
 	
-	IP address of drone: 192.168.1.1
+	IP address of drone: config.['host']
 	Localhost: 127.0.0.1
 	"""
-	ready_control = False
-	ready_video = False
-	ready_takeoff = False
-	
-	seq = 0
 
-	def __init__(self,_vid_decoder,_pseudo_network,_update,config):
+	def __init__(self,_vid_decoder,_pseudo_network,_update,network_config):
 		"""
 		Initialise the class
 		"""
+		
+		# Variables
+		self.seq = 0
+		self.ready_video = False
+		self.ready_control = False
+		
+		# Variable assignment
+		self.config = network_config
+		
 		# Pointer assignment
 		self._vid_decoder = _vid_decoder
 		self._pseudo_network = _pseudo_network
 		self._update = _update
 		
 		# Variable assignment
-		self.config = config
+		self.config = network_config
 		
 		# Set up a UDP listening socket on port for control data
 		self.socket_control = QtNetwork.QUdpSocket()
@@ -176,7 +197,7 @@ class NetworkManager(object):
 		# Send state to the drone
 		self.seq += 1
 		#print('state is', json.dumps({'seq': self.seq, 'state': data}))
-		self.sock.sendto(json.dumps({'seq': self.seq, 'state': data}), (self.config['host'], self.config['control_port']))
+		self.sock.sendto(json.dumps({'seq': self.seq, 'state': data}), (self.config['bind_host'], self.config['control_port'])) 
 	
 	def sendStatus(self,status):
 		# Send status over the network
@@ -188,7 +209,6 @@ class NetworkManager(object):
 		"""
 		Called when there is some interesting data to read on the control socket
 		"""
-
 		while self.socket_control.hasPendingDatagrams():
 			sz = self.socket_control.pendingDatagramSize()
 			(data, host, port) = self.socket_control.readDatagram(sz)
@@ -208,9 +228,9 @@ class NetworkManager(object):
 
 			# Update status of the Control Network when ready
 			if self.ready_control == False:
-				print("Control Ready")
-				self.sendStatus('ControlReady')
+				#print("Control Ready")
 				self.ready_control = True
+				self._update.control_network_activity_flag = True
 				
 	def readVideoData(self):
 		"""Called when there is some interesting data to read on the video socket."""
@@ -226,6 +246,6 @@ class NetworkManager(object):
 			self._vid_decoder.decode(data)
 			
 			if self.ready_video == False:
-				print("Video Ready")
-				self.sendStatus('VideoReady')
+				#print("Video Ready")
 				self.ready_video = True
+				self._update.video_network_activity_flag = True
