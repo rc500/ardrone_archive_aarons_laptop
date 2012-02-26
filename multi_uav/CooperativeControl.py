@@ -224,7 +224,8 @@ class GroundState(State):
 		print("beat-reset")
 		# Reset then try to take off
 		for drone in self.drone_controllers:
-			drone.reset()
+			if drone.current_state['altitude'] < 100.0:
+				drone.reset()
 		self.reset_timer.stop()
 		self.takeoff_timer.start()
 		

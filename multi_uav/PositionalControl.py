@@ -25,7 +25,7 @@ class PositionalControl(object):
 	This is done through the ControlLoop object.
 	"""
 	
-	MINIMUM_ALTITUDE = 200.0
+	MINIMUM_ALTITUDE = 300.0
 	
 	def __init__(self,drone_id,_control,pseudo_network,network_config):
 		# --- INITIALISE VARIABLES ---
@@ -78,8 +78,7 @@ class PositionalControl(object):
 	
 	def reset(self):
 		# Check the drone isn't airborne before reseting
-		if self.current_state['altitude'] < self.MINIMUM_ALTITUDE:
-			self._control.reset()
+		self._control.reset()
 		
 	def take_off(self):
 		self._control.take_off()
