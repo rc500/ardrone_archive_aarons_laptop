@@ -35,7 +35,7 @@ normal_state = {
       'roll': 0.0,
       'pitch': 0.0,
       'yaw': 0.0,
-      'gas': -0.03,
+      'gas': 0.0,
       'take_off': False,
       'reset': False,
       'hover': True,
@@ -85,7 +85,7 @@ def send_state(state):
   global seq, sock
   seq += 1
   HOST, PORT = ('127.0.0.1', 5560)
-  print('state is', json.dumps({'seq': seq, 'state': state}))
+  #print('state is', json.dumps({'seq': seq, 'state': state}))
   sock.sendto(json.dumps({'seq': seq, 'state': state}), (HOST, PORT))
 
 class imageProcessor(object):
@@ -165,8 +165,9 @@ class imageProcessor(object):
   
                 if found_box:
                   i=1
-                  while i<120:
+                  while i<130:
                     send_state(turn_left_state)
+                    print 'turning'
                     i=i+1
                 else:
                     send_state(move_forward_state)
@@ -198,6 +199,13 @@ class imageViewer(object):
                         raise RuntimeError('Error binding to port: %s' % (self.socket.errorString()))
                 self.socket.readyRead.connect(self.readData)
 
+
+##                # Set up a UDP listening socket on port 5561 which calls readData upon socket activity
+##                self.data_socket = QtNetwork.QUdpSocket()
+##                if not self.data_socket.bind(QtNetwork.QHostAddress.Any, 5561):
+##                        raise RuntimeError('Error binding to port: %s' % (self.data_socket.errorString()))
+##                self.data_socket.readyRead.connect(self.readNavigation_Data)                
+
                 # Create decoder object
                 self._vid_decoder = videopacket.Decoder(self.showImage)
                 
@@ -222,7 +230,25 @@ class imageViewer(object):
                 
                 # Decode video data and pass result to showImage
                 self._vid_decoder.decode(data)
+
+##        def readNavigation_Data(self):
+##                """Called when there is some interesting data to read on the video socket."""
+##                while self.data_socket.hasPendingDatagrams():
+##                        sz = self.data_socket.pendingDatagramSize()
+##                        (data, host, port) = self.data_socket.readDatagram(sz)
+
+##                # Some hack to account for PySide vs. PyQt differences
+##                if qt.USES_PYSIDE:
+##                        data = data.data()
                         
+##                # Parse the packet
+##                packet = json.loads(data.decode())
+
+                # Store the packet
+##                if 'type' in packet:
+##                    if packet['type'] == 'demo':
+##                      print(packet['psi'])
+##                                                
         def showImage(self, data):
                 """
                 Displays argument image in window using openCV.
