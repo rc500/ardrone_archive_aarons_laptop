@@ -68,7 +68,7 @@ class Controller(object):
 		Checks whether the error is within acceptable limits.
 		If it is within limits then the controller has achieved its goal and posts this status to the network.
 		"""
-		print ("check_error: %s" %error)
+		#print ("check_error: %s" %error)
 		# Check whether error is within limits
 		if error <= 0.5 and error >= -0.5:
 			self.error_count = self.error_count + 1
@@ -78,7 +78,7 @@ class Controller(object):
 		# If error within limits for a suitable length of time then it has achieved its goal
 		if self.error_count == 200:
 			# Update state
-			print ("Error within limits for %s" % self.output_type)
+			#print ("Error within limits for %s" % self.output_type)
 			self._control.current_state[self.update_key] = True
 			# Update status
 			self._control.update_status()
@@ -96,7 +96,7 @@ class Controller(object):
 		
 		# Send the update to the drone, via the structure in PositionalControl (so it has a copy)
 		self._control.commanded_state[self.output_type] = output
-		print (self._control.commanded_state[self.output_type])
+		#print (self._control.commanded_state[self.output_type])
 		self._control._network.sendControl(self._control.commanded_state)
 
 class ProportionalController(Controller):

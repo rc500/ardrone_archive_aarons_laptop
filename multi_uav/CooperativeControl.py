@@ -177,7 +177,6 @@ class CommunicationState(State):
 	def check(self):
 		# Update status of drones
 		for drone in self.drone_controllers:
-			print ("calling update status %s" %drone)
 			drone.update_status()
 			
 class GroundState(State):
@@ -195,22 +194,22 @@ class GroundState(State):
 
 	exit_conditions = [{'airborne':True},{'airborne':True}] #[drone1,drone2,...]
 
-	def __init__(self,_coop,drone_controllers):
+	def __init__(self, *args, **kwargs):
 		# Setup timer to enable repeated attempts to reset and take off the drones at given intervals
 		self.reset_timer = QtCore.QTimer()
-		self.reset_timer.setInterval(5000) # ms
+		self.reset_timer.setInterval(1000) # ms
 		self.reset_timer.timeout.connect(self.reset)
 		
 		self.takeoff_timer = QtCore.QTimer()
-		self.takeoff_timer.setInterval(2000) # ms
+		self.takeoff_timer.setInterval(1000) # ms
 		self.takeoff_timer.timeout.connect(self.take_off)
 
 		self.check_timer = QtCore.QTimer()
-		self.check_timer.setInterval(5000) # ms
+		self.check_timer.setInterval(6000) # ms
 		self.check_timer.timeout.connect(self.check)
 
 		# Initialise as per State base class
-		State.__init__(self,_coop,drone_controllers)
+		State.__init__(self, *args, **kwargs)
 
 	def next_state(self):
 		# Create next state
@@ -260,9 +259,9 @@ class HoverState(State):
 
 	exit_conditions = [{'height_stable':True},{'height_stable':True},] #[drone1,drone2,...]
 
-	def __init__(self,_coop,drone_controllers):
+	def __init__(self, *args, **kwargs):
 		# Initialise as per State base class
-		State.__init__(self,_coop,drone_controllers)
+		State.__init__(self, *args, **kwargs)
 		
 	def next_state(self):
 		# Create next state
@@ -289,9 +288,9 @@ class MarkerState(State):
 
 	exit_conditions = [{'airborne':False},{'airborne':False},] #[drone1,drone2,...]
 
-	def __init__(self,_coop,drone_controllers):
+	def __init__(self, *args, **kwargs):
 		# Initialise as per State base class
-		State.__init__(self,_coop,drone_controllers)
+		State.__init__(self, *args, **kwargs)
 
 	def next_state(self):
 		# Create next state

@@ -25,6 +25,8 @@ class PositionalControl(object):
 	This is done through the ControlLoop object.
 	"""
 	
+	MINIMUM_ALTITUDE = 200.0
+	
 	def __init__(self,drone_id,_control,pseudo_network,network_config):
 		# --- INITIALISE VARIABLES ---
 		self.current_state = {
@@ -74,11 +76,9 @@ class PositionalControl(object):
 		# Keep drone_id
 		self.current_state['drone_id'] = drone_id
 	
-		print ("PositionalControl init finished for %s"	% drone_id)
-	
 	def reset(self):
 		# Check the drone isn't airborne before reseting
-		if self.current_state['altitude'] < 100.0:
+		if self.current_state['altitude'] < self.MINIMUM_ALTITUDE:
 			self._control.reset()
 		
 	def take_off(self):
@@ -136,7 +136,7 @@ class PositionalControl(object):
 		status_message['talking'] = self.control_network_activity_flag and self.video_network_activity_flag
 		
 		# airborne
-		if self.current_state['altitude'] >= 300:
+		if self.current_state['altitude'] >= self.MINIMUM_ALTITUDE:
 			status_message['airborne'] = True
 		else:
 			status_message['airborne'] = False
