@@ -179,7 +179,7 @@ class imageProcessor(object):
                    #Only keep rectangles big enough to be of interest,
                    #that have an appropriate width/height ratio
                    #and whose area is close enough to that of the approximated rectangle
-                   if (float(sqr[2]*sqr[3])/(edges.height*edges.width)>0.1)&(abs(sqr[2]-sqr[3])<((sqr[2]+sqr[3])/4))& (area/float(sqr[2]*sqr[3])>0.7): 
+                   if (float(sqr[2]*sqr[3])/(edges.height*edges.width)>0.08)&(abs(sqr[2]-sqr[3])<((sqr[2]+sqr[3])/4))& (area/float(sqr[2]*sqr[3])>0.7): 
 
                     #draw polygon and approximated rectangle 
                     cv.PolyLine(im,[polygon], True, (0,0,255),2, cv.CV_AA, 0)
@@ -211,15 +211,16 @@ class imageProcessor(object):
 ##                  while time.time()-t0<4:
 ##                    send_state(turn_left_state)
 ##                      print time.time()-t0
-                  if abs(self.yaw_angle)<160000.0:
+##                  if abs(self.yaw_angle)<160000.0:
 ##                    i=0
 ##                    t1=time.time()
 ##                    while time.time()-t1<1:
-                      send_state(turn_left_state)
+##                      send_state(turn_left_state)
 ##                     i=i+1
                   print 'done'
-                elif (time.clock()- self.box_time <2)and not self.box_time==0 :
+                elif not self.box_time==0 and abs(self.yaw_angle)<120000.0: #(time.clock()- self.box_time <2) :
                   send_state(turn_left_state)
+                  print self.yaw_angle
                 else:
                     self.box_time=0
                     send_state(move_forward_state)
