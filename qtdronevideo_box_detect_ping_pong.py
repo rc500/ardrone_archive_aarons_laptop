@@ -29,7 +29,23 @@ sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 """A global sequence counter. The GUI uses this to determine if two commands
 have been received in the wrong order: the command with the largest (latest)
 sequence will always 'win'."""
-seq = 0
+seq_m = 0
+
+def send_state(state):
+  """Send the state dictionary to the drone GUI.
+
+  state is a dictionary with (at least) the keys roll, pitch, yaw, gas,
+  take_off, reset and hover. The first four are floating point values on the
+  interval [-1,1] which specify the setting of the corresponding attitude
+  angle/vertical speed. The last three are True or False to indicate if that
+  virtual 'button' is pressed.
+
+  """
+  global seq_m, sock
+  seq_m += 1
+  HOST, PORT = ('127.0.0.1', 5560)
+  #print('state is', json.dumps({'seq': seq_m, 'state': state}))
+  sock.sendto(json.dumps({'seq': seq_m, 'state': state}), (HOST, PORT))
 
 normal_state = {
       'roll': 0.0,
@@ -39,7 +55,7 @@ normal_state = {
       'take_off': False,
       'reset': False,
       'hover': True,
-}
+  }
 
 turn_left_state = {
       'roll': 0.0,
@@ -62,7 +78,7 @@ turn_right_state = {
 }
 
 move_forward_state = {
-      'roll':0.0,#0.0,
+      'roll':0.0,
       'pitch': -0.06,
       'yaw': 0.0,
       'gas': 0.0,
@@ -72,25 +88,19 @@ move_forward_state = {
 }
 
 
-def send_state(state):
-  """Send the state dictionary to the drone GUI.
-
-  state is a dictionary with (at least) the keys roll, pitch, yaw, gas,
-  take_off, reset and hover. The first four are floating point values on the
-  interval [-1,1] which specify the setting of the corresponding attitude
-  angle/vertical speed. The last three are True or False to indicate if that
-  virtual 'button' is pressed.
-
-  """
-  global seq, sock
-  seq += 1
-  HOST, PORT = ('127.0.0.1', 5560)
-  #print('state is', json.dumps({'seq': seq, 'state': state}))
-  sock.sendto(json.dumps({'seq': seq, 'state': state}), (HOST, PORT))
-
 class imageProcessor(object):
+
+        #variable that stores the yaw angle for a given point in time
+        yaw_angle=0
+  
         def __init__(self):
                 pass
+        
+        def movement_information(self,psi):
+         #assign the yaw angle to a variable we can using in
+         #detect_markers
+         self.yaw_angle=psi
+       
 
         def detect_markers (self, frame):
 
@@ -164,10 +174,11 @@ class imageProcessor(object):
                   seq=seq.h_next()
   
                 if found_box:
+                  
                   i=1
-                  while i<130:
+                  while i<125:
                     send_state(turn_left_state)
-                    print 'turning'
+                    print 'yawness', self.yaw_angle
                     i=i+1
                 else:
                     send_state(move_forward_state)
@@ -200,11 +211,11 @@ class imageViewer(object):
                 self.socket.readyRead.connect(self.readData)
 
 
-##                # Set up a UDP listening socket on port 5561 which calls readData upon socket activity
-##                self.data_socket = QtNetwork.QUdpSocket()
-##                if not self.data_socket.bind(QtNetwork.QHostAddress.Any, 5561):
-##                        raise RuntimeError('Error binding to port: %s' % (self.data_socket.errorString()))
-##                self.data_socket.readyRead.connect(self.readNavigation_Data)                
+                # Set up a UDP listening socket on port 5561 which calls readData upon socket activity
+                self.data_socket = QtNetwork.QUdpSocket()
+                if not self.data_socket.bind(QtNetwork.QHostAddress.Any, 5561):
+                        raise RuntimeError('Error binding to port: %s' % (self.data_socket.errorString()))
+                self.data_socket.readyRead.connect(self.readNavigation_Data)                
 
                 # Create decoder object
                 self._vid_decoder = videopacket.Decoder(self.showImage)
@@ -231,24 +242,26 @@ class imageViewer(object):
                 # Decode video data and pass result to showImage
                 self._vid_decoder.decode(data)
 
-##        def readNavigation_Data(self):
-##                """Called when there is some interesting data to read on the video socket."""
-##                while self.data_socket.hasPendingDatagrams():
-##                        sz = self.data_socket.pendingDatagramSize()
-##                        (data, host, port) = self.data_socket.readDatagram(sz)
+        def readNavigation_Data(self):
+                """Called when there is some interesting data to read on the video socket."""
+                while self.data_socket.hasPendingDatagrams():
+                        sz = self.data_socket.pendingDatagramSize()
+                        (data, host, port) = self.data_socket.readDatagram(sz)
 
-##                # Some hack to account for PySide vs. PyQt differences
-##                if qt.USES_PYSIDE:
-##                        data = data.data()
+                # Some hack to account for PySide vs. PyQt differences
+                if qt.USES_PYSIDE:
+                        data = data.data()
                         
-##                # Parse the packet
-##                packet = json.loads(data.decode())
+                # Parse the packet
+                packet = json.loads(data.decode())
 
-                # Store the packet
-##                if 'type' in packet:
-##                    if packet['type'] == 'demo':
-##                      print(packet['psi'])
-##                                                
+                # Find the movement data we are looking for
+                if 'type' in packet:
+                    if packet['type'] == 'demo':
+                      #pass on yaw angle data to the image processor
+                      #packet['psi'] is the yaw angle value
+                      self._img_processor.movement_information(packet['psi'])
+                                                
         def showImage(self, data):
                 """
                 Displays argument image in window using openCV.
