@@ -32,7 +32,7 @@ class Controller(object):
 		
 		# Create a little 'heartbeat' timer that will call heartbeat() every so often.
 		self.heartbeat_timer = QtCore.QTimer()
-		self.heartbeat_timer.setInterval(5) # ms
+		self.heartbeat_timer.setInterval(40) # ms
 		self.heartbeat_timer.timeout.connect(self.heartbeat)
 
 		# Debug initialisation
