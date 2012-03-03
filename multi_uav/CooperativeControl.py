@@ -225,7 +225,7 @@ class GroundState(State):
 		print("beat-reset")
 		# Reset then try to take off
 		for drone in self.drone_controllers:
-			if drone.current_state['altitude'] < 100.0:
+			if drone.current_state['altitude'] < 150.0:
 				drone.reset()
 		self.reset_timer.stop()
 		self.takeoff_timer.start()
@@ -288,7 +288,7 @@ class MarkerState(State):
 	State exit: when marker is stable over target marker.
 	
 	State exit conditions:
-		above_marker == True for target market on all drones
+		completed marker transition
 	"""
 
 	def __init__(self,_coop,drones,drone_controllers):
@@ -298,17 +298,17 @@ class MarkerState(State):
 		# Set exit conditions (same for each drones)
 		self.exit_conditions = []
 		for count in drone_controllers:
-			self.exit_conditions.append ({'above_marker':True})
+			self.exit_conditions.append ({'airborne':False})
 
 		# Marker transition vector (same for each drones)
-		marker_tuple = [10,8,9] # list of ids
+		marker_list = [24,23,22,21,20,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0] # list of ids
 		self.marker_transition = []
 		for count in drone_controllers:
-			self.marker_transition.append(marker_tuple)
+			self.marker_transition.append(marker_list)
 		
 		# Setup timer to look for next marker every so often
 		self.look_timer = QtCore.QTimer()
-		self.look_timer.setInterval(2000) # ms
+		self.look_timer.setInterval(1000) # ms
 		self.look_timer.timeout.connect(self.look)
 	
 	def next_state(self):
@@ -328,12 +328,9 @@ class MarkerState(State):
 
 	def look(self):
 		# Check to see whether drones can see their next marker
-		for drone in self.drone_controllers:
-			drone.update_status()
-	
 		for drone_id in self.drones:
 			marker_id = self.pop_marker(drone_id)
-			if marker_id in self.state_properties[drone_id-1]['visible_markers']:
+			if (str(marker_id) in self.drone_controllers[drone_id-1].get_visible_markers()):
 				self.hold_marker(marker_id,drone_id)
 			else:
 				self.add_marker(marker_id,drone_id)

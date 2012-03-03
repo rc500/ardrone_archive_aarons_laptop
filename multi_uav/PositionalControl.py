@@ -36,6 +36,8 @@ class PositionalControl(object):
 					'marker_distance_x': 0.0,
 					'marker_distance_y': 0.0,
 					'gas_stable' : False,
+					'roll_stable' : True, # dirty
+					'pitch_stable' : True, # dirty
 					'altitude' : 0.0,
 					};
 
@@ -90,7 +92,7 @@ class PositionalControl(object):
 		self._control.land()
 		
 	def set_altitude(self,r):
-		self._height_control = Controller.ProportionalController(self,'altitude','gas','gas_stable',0.02)
+		self._height_control = Controller.ProportionalController(self,'altitude','gas','gas_stable',0.02,0.5)
 		self._height_control.start_control(r)
 
 	def hold_marker(self,marker_id):
@@ -101,25 +103,31 @@ class PositionalControl(object):
 		self.commanded_state['hover'] = False
 		
 		# Initiate roll and pitch controllers
-		self._marker_control_roll = Controller.LeadLagController(self,'marker_distance_x','roll','roll_stable',0.001,0.15,0.025,0.07)
-		self._marker_control_pitch = Controller.LeadLagController(self,'marker_distance_y','pitch','pitch_stable',0.001,0.15,0.025,0.07)
+		self._marker_control_roll = Controller.LeadLagController(self,'marker_distance_x','roll','roll_stable',0.001,0.15,0.025,400,0.07)
+		self._marker_control_pitch = Controller.LeadLagController(self,'marker_distance_y','pitch','pitch_stable',0.001,0.15,0.025,400,0.07)
 		
 		# Start control
 		self._marker_control_roll.start_control(0)
 		self._marker_control_pitch.start_control(0)
 		
-	def update_position(self,marker_id,distance):
-		# Update object's record of marker position
-		self.marker_position[marker_id] = distance
+	def update_position(self,marker_info):
+		# Update object's record of marker positions
+		self.marker_position = marker_info
 
-		# Update record for the marker currently being tracked
-		if marker_id == self.current_state['marker_id']:
-			self.current_state['marker_distance_x'] = -1 * distance[0]
-			self.current_state['marker_distance_y'] = -1 * distance[1]
+		# Update record for the marker currently being tracked if there is no new information then keep old information
+		if str(self.current_state['marker_id']) in marker_info:
+			self.current_state['marker_distance_x'] = -1 * marker_info[str(self.current_state['marker_id'])][0]
+			self.current_state['marker_distance_y'] = -1 * marker_info[str(self.current_state['marker_id'])][1]
 		
 		# Print to console
 		#print(self.marker_distance)
-	
+
+	def get_visible_markers(self):
+		"""
+		 Returns a list of currently visible marker ids
+		"""
+		return self.marker_position.keys()
+
 	def update_packet(self,packet):
 		"""
 		Update local knowledge of drone state and change the drone's status appropriately.
@@ -132,8 +140,6 @@ class PositionalControl(object):
 		Compiles a status message for the CooperativeController object.
 		status_message = 
 					{
-					'visible_markers':[list of marker ids]
-
 					'talking':False
 					'airborne': False
 					'height_stable':False
@@ -143,9 +149,6 @@ class PositionalControl(object):
 		# drone_id
 		status_message = {'drone_id':self.current_state['drone_id']}
 	
-		# list of marker ids
-		status_message['visible_markers'] = self.marker_position.keys()
-		
 		# talking
 		status_message['talking'] = self.control_network_activity_flag and self.video_network_activity_flag
 		
@@ -159,7 +162,7 @@ class PositionalControl(object):
 		status_message['height_stable'] = self.current_state['gas_stable']
 		
 		# above_marker
-		status_message['above_marker'] = False
+		status_message['above_marker'] = self.current_state['roll_stable'] and self.current_state['pitch_stable']
 	
 		# Send status
 		#print ("Sending state : %s" % status_message)

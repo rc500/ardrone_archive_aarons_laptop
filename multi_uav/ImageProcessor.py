@@ -37,14 +37,17 @@ class ImageProcessor(object):
 		#CV_image_midpoint = (CV_image_size[0]/2,CV_image_size[1]/2)
 		CV_image_midpoint = (176/2,144/2) # need to use this for downward facing camera as image does not take up whole 320x240 but is decoded as such
 		
-		# Detect and draw on marker centerpoints - currently only works for one at a time
+		# Detect and draw on marker centerpoints
+		marker_dict = {}
 		for m in detect_markers(PIL_image):
 			marker_center = (m.centroid_x(), m.centroid_y())
 			cv.Line(CV_image,CV_image_midpoint,marker_center,cv.Scalar(200,200,200))		
 			# Update relative position
 			relative_position = (marker_center[0] - CV_image_midpoint[0], marker_center[1] - CV_image_midpoint[1])
-			self._update.update_position(m.id(),relative_position)
-			
+			marker_dict[str(m.id())]=relative_position
+
+		# Update PositionalControl with info from processed image
+		self._update.update_position(marker_dict)
 		# Show processed image
 		self._im_viewer.show(CV_image)
 		
