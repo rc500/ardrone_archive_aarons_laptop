@@ -44,7 +44,7 @@ def send_state(state):
   global seq_m, sock
   seq_m += 1
   HOST, PORT = ('127.0.0.1', 5560)
-  print('state is', json.dumps({'seq': seq_m, 'state': state}))
+  #print('state is', json.dumps({'seq': seq_m, 'state': state}))
   sock.sendto(json.dumps({'seq': seq_m, 'state': state}), (HOST, PORT))
 
 normal_state = {
@@ -126,6 +126,10 @@ class imageProcessor(object):
         #variable that stores the yaw angle for a given point in time
         yaw_angle=0
 
+        #counts if we are going one way or the other to determine the right
+        #angle to check
+        direction=-1
+
         #time a box was found
         box_time=0
         
@@ -179,7 +183,7 @@ class imageProcessor(object):
                    #Only keep rectangles big enough to be of interest,
                    #that have an appropriate width/height ratio
                    #and whose area is close enough to that of the approximated rectangle
-                   if (float(sqr[2]*sqr[3])/(edges.height*edges.width)>0.08)&(abs(sqr[2]-sqr[3])<((sqr[2]+sqr[3])/4))& (area/float(sqr[2]*sqr[3])>0.7): 
+                   if (float(sqr[2]*sqr[3])/(edges.height*edges.width)>0.06)&(abs(sqr[2]-sqr[3])<((sqr[2]+sqr[3])/4))& (area/float(sqr[2]*sqr[3])>0.7): 
 
                     #draw polygon and approximated rectangle 
                     cv.PolyLine(im,[polygon], True, (0,0,255),2, cv.CV_AA, 0)
@@ -200,6 +204,7 @@ class imageProcessor(object):
                             found_box = True
                             #record the time the box was found
                             self.box_time=time.clock()
+                            
                   else:
                     #move on to the next outter contour      
                     seq_ext=seq_ext.h_next()   
@@ -207,25 +212,36 @@ class imageProcessor(object):
                   seq=seq.h_next()
   
                 if found_box:
+
                   t0=time.time()
-##                  while time.time()-t0<4:
-##                    send_state(turn_left_state)
-##                      print time.time()-t0
-##                  if abs(self.yaw_angle)<160000.0:
-##                    i=0
-##                    t1=time.time()
-##                    while time.time()-t1<1:
-##                      send_state(turn_left_state)
-##                     i=i+1
-                  print 'done'
-                elif not self.box_time==0 and abs(self.yaw_angle)<120000.0: #(time.clock()- self.box_time <2) :
+                  #turn left if box found
+                  send_state(turn_left_state)                  
+                  #find whether we are going 'forward' or back depending on whether the
+                  #angle magnitude is more or less that 90 degrees (values given by the drone
+                  #are degrees*1000
+                  self.direction=cmp(abs(self.yaw_angle), 90000.0)
+                  #if the direction is negative set it to zero to simplify calculations
+                  if self.direction<0:
+                    self.direction=0
+                  print 'dddddddddddddddddddddddddddd', self.direction
+  
+                # provided we have detected a box and it have not rotated more than 180 degrees:  
+                elif ((not self.box_time==0) and self.direction==0 and abs(self.yaw_angle)<abs(180000.0*self.direction-150000.0)): #(time.clock()- self.box_time <2) :
+                  
                   send_state(turn_left_state)
-                  print self.yaw_angle
+                  print 'rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr'
+                  
+                elif ((not self.box_time==0) and self.direction==1 and abs(self.yaw_angle)>abs(50000.0)): #(time.clock()- self.box_time <2) :
+                  
+                  send_state(turn_left_state)
+                  print 'llllllllllllllllllllllllllllllllllllllllllllll'  
+
                 else:
+                    #reset the timer
                     self.box_time=0
                     send_state(move_forward_state)
-                print self.box_time    
 
+                print self.yaw_angle
                 return im  
  
 

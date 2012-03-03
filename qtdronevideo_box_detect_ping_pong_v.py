@@ -29,17 +29,33 @@ sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 """A global sequence counter. The GUI uses this to determine if two commands
 have been received in the wrong order: the command with the largest (latest)
 sequence will always 'win'."""
-seq = 0
+seq_m = 0
+
+def send_state(state):
+  """Send the state dictionary to the drone GUI.
+
+  state is a dictionary with (at least) the keys roll, pitch, yaw, gas,
+  take_off, reset and hover. The first four are floating point values on the
+  interval [-1,1] which specify the setting of the corresponding attitude
+  angle/vertical speed. The last three are True or False to indicate if that
+  virtual 'button' is pressed.
+
+  """
+  global seq_m, sock
+  seq_m += 1
+  HOST, PORT = ('127.0.0.1', 5560)
+  #print('state is', json.dumps({'seq': seq_m, 'state': state}))
+  sock.sendto(json.dumps({'seq': seq_m, 'state': state}), (HOST, PORT))
 
 normal_state = {
       'roll': 0.0,
       'pitch': 0.0,
       'yaw': 0.0,
-      'gas': -0.03,
+      'gas': 0.0,
       'take_off': False,
       'reset': False,
       'hover': True,
-}
+  }
 
 turn_left_state = {
       'roll': 0.0,
@@ -54,7 +70,7 @@ turn_left_state = {
 turn_right_state = {
       'roll': 0.0,
       'pitch': 0.0,
-      'yaw': 1.0,
+      'yaw': 0.6,
       'gas': 0.0,
       'take_off': False,
       'reset': False,
@@ -62,35 +78,65 @@ turn_right_state = {
 }
 
 move_forward_state = {
-      'roll':0.0,#0.0,
-      'pitch': -0.1,
+      'roll':0.0,
+      'pitch': -0.06,
       'yaw': 0.0,
-      'gas': -0.01,
+      'gas': 0.0,
       'take_off': False,
       'reset': False,
       'hover': False,
 }
 
+class navdataUpdate(object):
 
-def send_state(state):
-  """Send the state dictionary to the drone GUI.
+   def __init__(self,_im_proc):
 
-  state is a dictionary with (at least) the keys roll, pitch, yaw, gas,
-  take_off, reset and hover. The first four are floating point values on the
-  interval [-1,1] which specify the setting of the corresponding attitude
-  angle/vertical speed. The last three are True or False to indicate if that
-  virtual 'button' is pressed.
+    # Assign image processor pointer
+    self._im_proc = _im_proc
+    
+    # Set up a UDP listening socket on port 5561 which calls readData upon socket activity
+    self.data_socket = QtNetwork.QUdpSocket()
+    if not self.data_socket.bind(QtNetwork.QHostAddress.Any, 5561):
+            raise RuntimeError('Error binding to port: %s' % (self.data_socket.errorString()))
+    self.data_socket.readyRead.connect(self.readNavigation_Data)
+    
+   def readNavigation_Data(self):
+            """Called when there is some interesting data to read on the video socket."""
+            while self.data_socket.hasPendingDatagrams():
+                    sz = self.data_socket.pendingDatagramSize()
+                    (data, host, port) = self.data_socket.readDatagram(sz)
 
-  """
-  global seq, sock
-  seq += 1
-  HOST, PORT = ('127.0.0.1', 5560)
-  print('state is', json.dumps({'seq': seq, 'state': state}))
-  sock.sendto(json.dumps({'seq': seq, 'state': state}), (HOST, PORT))
+            # Some hack to account for PySide vs. PyQt differences
+            if qt.USES_PYSIDE:
+                    data = data.data()
+                    
+            # Parse the packet
+            packet = json.loads(data.decode())
+
+            # Find the movement data we are looking for
+            if 'type' in packet:
+                if packet['type'] == 'demo':
+                  #pass on yaw angle data to the image processor
+                  #packet['psi'] is the yaw angle value
+                  self._im_proc.yaw_angle = packet['psi']
+
 
 class imageProcessor(object):
+
+        #variable that stores the yaw angle for a given point in time
+        yaw_angle=0
+
+        #counts if we are going one way or the other to determine the right
+        #angle to check
+        direction=-1
+
+        #time a box was found
+        box_time=0
+        detected_time=0
+        
         def __init__(self):
-                pass
+                self._navdata_update=navdataUpdate(self)
+       
 
         def detect_markers (self, frame):
 
@@ -124,45 +170,96 @@ class imageProcessor(object):
                 seq_ext=cv.FindContours(edges, storage,cv.CV_RETR_EXTERNAL,cv.CV_CHAIN_APPROX_SIMPLE,(0, 0))
 
                 found_box = False
+                box_in_distance = False
 
                 while seq:
+                  
                   #do not take into account external countours
                   if not(list(seq)==list(seq_ext)):
+                    
                    perim= cv.ArcLength(seq) #contour perimeter
                    area=cv.ContourArea(seq) #contour area      
                    polygon=cv.ApproxPoly(list(seq), storage,cv.CV_POLY_APPROX_DP,perim*0.02,0)
-                   sqr=cv.BoundingRect(polygon,0)
+                   sqr=cv.BoundingRect(polygon,0) #get square approximation for the contour
+                   
+                   #check if there are any rectangles in the distance that have appropriate width/height ratio
+                   #and area close enough to that of the approximated rectangle
+                   #this is used to correct drone orientation when moving towards box
+                   if (float(sqr[2]*sqr[3])/(edges.height*edges.width)>0.004)&(abs(sqr[2]-sqr[3])<((sqr[2]+sqr[3])/4))& (area/float(sqr[2]*sqr[3])>0.7):
+                     box_in_distance = True
+                     self.detect_time=time.clock()
+                     cv.PolyLine(im,[polygon], True, (0,255,255),2, cv.CV_AA, 0)
+                   else:
+                     box_in_distance = False
+                   
                    #Only keep rectangles big enough to be of interest,
                    #that have an appropriate width/height ratio
                    #and whose area is close enough to that of the approximated rectangle
-                   if (float(sqr[2]*sqr[3])/(edges.height*edges.width)>0.1)&(abs(sqr[2]-sqr[3])<((sqr[2]+sqr[3])/4))& (area/float(sqr[2]*sqr[3])>0.7): 
+                   if (float(sqr[2]*sqr[3])/(edges.height*edges.width)>0.06)&(abs(sqr[2]-sqr[3])<((sqr[2]+sqr[3])/4))& (area/float(sqr[2]*sqr[3])>0.7): 
+
+                    #draw polygon and approximated rectangle 
                     cv.PolyLine(im,[polygon], True, (0,0,255),2, cv.CV_AA, 0)
-                    #get RGB values of pixel in teh middle 
                     cv.Rectangle(im,(sqr[0],sqr[1]),(sqr[0]+sqr[2],sqr[1]+sqr[3]),(255,0,255),1,8,0)
-                    r=cv.Get2D(im,int(round(img.width/2)),int(round(img.height/2)))[2]
-                    g=cv.Get2D(im,int(round(img.width/2)),int(round(img.height/2)))[1]
-                    b=cv.Get2D(im,int(round(img.width/2)),int(round(img.height/2)))[0]
+
                     #check whether the box is too close and whether it could be green
-                    if ((sqr[2]>120) or (sqr[3]>80)) and (g>50.0):
-                          #no need to test this if there is no way it's green
-                          #if it could be green check that it is(take ratio of blue to green  
-                          if ((b/g)<0.6): 
+                    if ((sqr[2]>110) or (sqr[3]>70)): 
+ 
                             print 'warning', sqr[2],sqr[3]
                             found_box = True
+                            #record the time the box was found
+                            self.box_time=time.clock()
+                            init_angle=self.yaw_angle
+
+                            
                   else:
                     #move on to the next outter contour      
                     seq_ext=seq_ext.h_next()   
                   #h_next: points to sequences on the same level
                   seq=seq.h_next()
-  
+                    
+                
                 if found_box:
-                  i=1
-                  while i<45:
+                  
+                  #turn left if box found
+                  send_state(turn_left_state)                  
+                  #find whether we are going 'forward' or back depending on whether the
+                  #angle magnitude is more or less that 90 degrees (values given by the drone
+                  #are degrees*1000
+                  self.direction=cmp(abs(self.yaw_angle), 90000.0)
+                  #if the direction is negative set it to zero to simplify calculations
+                  if self.direction<0:
+                    self.direction=0
+                
+                # provided we have detected a box and it have not rotated more than 180 degrees:  
+                elif ((not self.box_time==0) and self.direction==0 and abs(self.yaw_angle)<abs(180000.0*self.direction-150000.0)): #(time.clock()- self.box_time <2) :
+                  
+                  send_state(turn_left_state)
+                  
+                elif ((not self.box_time==0) and self.direction==1 and abs(self.yaw_angle)>abs(50000.0)): #(time.clock()- self.box_time <2) :
+                  
+                  send_state(turn_left_state)
+
+##                elif box_in_distance:
+##                  send_state(move_forward_state)
+
+                #if we haven't seen another box 3 seconds after we saw the last one then we most probably missed it
+                #so look for it  
+                elif not box_in_distance and time.clock()- self.box_time >3 and time.clock()- self.box_time <6:
+                    send_state(turn_right_state)
+                    print ' can i see a box? ', box_in_distance,' how long since i dodged?', self.box_time
+                   
+                elif not box_in_distance and time.clock()- self.box_time >6 and time.clock()- self.box_time <9:
                     send_state(turn_left_state)
-                    i=i+1
+                    print ' can i see a box? ', box_in_distance,' how long since i dodged?', self.box_time
+
                 else:
+
+                    #reset the timer
+                    self.box_time=0
+                  
                     send_state(move_forward_state)
 
+                #print 'angle ',self.yaw_angle
                 return im  
  
 
@@ -190,6 +287,7 @@ class imageViewer(object):
                         raise RuntimeError('Error binding to port: %s' % (self.socket.errorString()))
                 self.socket.readyRead.connect(self.readData)
 
+
                 # Create decoder object
                 self._vid_decoder = videopacket.Decoder(self.showImage)
                 
@@ -214,7 +312,8 @@ class imageViewer(object):
                 
                 # Decode video data and pass result to showImage
                 self._vid_decoder.decode(data)
-                        
+
+                                                
         def showImage(self, data):
                 """
                 Displays argument image in window using openCV.

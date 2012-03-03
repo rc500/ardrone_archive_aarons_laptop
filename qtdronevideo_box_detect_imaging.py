@@ -43,7 +43,7 @@ class imageProcessor(object):
                 cv.Canny(img,edges, 50, 400.0)
 
                 #low-pass filter the image
-                cv.Smooth(edges, edges, cv.CV_GAUSSIAN,25)
+                cv.Smooth(edges, edges, cv.CV_GAUSSIAN,35)
 
                 #create space to store the cvseq sequence seq containing the contours
                 storage = cv.CreateMemStorage(0)
@@ -71,19 +71,22 @@ class imageProcessor(object):
                    #Only keep rectangles big enough to be of interest,
                    #that have an appropriate width/height ratio
                    #and whose area is close enough to that of the approximated rectangle
-                   if (float(sqr[2]*sqr[3])/(edges.height*edges.width)>0.1)&(abs(sqr[2]-sqr[3])<((sqr[2]+sqr[3])/4))& (area/float(sqr[2]*sqr[3])>0.7): 
+                   if (float(sqr[2]*sqr[3])/(edges.height*edges.width)>0.004)&(abs(sqr[2]-sqr[3])<((sqr[2]+sqr[3])/4))& (area/float(sqr[2]*sqr[3])>0.7): 
                     cv.PolyLine(im,[polygon], True, (0,0,255),2, cv.CV_AA, 0)
+                    ratio = area/float(sqr[2]*sqr[3])
+                    print  ratio
                     #get RGB values of pixel in teh middle 
                     cv.Rectangle(im,(sqr[0],sqr[1]),(sqr[0]+sqr[2],sqr[1]+sqr[3]),(255,0,255),1,8,0)
                     r=cv.Get2D(im,int(round(img.width/2)),int(round(img.height/2)))[2]
                     g=cv.Get2D(im,int(round(img.width/2)),int(round(img.height/2)))[1]
                     b=cv.Get2D(im,int(round(img.width/2)),int(round(img.height/2)))[0]
                     #check whether the box is too close and whether it could be green
-                    if ((sqr[2]>120) or (sqr[3]>80)) and (g>50.0):
+                    if ((sqr[2]>150) or (sqr[3]>140)): #and (g>50.0):
                           #no need to test this if there is no way it's green
                           #if it could be green check that it is(take ratio of blue to green  
-                          if ((b/g)<0.6): 
+                         # if ((b/g)<0.6): 
                             print 'warning', sqr[2],sqr[3]
+                            cv.PolyLine(im,[polygon], True, (0,255,255),2, cv.CV_AA, 0)
                             found_box = True
                             print cv.Get2D(im,int(round(img.width/2)),int(round(img.height/2)))
                             
