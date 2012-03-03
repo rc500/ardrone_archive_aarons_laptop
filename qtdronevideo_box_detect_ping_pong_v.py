@@ -60,7 +60,7 @@ normal_state = {
 turn_left_state = {
       'roll': 0.0,
       'pitch': 0.0,
-      'yaw': -1.0,
+      'yaw': -0.6,
       'gas': 0.0,
       'take_off': False,
       'reset': False,
@@ -86,6 +86,15 @@ move_forward_state = {
       'reset': False,
       'hover': False,
 }
+
+#function to convert angles from gyro output to usable values
+def convertAngle(angle):
+
+  if angle<0:
+    return (angle+360000.0)
+  else:
+    return angle
+  
 
 class navdataUpdate(object):
 
@@ -124,7 +133,8 @@ class navdataUpdate(object):
 class imageProcessor(object):
 
         #variable that stores the yaw angle for a given point in time
-        yaw_angle=0
+        yaw_angle=0.0
+        init_angle=0.0
 
         #counts if we are going one way or the other to determine the right
         #angle to check
@@ -187,7 +197,6 @@ class imageProcessor(object):
                    #this is used to correct drone orientation when moving towards box
                    if (float(sqr[2]*sqr[3])/(edges.height*edges.width)>0.004)&(abs(sqr[2]-sqr[3])<((sqr[2]+sqr[3])/4))& (area/float(sqr[2]*sqr[3])>0.7):
                      box_in_distance = True
-                     self.detect_time=time.clock()
                      cv.PolyLine(im,[polygon], True, (0,255,255),2, cv.CV_AA, 0)
                    else:
                      box_in_distance = False
@@ -202,13 +211,14 @@ class imageProcessor(object):
                     cv.Rectangle(im,(sqr[0],sqr[1]),(sqr[0]+sqr[2],sqr[1]+sqr[3]),(255,0,255),1,8,0)
 
                     #check whether the box is too close and whether it could be green
-                    if ((sqr[2]>110) or (sqr[3]>70)): 
+                    if ((sqr[2]>90) or (sqr[3]>60)): 
  
                             print 'warning', sqr[2],sqr[3]
                             found_box = True
                             #record the time the box was found
                             self.box_time=time.clock()
-                            init_angle=self.yaw_angle
+                            
+                            
 
                             
                   else:
@@ -220,46 +230,40 @@ class imageProcessor(object):
                 
                 if found_box:
                   
-                  #turn left if box found
-                  send_state(turn_left_state)                  
                   #find whether we are going 'forward' or back depending on whether the
                   #angle magnitude is more or less that 90 degrees (values given by the drone
                   #are degrees*1000
-                  self.direction=cmp(abs(self.yaw_angle), 90000.0)
-                  #if the direction is negative set it to zero to simplify calculations
-                  if self.direction<0:
-                    self.direction=0
+                  self.direction=cmp(convertAngle(self.yaw_angle), 180000.0)
+                  #turn if box found
+                  if self.direction==-1:
+                   send_state(turn_right_state)
+                  if self.direction==1:
+                   send_state(turn_left_state)
+                  self.init_angle=self.yaw_angle
+                  print self.direction
+ 
                 
                 # provided we have detected a box and it have not rotated more than 180 degrees:  
-                elif ((not self.box_time==0) and self.direction==0 and abs(self.yaw_angle)<abs(180000.0*self.direction-150000.0)): #(time.clock()- self.box_time <2) :
+                elif ((not self.box_time==0) and abs(-convertAngle(self.init_angle)+convertAngle(self.yaw_angle))<150000.0 and self.direction==-1): #(time.clock()- self.box_time <2) :
+                  send_state(turn_right_state)
+                  print 'turn', abs(convertAngle(self.init_angle)-convertAngle(self.yaw_angle))
+                  print 'right', self.init_angle
                   
+                elif ((not self.box_time==0) and abs(convertAngle(self.init_angle)-convertAngle(self.yaw_angle))<160000.0 and self.direction==1): #(time.clock()- self.box_time <2) :
                   send_state(turn_left_state)
+                  print 'turn', convertAngle(self.init_angle)-convertAngle(self.yaw_angle)
+                  print 'left' ,self.init_angle
                   
-                elif ((not self.box_time==0) and self.direction==1 and abs(self.yaw_angle)>abs(50000.0)): #(time.clock()- self.box_time <2) :
-                  
-                  send_state(turn_left_state)
 
-##                elif box_in_distance:
-##                  send_state(move_forward_state)
-
-                #if we haven't seen another box 3 seconds after we saw the last one then we most probably missed it
-                #so look for it  
-                elif not box_in_distance and time.clock()- self.box_time >3 and time.clock()- self.box_time <6:
-                    send_state(turn_right_state)
-                    print ' can i see a box? ', box_in_distance,' how long since i dodged?', self.box_time
-                   
-                elif not box_in_distance and time.clock()- self.box_time >6 and time.clock()- self.box_time <9:
-                    send_state(turn_left_state)
-                    print ' can i see a box? ', box_in_distance,' how long since i dodged?', self.box_time
-
+                
                 else:
 
                     #reset the timer
                     self.box_time=0
                   
                     send_state(move_forward_state)
+                    print  ' forwars' , convertAngle(self.init_angle)-convertAngle(self.yaw_angle)        
 
-                #print 'angle ',self.yaw_angle
                 return im  
  
 
@@ -337,3 +341,14 @@ class imageViewer(object):
 if (__name__ == '__main__'):
   image_app = imageViewer()
   image_app.run()
+
+                  #if we haven't seen another box 3 seconds after we saw the last one then we most probably missed it
+##                #so look for it  
+##                elif not box_in_distance and time.clock()- self.box_time >3 and time.clock()- self.box_time <6:
+##                    send_state(turn_right_state)
+##                    print ' can i see a box? ', box_in_distance,' how long since i dodged?', self.box_time
+##                   
+##                elif not box_in_distance and time.clock()- self.box_time >6 and time.clock()- self.box_time <9:
+##                    send_state(turn_left_state)
+##                    print ' can i see a box? ', box_in_distance,' how long since i dodged?', self.box_time
+
