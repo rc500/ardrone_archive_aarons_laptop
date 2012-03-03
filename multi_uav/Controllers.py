@@ -76,7 +76,7 @@ class Controller(object):
 			self.error_count = 0
 		
 		# If error within limits for a suitable length of time then it has achieved its goal
-		if self.error_count == 200:
+		if self.error_count == 50:
 			# Update state
 			#print ("Error within limits for %s" % self.output_type)
 			self._control.current_state[self.update_key] = True
