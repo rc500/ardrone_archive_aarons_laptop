@@ -16,11 +16,12 @@ class Controller(object):
 	Class forming the base functionality of a controller
 	"""
 		
-	def __init__(self,_control,feedback_type,output_type,update_key,hard_limit=1):
+	def __init__(self,_control,feedback_type,output_type,update_key,error_margin,hard_limit=1):
 		# Variables
 		self.error_count = 0
 		self.correction_step = 0.1
-		
+		self.error_margin = error_margin
+
 		# Assign pointers
 		self._control = _control
 
@@ -36,7 +37,7 @@ class Controller(object):
 		self.heartbeat_timer.timeout.connect(self.heartbeat)
 
 		# Debug initialisation
-		print ("%s control object initiated" % (self.feedback_type))
+		#print ("%s control object initiated" % (self.feedback_type))
 		
 	def start_control(self,r):
 		# Assign control reference
@@ -70,7 +71,7 @@ class Controller(object):
 		"""
 		#print ("check_error: %s" %error)
 		# Check whether error is within limits
-		if error <= 0.5 and error >= -0.5:
+		if error <= self.error_margin and error >= -1*self.error_margin:
 			self.error_count = self.error_count + 1
 		else:
 			self.error_count = 0
@@ -80,8 +81,11 @@ class Controller(object):
 			# Update state
 			#print ("Error within limits for %s" % self.output_type)
 			self._control.current_state[self.update_key] = True
-			# Update status
-			self._control.update_status()
+		else:
+			self._control.current_state[self.update_key] = False
+
+		# Update status
+		self._control.update_status()
 
 			
 	def output(self,output):
@@ -107,12 +111,12 @@ class ProportionalController(Controller):
 	G(s) = K
 	"""
 		
-	def __init__(self,_control,feedback_type,output_type,update_key,k,hard_limit=1):
+	def __init__(self,_control,feedback_type,output_type,update_key,k,error_margin,hard_limit=1):
 		# Set up controller parameters
 		self.k = k
 
 		# Initialise as Controller base class
-		Controller.__init__(self, _control,feedback_type,output_type,update_key,hard_limit)
+		Controller.__init__(self, _control,feedback_type,output_type,update_key,error_margin,hard_limit)
 		
 	def heartbeat(self):
 		# Debug heartbeat
@@ -146,7 +150,7 @@ class LeadLagController(Controller):
 			(T+b)
 	"""
 
-	def __init__(self,_control,feedback_type,output_type,update_key,k,a,b,T,hard_limit=1):
+	def __init__(self,_control,feedback_type,output_type,update_key,k,a,b,T,error_margin,hard_limit=1):
 		# Set up controller parameters
 		self.a = a
 		self.b = b
@@ -158,7 +162,7 @@ class LeadLagController(Controller):
 		self.e = [0,0]	# e[k-1],e[k]
 
 		# Initialise as Controller base class
-		Controller.__init__(self, _control,feedback_type,output_type,update_key,hard_limit)
+		Controller.__init__(self, _control,feedback_type,output_type,update_key,error_margin,hard_limit)
 		
 	def heartbeat(self):
 		# Debug heartbeat
