@@ -92,7 +92,7 @@ class Controller(object):
 			output = -1 * self.hard_limit
 			
 		# Print the output
-		print ("%s correction = %s" % (self.output_type,output))
+		#print ("%s correction = %s" % (self.output_type,output))
 		
 		# Send the update to the drone, via the structure in PositionalControl (so it has a copy)
 		self._control.commanded_state[self.output_type] = output
