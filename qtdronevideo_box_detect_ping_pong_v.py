@@ -198,8 +198,8 @@ class imageProcessor(object):
                    if (float(sqr[2]*sqr[3])/(edges.height*edges.width)>0.004)&(abs(sqr[2]-sqr[3])<((sqr[2]+sqr[3])/4))& (area/float(sqr[2]*sqr[3])>0.7):
                      box_in_distance = True
                      cv.PolyLine(im,[polygon], True, (0,255,255),2, cv.CV_AA, 0)
-                   else:
-                     box_in_distance = False
+                     self.detect_time=time.clock()
+                     
                    
                    #Only keep rectangles big enough to be of interest,
                    #that have an appropriate width/height ratio
@@ -211,7 +211,7 @@ class imageProcessor(object):
                     cv.Rectangle(im,(sqr[0],sqr[1]),(sqr[0]+sqr[2],sqr[1]+sqr[3]),(255,0,255),1,8,0)
 
                     #check whether the box is too close and whether it could be green
-                    if ((sqr[2]>90) or (sqr[3]>60)): 
+                    if ((sqr[2]>100) or (sqr[3]>80)): 
  
                             print 'warning', sqr[2],sqr[3]
                             found_box = True
@@ -241,29 +241,44 @@ class imageProcessor(object):
                    send_state(turn_left_state)
                   self.init_angle=self.yaw_angle
                   print self.direction
+                  #box_in_distance = False
  
                 
-                # provided we have detected a box and it have not rotated more than 180 degrees:  
+                # provided we have detected a box and it has not rotated more than 180 degrees:  
                 elif ((not self.box_time==0) and abs(-convertAngle(self.init_angle)+convertAngle(self.yaw_angle))<150000.0 and self.direction==-1): #(time.clock()- self.box_time <2) :
                   send_state(turn_right_state)
                   print 'turn', abs(convertAngle(self.init_angle)-convertAngle(self.yaw_angle))
                   print 'right', self.init_angle
                   
-                elif ((not self.box_time==0) and abs(convertAngle(self.init_angle)-convertAngle(self.yaw_angle))<160000.0 and self.direction==1): #(time.clock()- self.box_time <2) :
+                elif ((not self.box_time==0) and abs(convertAngle(self.init_angle)-convertAngle(self.yaw_angle))<150000.0 and self.direction==1): #(time.clock()- self.box_time <2) :
                   send_state(turn_left_state)
                   print 'turn', convertAngle(self.init_angle)-convertAngle(self.yaw_angle)
-                  print 'left' ,self.init_angle
-                  
-
-                
+                  print 'left' ,self.init_angle                     
+                 
                 else:
-
+                    
+                 #if we are not facing the box in the distance
+##                 
+##                 if box_in_distance and self.box_time<4:
+##                  if sqr[0]< 0.2*edges.width:
+##                   send_state(turn_right_state)
+##                   box_in_distance=False
+##                   print 'rrrrrrr', sqr[0],edges.width
+##                  elif sqr[0]> 0.85*edges.width:
+##                   send_state(turn_left_state)
+##                   print 'lllllll',sqr[0],edges.width
+##                   print self.box_time
+##                   box_in_distance=False
+##                       
+##                  else:
                     #reset the timer
                     self.box_time=0
-                  
+                    
                     send_state(move_forward_state)
-                    print  ' forwars' , convertAngle(self.init_angle)-convertAngle(self.yaw_angle)        
-
+                    print  ' forwars' , convertAngle(self.init_angle)-convertAngle(self.yaw_angle)
+                    
+                    
+ 
                 return im  
  
 
