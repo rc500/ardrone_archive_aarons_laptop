@@ -301,11 +301,12 @@ class MarkerState(State):
 			self.exit_conditions.append ({'airborne':False})
 
 		# Marker transition vector (same for each drones)
-		marker_list = [24,23,22,21,20,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0] # list of ids
+		marker_list1 = [24,23,22,21,20,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0] # list of ids
+		marker_list2 = [12,11,10,9,8,7,6,5,4,3,2,1,0,24,23,22,21,20,19,18,17,16,15,14,13]
 		self.marker_transition = []
-		for count in drone_controllers:
-			self.marker_transition.append(marker_list)
-		
+		self.marker_transition.append(marker_list1)
+		self.marker_transition.append(marker_list2)
+
 		# Setup timer to look for next marker every so often
 		self.look_timer = QtCore.QTimer()
 		self.look_timer.setInterval(1000) # ms
@@ -344,7 +345,7 @@ class MarkerState(State):
 		if not self.marker_transition[drone_id-1]:
 			return None
 		return self.marker_transition[drone_id-1].pop()			
-
+	
 class NetworkManager(object):
 	"""
 	A class which manages the sending and receiving of packets over the network.
