@@ -29,7 +29,7 @@ class CooperativeControl(object):
 		self.start()
 		
 	def start(self):
-		print("Program started")
+		print("----Program started----")
 		self.operation()
 		
 	def update(self,status):
@@ -80,15 +80,9 @@ class State(object):
 							'height_stable':False,
 							};
 		
-		self.state_properties = [{
-							'talking':False,
-							'airborne':False,
-							'height_stable':False,
-							},{
-							'talking':False,
-							'airborne':False,
-							'height_stable':False,
-							},] # [drone_1, drone_2, etc.]
+		self.state_properties = [] # [{drone1},{drone2},...]
+		for count in drone_controllers:
+			self.state_properties.append(self.drone_properties)
 
 		# Assign pointers
 		self.drone_controllers = drone_controllers # NB - actually a tuple of pointers
@@ -154,11 +148,14 @@ class CommunicationState(State):
 		talking == True
 	"""
 		
-	exit_conditions = [{'talking':True},{'talking':True},] #[drone1,drone2,...]
-
-	def __init__(self, *args, **kwargs):
+	def __init__(self,_coop,drone_controllers):
 		# Initialise as per State base class
-		State.__init__(self, *args, **kwargs)
+		State.__init__(self,_coop,drone_controllers)
+
+		# Set exit conditions (same for each drones)
+		self.exit_conditions = []
+		for count in drone_controllers:
+			self.exit_conditions.append ({'talking':True})
 
 		# Setup timer to enable repeated checks of drone communication status
 		self.check_timer = QtCore.QTimer()
@@ -171,7 +168,7 @@ class CommunicationState(State):
 	
 	def action(self):
 		# Check for change in drone status
-		print("In Communication State")
+		print("----In Communication State----")
 		self.check_timer.start()
 	
 	def check(self):
@@ -192,9 +189,15 @@ class GroundState(State):
 		airborne == True for all drones
 	"""
 
-	exit_conditions = [{'airborne':True},{'airborne':True}] #[drone1,drone2,...]
+	def __init__(self,drones,drone_controllers):
+		# Initialise as per State base class
+		State.__init__(self,drones,drone_controllers)
+		
+		# Set exit conditions (same for each drones)
+		self.exit_conditions = []
+		for count in drone_controllers:
+			self.exit_conditions.append ({'airborne':True})
 
-	def __init__(self, *args, **kwargs):
 		# Setup timer to enable repeated attempts to reset and take off the drones at given intervals
 		self.reset_timer = QtCore.QTimer()
 		self.reset_timer.setInterval(1000) # ms
@@ -208,16 +211,13 @@ class GroundState(State):
 		self.check_timer.setInterval(6000) # ms
 		self.check_timer.timeout.connect(self.check)
 
-		# Initialise as per State base class
-		State.__init__(self, *args, **kwargs)
-
 	def next_state(self):
 		# Create next state
 		return HoverState(self._coop,self.drone_controllers)
 		
 	def action(self):
 		# Start trying to take off drones
-		print("In Ground State")
+		print("----In Ground State----")
 		self.reset_timer.start()
 		
 	def reset(self):
@@ -258,19 +258,22 @@ class HoverState(State):
 		height_stable == True for all drones
 	"""
 
-	exit_conditions = [{'height_stable':True},{'height_stable':True},] #[drone1,drone2,...]
-
-	def __init__(self, *args, **kwargs):
+	def __init__(self,drones,drone_controllers):
 		# Initialise as per State base class
-		State.__init__(self, *args, **kwargs)
-		
+		State.__init__(self,drones,drone_controllers)
+
+		# Set exit conditions (same for each drones)
+		self.exit_conditions = []
+		for count in drone_controllers:
+			self.exit_conditions.append ({'height_stable':True})
+				
 	def next_state(self):
 		# Create next state
 		return MarkerState(self._coop,self.drone_controllers)
 		
 	def action(self):
 		# Start trying to stablise the drones' height
-		print("In Hover State")
+		print("----In Hover State----")
 		for drone in self.drone_controllers:
 			drone.set_altitude(1000)
 
@@ -287,11 +290,14 @@ class MarkerState(State):
 		above_marker == True for all drones
 	"""
 
-	exit_conditions = [{'airborne':False},{'airborne':False},] #[drone1,drone2,...]
-
-	def __init__(self, *args, **kwargs):
+	def __init__(self,drones,drone_controllers):
 		# Initialise as per State base class
-		State.__init__(self, *args, **kwargs)
+		State.__init__(self,drones,drone_controllers)
+
+		# Set exit conditions (same for each drones)
+		self.exit_conditions = []
+		for count in drone_controllers:
+			self.exit_conditions.append ({'airborne':False})
 
 	def next_state(self):
 		# Create next state
@@ -299,7 +305,7 @@ class MarkerState(State):
 		
 	def action(self):
 		# Stablise the drone over a marker
-		print("In Marker State")
+		print("----In Marker State----")
 		for drone in self.drone_controllers:
 			drone.hold_marker()
 					
