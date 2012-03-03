@@ -32,11 +32,12 @@ class PositionalControl(object):
 		self.current_state = {
 					'type': 'initialise',
 					'drone_id' : 0,
+					'marker_id': -1,
 					'marker_distance_x': 0.0,
 					'marker_distance_y': 0.0,
 					'gas_stable' : False,
 					'altitude' : 0.0,
-									};
+					};
 
 		self.commanded_state = {
 	                'roll': 0.0,
@@ -47,12 +48,14 @@ class PositionalControl(object):
 	                'reset': False,
 	                'hover': True,
                      };
-		
+	
 		self.control_network_activity_flag = False
 		self.video_network_activity_flag = False
 		
-		self.marker_distance = (0,0)	
-							
+		self.marker_position = {
+				#'marker_id': [x error,y error]
+				'-1':(0,0),
+				};			
 	           
 		# --- ASSIGN POINTERS ---
 		self._control=_control
@@ -90,7 +93,10 @@ class PositionalControl(object):
 		self._height_control = Controller.ProportionalController(self,'altitude','gas','gas_stable',0.02)
 		self._height_control.start_control(r)
 
-	def hold_marker(self):
+	def hold_marker(self,marker_id):
+		# Change marker being tracked
+		self.current_state['marker_id'] = marker_id
+
 		# Stop the drone hovering by itself
 		self.commanded_state['hover'] = False
 		
@@ -102,11 +108,14 @@ class PositionalControl(object):
 		self._marker_control_roll.start_control(0)
 		self._marker_control_pitch.start_control(0)
 		
-	
-	def update(self,distance):
-		# Update object's record of drone state
-		self.current_state['marker_distance_x'] = -1 * distance[0]
-		self.current_state['marker_distance_y'] = -1 * distance[1]
+	def update_position(self,marker_id,distance):
+		# Update object's record of marker position
+		self.marker_position[marker_id] = distance
+
+		# Update record for the marker currently being tracked
+		if marker_id == self.current_state['marker_id']:
+			self.current_state['marker_distance_x'] = -1 * distance[0]
+			self.current_state['marker_distance_y'] = -1 * distance[1]
 		
 		# Print to console
 		#print(self.marker_distance)
@@ -123,13 +132,19 @@ class PositionalControl(object):
 		Compiles a status message for the CooperativeController object.
 		status_message = 
 					{
+					'visible_markers':[list of marker ids]
+
 					'talking':False
 					'airborne': False
 					'height_stable':False
+					'above_marker':False
 					}
 		"""
 		# drone_id
 		status_message = {'drone_id':self.current_state['drone_id']}
+	
+		# list of marker ids
+		status_message['visible_markers'] = self.marker_position.keys()
 		
 		# talking
 		status_message['talking'] = self.control_network_activity_flag and self.video_network_activity_flag
@@ -143,6 +158,9 @@ class PositionalControl(object):
 		# height_stable
 		status_message['height_stable'] = self.current_state['gas_stable']
 		
+		# above_marker
+		status_message['above_marker'] = False
+	
 		# Send status
 		#print ("Sending state : %s" % status_message)
 		self._network.sendStatus(status_message)

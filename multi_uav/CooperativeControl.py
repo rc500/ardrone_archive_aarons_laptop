@@ -23,7 +23,7 @@ class CooperativeControl(object):
 		self._network = NetworkManager(self)
 		
 		# First state
-		self._state = CommunicationState(self,drone_controllers)
+		self._state = CommunicationState(self,drones,drone_controllers)
 		
 		# Start program
 		self.start()
@@ -71,9 +71,10 @@ class State(object):
 	state_properties = [#drone1_properties,drone2_properties,...]
 	"""
 
-	def __init__(self,_coop,drone_controllers):
+	def __init__(self,_coop,drones,drone_controllers):
 		
 		# Variables
+		self.drones = drones
 		self.drone_properties = {
 							'talking':False,
 							'airborne':False,
@@ -98,7 +99,7 @@ class State(object):
 		# Update state properties
 		self.state_properties[drone_id - 1] = status
 		#rint("update readout:")
-		#print(status,self.state_properties)
+		#print(self.state_properties)
 		
 	def check_exit(self):
 		"""
@@ -148,9 +149,9 @@ class CommunicationState(State):
 		talking == True
 	"""
 		
-	def __init__(self,_coop,drone_controllers):
+	def __init__(self,_coop,drones,drone_controllers):
 		# Initialise as per State base class
-		State.__init__(self,_coop,drone_controllers)
+		State.__init__(self,_coop,drones,drone_controllers)
 
 		# Set exit conditions (same for each drones)
 		self.exit_conditions = []
@@ -164,7 +165,7 @@ class CommunicationState(State):
 		
 	def next_state(self):
 		# Create next state
-		return GroundState(self._coop,self.drone_controllers)
+		return GroundState(self._coop,self.drones,self.drone_controllers)
 	
 	def action(self):
 		# Check for change in drone status
@@ -189,9 +190,9 @@ class GroundState(State):
 		airborne == True for all drones
 	"""
 
-	def __init__(self,drones,drone_controllers):
+	def __init__(self,_coop,drones,drone_controllers):
 		# Initialise as per State base class
-		State.__init__(self,drones,drone_controllers)
+		State.__init__(self,_coop,drones,drone_controllers)
 		
 		# Set exit conditions (same for each drones)
 		self.exit_conditions = []
@@ -200,7 +201,7 @@ class GroundState(State):
 
 		# Setup timer to enable repeated attempts to reset and take off the drones at given intervals
 		self.reset_timer = QtCore.QTimer()
-		self.reset_timer.setInterval(1000) # ms
+		self.reset_timer.setInterval(2000) # ms
 		self.reset_timer.timeout.connect(self.reset)
 		
 		self.takeoff_timer = QtCore.QTimer()
@@ -213,7 +214,7 @@ class GroundState(State):
 
 	def next_state(self):
 		# Create next state
-		return HoverState(self._coop,self.drone_controllers)
+		return HoverState(self._coop,self.drones,self.drone_controllers)
 		
 	def action(self):
 		# Start trying to take off drones
@@ -258,9 +259,9 @@ class HoverState(State):
 		height_stable == True for all drones
 	"""
 
-	def __init__(self,drones,drone_controllers):
+	def __init__(self,_coop,drones,drone_controllers):
 		# Initialise as per State base class
-		State.__init__(self,drones,drone_controllers)
+		State.__init__(self,_coop,drones,drone_controllers)
 
 		# Set exit conditions (same for each drones)
 		self.exit_conditions = []
@@ -269,7 +270,7 @@ class HoverState(State):
 				
 	def next_state(self):
 		# Create next state
-		return MarkerState(self._coop,self.drone_controllers)
+		return MarkerState(self._coop,self.drones,self.drone_controllers)
 		
 	def action(self):
 		# Start trying to stablise the drones' height
@@ -283,32 +284,70 @@ class MarkerState(State):
 	
 	The CooperativeController state for when the drones are stable in height.
 	State entry requirements: drones are stable at altitude.
-	State purpose: to get drones hovering stably over a marker.
-	State exit: when drones are stable and ready to manoeuvre
+	State purpose: to get drones hovering stably over target marker, transitioning through marker transition vector to achieve this.
+	State exit: when marker is stable over target marker.
 	
 	State exit conditions:
-		above_marker == True for all drones
+		above_marker == True for target market on all drones
 	"""
 
-	def __init__(self,drones,drone_controllers):
+	def __init__(self,_coop,drones,drone_controllers):
 		# Initialise as per State base class
-		State.__init__(self,drones,drone_controllers)
+		State.__init__(self,_coop,drones,drone_controllers)
 
 		# Set exit conditions (same for each drones)
 		self.exit_conditions = []
 		for count in drone_controllers:
-			self.exit_conditions.append ({'airborne':False})
+			self.exit_conditions.append ({'above_marker':True})
 
+		# Marker transition vector (same for each drones)
+		marker_tuple = [10,8,9] # list of ids
+		self.marker_transition = []
+		for count in drone_controllers:
+			self.marker_transition.append(marker_tuple)
+		
+		# Setup timer to look for next marker every so often
+		self.look_timer = QtCore.QTimer()
+		self.look_timer.setInterval(2000) # ms
+		self.look_timer.timeout.connect(self.look)
+	
 	def next_state(self):
 		# Create next state
-		return MarkerState(self._coop,self.drone_controllers)
-		
+		print "----Finished Marker Transition----"
+	
 	def action(self):
 		# Stablise the drone over a marker
 		print("----In Marker State----")
+
+		# Start timer to look for next markers
+		self.look_timer.start()
+
+	def hold_marker(self,marker_id,drone_id):
+		print ("holding marker: %s" % marker_id)
+		self.drone_controllers[drone_id-1].hold_marker(marker_id)
+
+	def look(self):
+		# Check to see whether drones can see their next marker
 		for drone in self.drone_controllers:
-			drone.hold_marker()
-					
+			drone.update_status()
+	
+		for drone_id in self.drones:
+			marker_id = self.pop_marker(drone_id)
+			if marker_id in self.state_properties[drone_id-1]['visible_markers']:
+				self.hold_marker(marker_id,drone_id)
+			else:
+				self.add_marker(marker_id,drone_id)
+	
+	def add_marker(self,marker_id,drone_id):
+		# Add a marker id into the transition vector
+		self.marker_transition[drone_id-1].append(marker_id)
+
+	def pop_marker(self,drone_id):
+		# Pop the next marker from transition vector if such an element exists
+		if not self.marker_transition[drone_id-1]:
+			return None
+		return self.marker_transition[drone_id-1].pop()			
+
 class NetworkManager(object):
 	"""
 	A class which manages the sending and receiving of packets over the network.
