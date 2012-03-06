@@ -4,6 +4,7 @@ The keyboard control window
 
 """
 
+import argparse
 import json, logging, os, sys, time
 import numpy as np
 from PIL import Image
@@ -413,8 +414,22 @@ def main():
   the application has quit.
 
   """
+
+  # The command-line options
+  parser = argparse.ArgumentParser(description='Control the drone via the keyboard.')
+  parser.add_argument('-l,--log', dest='log_filename', type=str,
+                      default=None, metavar='FILENAME',
+                      help='dump a full log to FILENAME')
+
+  args = parser.parse_args()
+
+  if args.log_filename is not None:
+    log_file = open(args.log_filename, 'w')
+  else:
+    log_file = None
+
   app = Application()
-  win = ControllerWindow()
+  win = ControllerWindow(log_file = log_file)
   win.show()
   app.exec_()
 
