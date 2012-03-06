@@ -7,6 +7,7 @@ The keyboard control window
 import json, logging, os, sys
 
 import ardrone.util.qtcompat as qt
+from ardrone.core.videopacket import Decoder
 
 QtCore = qt.import_module('QtCore')
 QtNetwork = qt.import_module('QtNetwork')
@@ -69,7 +70,65 @@ class ControllerWindow(QtGui.QWidget):
     self._control_timer.start()
     self._seq = 0
 
+    # A video decoder object, wiring up video_frame_decoded to be called when a new
+    # video frame is available.
+    self._decoder = Decoder(self.video_frame_decoded)
+
+    # Set up a UDP listening socket on port 5561 for data packets.
+    self.state_socket = QtNetwork.QUdpSocket()
+    if not self.state_socket.bind(QtNetwork.QHostAddress.Any, 5561):
+      raise RuntimeError('Error binding to port: %s' % (self.state_socket.errorString()))
+    self.state_socket.readyRead.connect(self.stateSocketReadyRead)
+
+    # Set up a UDP listening socket on port 5562 for video frames.
+    self.video_socket = QtNetwork.QUdpSocket()
+    if not self.video_socket.bind(QtNetwork.QHostAddress.Any, 5562):
+      raise RuntimeError('Error binding to port: %s' % (self.video_socket.errorString()))
+    self.video_socket.readyRead.connect(self.videoSocketReadyRead)
+
     self._new_state()
+
+  def stateSocketReadyRead(self):
+    """Called when there is some interesting data to read on the state socket."""
+
+    while self.state_socket.hasPendingDatagrams():
+      sz = self.state_socket.pendingDatagramSize()
+      (data, host, port) = self.state_socket.readDatagram(sz)
+
+      # Some hack to account for PySide vs. PyQt differences
+      if qt.USES_PYSIDE:
+        data = data.data()
+  
+      # Parse the packet
+      packet = json.loads(data.decode())
+
+      # Store the packet
+      if 'type' in packet:
+        pass
+
+  def videoSocketReadyRead(self):
+    """Called when there is some interesting data to read on the video socket."""
+
+    while self.video_socket.hasPendingDatagrams():
+      sz = self.video_socket.pendingDatagramSize()
+      (data, host, port) = self.video_socket.readDatagram(sz)
+
+      # Some hack to account for PySide vs. PyQt differences
+      if qt.USES_PYSIDE:
+        data = data.data()
+  
+      # Parse the packet
+      self._decoder.decode(data)
+
+  def video_frame_decoded(self, frame):
+    """Called by the video decoded when a frame has been decoded.
+
+    *frame* is a sequence of 320*240*2 = 153600 bytes which represent the video
+    frame in RGB565 format.
+
+    """
+
+    pass
 
   def sizeHint(self):
     return QtCore.QSize(550,200)
