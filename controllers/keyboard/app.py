@@ -4,7 +4,9 @@ The keyboard control window
 
 """
 
-import json, logging, os, sys
+import json, logging, os, sys, time
+import numpy as np
+from PIL import Image
 
 import ardrone.util.qtcompat as qt
 from ardrone.core.videopacket import Decoder
@@ -28,7 +30,7 @@ class ControllerWindow(QtGui.QWidget):
   """A QWidget sub-class for displaying the keyboard contoller state.
 
   """
-  def __init__(self, host='127.0.0.1', port=5560, *args, **kwargs):
+  def __init__(self, host='127.0.0.1', port=5560, log_file=None, *args, **kwargs):
     super(ControllerWindow, self).__init__(*args, **kwargs)
 
     self.setWindowTitle('Drone controller')
@@ -57,6 +59,9 @@ class ControllerWindow(QtGui.QWidget):
     self._auto_hover_timer.setSingleShot(True)
     self._auto_hover_timer.setInterval(100) # milliseconds
     self._auto_hover_timer.timeout.connect(self._set_auto_hover)
+
+    self._log_file = log_file
+    self._frame_number = 0
 
     self._control_socket = QtNetwork.QUdpSocket()
     self._control_host = QtNetwork.QHostAddress(host)
@@ -103,8 +108,10 @@ class ControllerWindow(QtGui.QWidget):
       packet = json.loads(data.decode())
 
       # Store the packet
-      if 'type' in packet:
-        pass
+      if 'type' in packet and self._log_file is not None:
+        log = { 'when': time.time(), 'type': 'state_from_drone', 'what': packet }
+        self._log_file.write(json.dumps(log))
+        self._log_file.write('\n')
 
   def videoSocketReadyRead(self):
     """Called when there is some interesting data to read on the video socket."""
@@ -118,7 +125,9 @@ class ControllerWindow(QtGui.QWidget):
         data = data.data()
   
       # Parse the packet
-      self._decoder.decode(data)
+      if self._log_file is not None:
+        self._video_data_when = time.time()
+        self._decoder.decode(data)
 
   def video_frame_decoded(self, frame):
     """Called by the video decoded when a frame has been decoded.
@@ -128,7 +137,17 @@ class ControllerWindow(QtGui.QWidget):
 
     """
 
-    pass
+    arr = np.fromstring(frame,dtype=np.uint16).astype(np.uint32)
+    arr = 0xFF000000 + ((arr & 0xF800) >> 8) + ((arr & 0x07E0) << 5) + ((arr & 0x001F) << 19)
+    im1=Image.fromstring('RGBA', (320,240), arr, 'raw', 'RGBA', 0, 1)
+    frame_filename = 'frame_%05d.ppm' % self._frame_number
+    im1.save(frame_filename)
+    self._frame_number += 1
+
+    if self._log_file is not None:
+      log = { 'when': self._video_data_when, 'type': 'frame_from_drone', 'what': frame_filename }
+      self._log_file.write(json.dumps(log))
+      self._log_file.write('\n')
 
   def sizeHint(self):
     return QtCore.QSize(550,200)
@@ -136,6 +155,10 @@ class ControllerWindow(QtGui.QWidget):
   def _send_state(self):
     self._seq += 1
     packet = json.dumps({'seq': self._seq, 'state': self._control_state})
+    log = { 'when': time.time(), 'type': 'command_to_drone', 'what': packet }
+    if self._log_file is not None:
+      self._log_file.write(json.dumps(log))
+      self._log_file.write('\n')
     if -1 == self._control_socket.writeDatagram(packet, self._control_host, self._control_port):
       logging.error('Failed to send to %s:%s. Error was: %s' %
           (self._control_host.toString(), self._control_port, self._control_socket.errorString()))
