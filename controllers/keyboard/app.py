@@ -156,7 +156,7 @@ class ControllerWindow(QtGui.QWidget):
   def _send_state(self):
     self._seq += 1
     packet = json.dumps({'seq': self._seq, 'state': self._control_state})
-    log = { 'when': time.time(), 'type': 'command_to_drone', 'what': packet }
+    log = { 'when': time.time(), 'type': 'command_to_drone', 'what': json.loads(packet) }
     if self._log_file is not None:
       self._log_file.write(json.dumps(log))
       self._log_file.write('\n')
