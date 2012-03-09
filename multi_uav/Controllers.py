@@ -189,3 +189,48 @@ class LeadLagController(Controller):
 		# Continue as per Controller base class
 		self.check_error(self.yk)
 		self.output(self.yk)
+
+class LeadLagController2(LeadLagController):
+	"""
+	Implementation of a lead-lag controller using Tustin Transformation. Takes a position and returns a correcting velocity
+	Controller also pre-compensates by a value of K
+	
+	ANALOGUE CONTROLLER:
+	G(s) = (as + 1) / (bs + 1)
+	
+	USE TUSTIN TRANSFORMATION:
+		 2(z-1)
+	s = --------
+		 T(z+1)
+
+	DIGITAL CONTORLLER:
+			T(z+1) + 2(z-1)a
+	G(z) =  ----------------
+			T(z+1) + 2(z-1)b
+	
+	DIFFERENCE EQUATION:
+			  1
+	y[k] =  ------  { - (y[k-1]*(T-2b)) + (e[k-1]*(T-2a)) + (e[k]*(T+2a)) }
+			(T+2b)
+	"""
+
+def heartbeat(self):
+		# Debug heartbeat
+		#print ("%s beat" % self.output_type)
+		
+		# Update latest error with pre-compensation
+		self.e[1] = self.k * (self.r - self.y())
+		
+		# Calculate y[k]
+		part_1 = 1 / (self.T + 2*self.b)
+		part_2a = self.yk * (self.T - 2*self.b)
+		part_2b = self.e[0] * (self.T - 2*self.a)
+		part_2c = self.e[1] * (self.T + 2*self.a)
+		self.yk = part_1 * (part_2b - part_2a + part_2c)
+		
+		# Update error
+		self.e[0] = self.e[1]
+		
+		# Continue as per Controller base class
+		self.check_error(self.yk)
+		self.output(self.yk)
