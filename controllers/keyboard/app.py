@@ -4,9 +4,13 @@ The keyboard control window
 
 """
 
-import json, logging, os, sys
+import argparse
+import json, logging, os, sys, time
+import numpy as np
+from PIL import Image
 
 import ardrone.util.qtcompat as qt
+from ardrone.core.videopacket import Decoder
 
 QtCore = qt.import_module('QtCore')
 QtNetwork = qt.import_module('QtNetwork')
@@ -27,7 +31,7 @@ class ControllerWindow(QtGui.QWidget):
   """A QWidget sub-class for displaying the keyboard contoller state.
 
   """
-  def __init__(self, host='127.0.0.1', port=5560, *args, **kwargs):
+  def __init__(self, host='127.0.0.1', port=5560, log_file=None, *args, **kwargs):
     super(ControllerWindow, self).__init__(*args, **kwargs)
 
     self.setWindowTitle('Drone controller')
@@ -57,6 +61,9 @@ class ControllerWindow(QtGui.QWidget):
     self._auto_hover_timer.setInterval(100) # milliseconds
     self._auto_hover_timer.timeout.connect(self._set_auto_hover)
 
+    self._log_file = log_file
+    self._frame_number = 0
+
     self._control_socket = QtNetwork.QUdpSocket()
     self._control_host = QtNetwork.QHostAddress(host)
     self._control_port = port
@@ -69,7 +76,79 @@ class ControllerWindow(QtGui.QWidget):
     self._control_timer.start()
     self._seq = 0
 
+    # A video decoder object, wiring up video_frame_decoded to be called when a new
+    # video frame is available.
+    self._decoder = Decoder(self.video_frame_decoded)
+
+    # Set up a UDP listening socket on port 5561 for data packets.
+    self.state_socket = QtNetwork.QUdpSocket()
+    if not self.state_socket.bind(QtNetwork.QHostAddress.Any, 5561):
+      raise RuntimeError('Error binding to port: %s' % (self.state_socket.errorString()))
+    self.state_socket.readyRead.connect(self.stateSocketReadyRead)
+
+    # Set up a UDP listening socket on port 5562 for video frames.
+    self.video_socket = QtNetwork.QUdpSocket()
+    if not self.video_socket.bind(QtNetwork.QHostAddress.Any, 5562):
+      raise RuntimeError('Error binding to port: %s' % (self.video_socket.errorString()))
+    self.video_socket.readyRead.connect(self.videoSocketReadyRead)
+
     self._new_state()
+
+  def stateSocketReadyRead(self):
+    """Called when there is some interesting data to read on the state socket."""
+
+    while self.state_socket.hasPendingDatagrams():
+      sz = self.state_socket.pendingDatagramSize()
+      (data, host, port) = self.state_socket.readDatagram(sz)
+
+      # Some hack to account for PySide vs. PyQt differences
+      if qt.USES_PYSIDE:
+        data = data.data()
+  
+      # Parse the packet
+      packet = json.loads(data.decode())
+
+      # Store the packet
+      if 'type' in packet and self._log_file is not None:
+        log = { 'when': time.time(), 'type': 'state_from_drone', 'what': packet }
+        self._log_file.write(json.dumps(log))
+        self._log_file.write('\n')
+
+  def videoSocketReadyRead(self):
+    """Called when there is some interesting data to read on the video socket."""
+
+    while self.video_socket.hasPendingDatagrams():
+      sz = self.video_socket.pendingDatagramSize()
+      (data, host, port) = self.video_socket.readDatagram(sz)
+
+      # Some hack to account for PySide vs. PyQt differences
+      if qt.USES_PYSIDE:
+        data = data.data()
+  
+      # Parse the packet
+      if self._log_file is not None:
+        self._video_data_when = time.time()
+        self._decoder.decode(data)
+
+  def video_frame_decoded(self, frame):
+    """Called by the video decoded when a frame has been decoded.
+
+    *frame* is a sequence of 320*240*2 = 153600 bytes which represent the video
+    frame in RGB565 format.
+
+    """
+
+    arr = np.fromstring(frame,dtype=np.uint16).astype(np.uint32)
+    arr = 0xFF000000 + ((arr & 0xF800) >> 8) + ((arr & 0x07E0) << 5) + ((arr & 0x001F) << 19)
+    im1=Image.fromstring('RGBA', (320,240), arr, 'raw', 'RGBA', 0, 1)
+    frame_filename = 'frame_%05d.ppm' % self._frame_number
+    im1.save(frame_filename)
+    self._frame_number += 1
+
+    if self._log_file is not None:
+      log = { 'when': self._video_data_when, 'type': 'frame_from_drone', 'what': frame_filename }
+      self._log_file.write(json.dumps(log))
+      self._log_file.write('\n')
 
   def sizeHint(self):
     return QtCore.QSize(550,200)
@@ -77,6 +156,10 @@ class ControllerWindow(QtGui.QWidget):
   def _send_state(self):
     self._seq += 1
     packet = json.dumps({'seq': self._seq, 'state': self._control_state})
+    log = { 'when': time.time(), 'type': 'command_to_drone', 'what': json.loads(packet) }
+    if self._log_file is not None:
+      self._log_file.write(json.dumps(log))
+      self._log_file.write('\n')
     if -1 == self._control_socket.writeDatagram(packet, self._control_host, self._control_port):
       logging.error('Failed to send to %s:%s. Error was: %s' %
           (self._control_host.toString(), self._control_port, self._control_socket.errorString()))
@@ -331,8 +414,22 @@ def main():
   the application has quit.
 
   """
+
+  # The command-line options
+  parser = argparse.ArgumentParser(description='Control the drone via the keyboard.')
+  parser.add_argument('-l,--log', dest='log_filename', type=str,
+                      default=None, metavar='FILENAME',
+                      help='dump a full log to FILENAME')
+
+  args = parser.parse_args()
+
+  if args.log_filename is not None:
+    log_file = open(args.log_filename, 'w')
+  else:
+    log_file = None
+
   app = Application()
-  win = ControllerWindow()
+  win = ControllerWindow(log_file = log_file)
   win.show()
   app.exec_()
 
