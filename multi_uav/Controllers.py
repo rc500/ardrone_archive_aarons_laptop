@@ -139,6 +139,11 @@ class LeadLagController(Controller):
 	ANALOGUE CONTROLLER:
 	G(s) = (as + 1) / (bs + 1)
 	
+	USE BACKWARD DIFFERENCE TRANSFORMATION:
+		 z - 1
+	s = -------
+		  zT
+
 	DIGITAL CONTORLLER:
 			zT + (z-1)a
 	G(z) =  ------------
