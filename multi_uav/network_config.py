@@ -10,7 +10,7 @@ drone1 = {
 				'video_data_port' : 				5562,
 				'control_data_listening_port' :		3456,
 				'video_data_listening_port' :		3457,
-				'bind_host':						'192.168.1.3',
+				'bind_host':						'192.168.1.4',
 				};
 				
 drone2 = {
@@ -25,6 +25,6 @@ drone2 = {
 				'video_data_port' :					5662,
 				'control_data_listening_port' :		3556,
 				'video_data_listening_port' :		3557,
-				'bind_host':						'192.168.2.3',
+				'bind_host':						'192.168.2.2',
 				};
 

@@ -13,6 +13,7 @@ QtCore = qt.import_module('QtCore')
 QtNetwork = qt.import_module('QtNetwork')
 
 from . import Controllers as Controller
+from . import DroneStates as State
 from . import ImageProcessor
 import ardrone.core.videopacket as Videopacket
 
@@ -24,8 +25,6 @@ class PositionalControl(object):
 	The core drone control object which contains functions to control the position of an individual drone.
 	This is done through the ControlLoop object.
 	"""
-	
-	MINIMUM_ALTITUDE = 300.0
 	
 	def __init__(self,drone_id,_control,pseudo_network,network_config):
 		# --- INITIALISE VARIABLES ---
@@ -50,7 +49,9 @@ class PositionalControl(object):
 	                'reset': False,
 	                'hover': True,
                      };
-	
+
+		self.route = []
+		self.drone_id = drone_id	
 		self.control_network_activity_flag = False
 		self.video_network_activity_flag = False
 		
@@ -77,12 +78,28 @@ class PositionalControl(object):
 				
 		# Reset drone
 		self._control.reset()
-		
+	
+		# Set initial state
+		self._state = State.CommunicationState(self,self.drone_id)
+	
 		# Keep drone_id
 		self.current_state['drone_id'] = drone_id
 	
+		# Setup timer to detect for state changes
+		self.check_timer = QtCore.QTimer()
+		self.check_timer.setInterval(5000) # ms
+		self.check_timer.timeout.connect(self.check_exit)
+
+	def check_exit(self):
+		self._state.check_exit()
+	
+	def change_state(self,state):
+		self._state = state
+
+	def start(self):
+		self.check_timer.start()
+	
 	def reset(self):
-		# Check the drone isn't airborne before reseting
 		self._control.reset()
 		
 	def take_off(self):
@@ -98,18 +115,26 @@ class PositionalControl(object):
 	def hold_marker(self,marker_id):
 		# Change marker being tracked
 		self.current_state['marker_id'] = marker_id
+		
+		# Update route here and in state
+		while not self.route.pop() == marker_id:
+			pass
+		self._state.marker_transition = self.route
 
 		# Stop the drone hovering by itself
 		self.commanded_state['hover'] = False
 		
 		# Initiate roll and pitch controllers
-		self._marker_control_roll = Controller.LeadLagController(self,'marker_distance_x','roll','roll_stable',0.001,0.15,0.025,400,0.07)
-		self._marker_control_pitch = Controller.LeadLagController(self,'marker_distance_y','pitch','pitch_stable',0.001,0.15,0.025,400,0.07)
+		self._marker_control_roll = Controller.LeadLagController2(self,'marker_distance_x','roll','roll_stable',0.001,0.15,0.025,0.04)
+		self._marker_control_pitch = Controller.LeadLagController2(self,'marker_distance_y','pitch','pitch_stable',0.001,0.15,0.025,0.04)
 		
 		# Start control
 		self._marker_control_roll.start_control(0)
 		self._marker_control_pitch.start_control(0)
-		
+	
+	def update_route(self,route):
+		self.route = route
+
 	def update_position(self,marker_info):
 		# Update object's record of marker positions
 		self.marker_position = marker_info
@@ -135,7 +160,7 @@ class PositionalControl(object):
 		# Update object's record of drone state with new information (without deleting old information)
 		self.current_state = dict(self.current_state.items() + packet.items())
 				
-	def update_status(self):
+	def parse_status(self):
 		"""
 		Compiles a status message for the CooperativeController object.
 		status_message = 
@@ -143,7 +168,7 @@ class PositionalControl(object):
 					'talking':False
 					'airborne': False
 					'height_stable':False
-					'above_marker':False
+					'following_marker':False
 					}
 		"""
 		# drone_id
@@ -153,20 +178,26 @@ class PositionalControl(object):
 		status_message['talking'] = self.control_network_activity_flag and self.video_network_activity_flag
 		
 		# airborne
-		if self.current_state['altitude'] >= self.MINIMUM_ALTITUDE:
+		if self.current_state['altitude'] >= 50.0:
 			status_message['airborne'] = True
 		else:
 			status_message['airborne'] = False
-		
+	
 		# height_stable
 		status_message['height_stable'] = self.current_state['gas_stable']
 		
-		# above_marker
-		status_message['above_marker'] = self.current_state['roll_stable'] and self.current_state['pitch_stable']
+		# following_marker
+		if len(self.route)>1:
+			status_message['following_marker'] = True
+		else:
+			status_message['following_marker'] = False
 	
-		# Send status
+		# Update status
 		#print ("Sending state : %s" % status_message)
-		self._network.sendStatus(status_message)
+		return status_message
+
+	def update_status(self):
+		return self.parse_status()
 
 class NetworkManager(object):
 	"""

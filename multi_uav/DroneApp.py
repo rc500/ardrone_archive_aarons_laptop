@@ -37,7 +37,7 @@ class DroneApp(object):
 		# --- INITIALISE APPLICATION OBJECTS ----
 		self._pos_control_1 = PositionalControl.PositionalControl(1,self._drone1,self,config.drone1)
 		self._pos_control_2 = PositionalControl.PositionalControl(2,self._drone2,self,config.drone2)
-		self._coop_control = CooperativeControl.CooperativeControl((1,2,),(self._pos_control_1,self._pos_control_2,))
+		self._coop_control = CooperativeControl.CooperativeControl((1,2),(self._pos_control_1,self._pos_control_2))
 
 		# Wire up Ctrl-C to safely land drones and end the application
 		signal.signal(signal.SIGINT, lambda *args: self.finish())

@@ -12,41 +12,103 @@ import ardrone.util.qtcompat as qt
 QtCore = qt.import_module('QtCore')
 QtNetwork = qt.import_module('QtNetwork')
 
+from . import TaskStates as State
+
 class CooperativeControl(object):
 
 	def __init__(self,drones,drone_controllers): # Will want to add in _drone2 in time
 		# --- STORE VARIABLES ---
 		self.drones = drones # tuple of drone ids
 		
+		# --- STORE POINTERS ---
+		self.drone_controllers = drone_controllers
+	
 		# --- INITIALISE APPLICATION OBJECTS ----
 		#self._status_viewer = # add at some point
 		self._network = NetworkManager(self)
-		
-		# First state
-		self._state = CommunicationState(self,drones,drone_controllers)
-		
+
 		# Start program
 		self.start()
+
+	def start_drones(self):
+		for drone in self.drone_controllers:
+			drone.start()
 		
 	def start(self):
-		print("----Program started----")
-		self.operation()
-		
-	def update(self,status):
+		print("======Program started======")
+		# First state
+		self._state = State.SetupState(self,self.drones,self.drone_controllers)
+		self._state.action()
+				
+	def change_state(self,_state):
 		"""
-		Update the state object and check whether the state should change.
+		Function called to update the state used by the CooperativeController object
 		"""
-		# Update state object
-		self._state.update(status)
-		
-		# Change state if required to
-		check = self._state.check_exit()
-		if check[0] == False:
-			return
+		self._state = _state
+
+	def parse_status(self,pulled_status):
+		"""
+		Parse the pulled status, return the resulting task status.
+		"""
+		task_status = {}
+
+		# talking - only True if True for all drones
+		task_status['talking'] = True
+		for drone in self.drone_controllers:
+			task_status['talking'] = task_status['talking'] and pulled_status[drone]['talking']
+
+		# following_marker - only True if True for all drones
+		task_status['following_marker'] = True
+		for drone in self.drone_controllers:
+			task_status['following_marker'] = task_status['following_marker'] and pulled_status[drone]['following_marker']
+
+		# position - list of all drone positions
+		task_status['position'] = []
+		for drone in self.drone_controllers:
+			task_status['position'].append(pulled_status[drone]['position'])
+
+		# airprox - True if closer than 5 markers
+		airprox = 5
+		# work out shortest distance between drones
+		closest_dist = 1000 # arbitrarily largei
+		drone_count = 0
+		other_count = 0
+		for drone in self.drones:
+			others = self.drones
+			others = others.remove(drone)
+			for other in others:
+				diff_dist = task_status['position'][drone_count] - task_status['position'][other_count]
+				if diff_dist < closest_dist:
+					closest_dist = diff_dist
+				other_count = other_count + 1
+			drone_count = drone_count + 1
+		# check distance with airprox
+		if closest_dist >= airprox:
+			task_status['airprox']=True
 		else:
-			print("Changing State")
-			self._state = check[1]
-			self.operation()
+			task_status['airprox']=False
+
+		return task_status
+
+	def update_status():
+		"""
+		Request all drones to update their status.
+		Return task status.
+		"""
+		pulled_status = []
+		for drone in self.drone_controllers:
+			pulled_status.append(drone.update_status())
+		return self.parse_status(pulled_status)
+
+	def send_routes(self,routes):
+		"""
+		Function which gives each drone a route in the form of a list of marker ids.
+		"""
+		local_drone = list(self.drone_controllers)
+		local_drone.reverse()
+
+		for route in routes:
+			local_drone.pop().update_route(route)
 
 	def operation(self):
 		"""
@@ -54,303 +116,103 @@ class CooperativeControl(object):
 		"""
 		self._state.action()
 
-class State(object):
+class Navigator(object):
 	"""
-	A class which manages the state of the CooperativeController object.
-	This is the base class from which all states inherit.
-	As status messages are received, the state machine determines the next state and changes it accordingly.
-	
-	drone_properties =
-					{
-					'talking': False
-					'airborne': False
-					'height_stable':False
-					# etc.
-					}
-					
-	state_properties = [#drone1_properties,drone2_properties,...]
+	A class which works out safe routes for drones to follow.
+	All functions are called with a list of the drones current positions (and possibly other parameters too)
+	All 'public' functions return one list of n lists, where n is the number of drones being controlled
 	"""
 
-	def __init__(self,_coop,drones,drone_controllers):
-		
-		# Variables
-		self.drones = drones
-		self.drone_properties = {
-							'talking':False,
-							'airborne':False,
-							'height_stable':False,
-							};
-		
-		self.state_properties = [] # [{drone1},{drone2},...]
-		for count in drone_controllers:
-			self.state_properties.append(self.drone_properties)
+# PUBLIC
+	def __init__(self,drones):
+		# define map
+		self.path = {
+			'type' : 'loop',
+			'markers' : (0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24),
+			};
 
-		# Assign pointers
-		self.drone_controllers = drone_controllers # NB - actually a tuple of pointers
-		self._coop = _coop
-		
-	def update(self,status):
+		# setup variables
+		self.routes = [] # one route for each drone being controlled
+		for number in drones:
+			self.routes.append([])
+
+		self.positions = [] # one marker id for each drone giving last known position
+		self.targets = [] # 0 or 1  marker id for each drone giving the current target for the drone
+		self.drones = drones # tuple of drone ids
+
+	def route (self,pos):
 		"""
-		When given a new status, parse the information and update the state properties.
+		A basic algorithm for setting a looping route around a continuous path. Route is never longer than 6 markers ahead.
 		"""
-		# Store drone_id and remove it
-		drone_id = status.pop('drone_id')
+		# check path is a loop
+		if self.path['type'] == 'loop':
+			for drone in self.drones:
+				posi = pos[drone]
+				self.routes[drone] = [posi]
+				for number in range(1,6):
+					posi = self.next(posi)
+					self.routes[drone].append(posi)
 
-		# Update state properties
-		self.state_properties[drone_id - 1] = status
-		#rint("update readout:")
-		#print(self.state_properties)
-		
-	def check_exit(self):
+		# return deconflicted routes
+		return self.deconflict(self,self.positions)
+
+	def deconflict(self,pos):
 		"""
-		Check the exit conditions against the state_properties.
-		If state requires changing, return the new state id.
+		A basic deconfliction algorithm which stops all drones that have unsafe routes
+		Only guarantees deconfliction on maps with no junctions
 		"""
-		exit_state = []
-		
-		# Check exit condition
-		for drone_id in self._coop.drones:
-			exit_state.append(False) # Initialise a bool for each drone
-			#print("Drone: %s" %drone_id)
-			for key in self.exit_conditions[drone_id-1].keys():
-				#print("Property: '%s'" %key)
-				#print(self.state_properties)
-				#print(self.exit_conditions[drone_id-1][key],self.state_properties[drone_id-1][key])
-				if self.exit_conditions[drone_id-1][key] == self.state_properties[drone_id-1][key]:
-					exit_state[drone_id-1] = True # Set flag for respective drone
-				else:
-					exit_state[drone_id-1] = False # Set flag for respective drone	
-					#return (False,) # Leave loop as don't care about meeting rest of conditions
-					
-		# Only change state is all exit conditions have been met
-		exit_state.sort()
-		if exit_state[0] == True: # Don't actually need this line and line above
-			print("Exiting State")
-			return (True,self.next_state())
-		return (False,)
+		# update position
+		self.position = pos
+
+		# work out new routes to deconflict drones while maintaining efficient routing to targets
+		# check safety of current routes
+		safe_routes = self.check_rvp()
+		# for unsafe routes, stop the drone
+		for drone in safe_route:
+			if drone == False:
+				self.routes[drone] = self.positions[drone] # halt the drone
 	
-	def next_state(self):
-		# Be sure to return pointer to next state
-		pass
-		
-	def action(self):
-		pass
+		return self.routes
 
-class CommunicationState(State):
-	"""
-	ID = 0
-	
-	The CommunicationState for when the drones are not verified as being in contact with the network.
-	State entry requirements: -
-	State purpose: to get drones communicating
-	State exit: when drones are on and communicating
-	
-	State exit conditions:
-		talking == True
-	"""
-		
-	def __init__(self,_coop,drones,drone_controllers):
-		# Initialise as per State base class
-		State.__init__(self,_coop,drones,drone_controllers)
+# PRIVATE
+	def check_rvp(self):
+		"""
+		Checks the routes of each drone with the current position of the other drones.
+		A list containing bools is returned.
+		If a route risks collision with another drone then False is returned for that drone.
+		""" 
+		safe_route = []
+		for drone in self.drones:
+			safe_route.append(True)
+			others = self.drones
+			others.remove(drone)
+			for other in others:
+				if self.positions[other] in self.routes[drone]:
+					safe_route[drone] = False
+		return safe_route
 
-		# Set exit conditions (same for each drones)
-		self.exit_conditions = []
-		for count in drone_controllers:
-			self.exit_conditions.append ({'talking':True})
-
-		# Setup timer to enable repeated checks of drone communication status
-		self.check_timer = QtCore.QTimer()
-		self.check_timer.setInterval(1000) # ms
-		self.check_timer.timeout.connect(self.check)
-		
-	def next_state(self):
-		# Create next state
-		return GroundState(self._coop,self.drones,self.drone_controllers)
-	
-	def action(self):
-		# Check for change in drone status
-		print("----In Communication State----")
-		self.check_timer.start()
-	
-	def check(self):
-		# Update status of drones
-		for drone in self.drone_controllers:
-			drone.update_status()
-			
-class GroundState(State):
-	"""
-	ID = 1
-	
-	The GroundState state for when the drones are not airborne.
-	State entry requirements: drones are on and able to communicate with the controller.
-	State purpose: to get drones airborne
-	State exit: when drones are airborne
-	
-	State exit conditions:
-		airborne == True for all drones
-	"""
-
-	def __init__(self,_coop,drones,drone_controllers):
-		# Initialise as per State base class
-		State.__init__(self,_coop,drones,drone_controllers)
-		
-		# Set exit conditions (same for each drones)
-		self.exit_conditions = []
-		for count in drone_controllers:
-			self.exit_conditions.append ({'airborne':True})
-
-		# Setup timer to enable repeated attempts to reset and take off the drones at given intervals
-		self.reset_timer = QtCore.QTimer()
-		self.reset_timer.setInterval(2000) # ms
-		self.reset_timer.timeout.connect(self.reset)
-		
-		self.takeoff_timer = QtCore.QTimer()
-		self.takeoff_timer.setInterval(1000) # ms
-		self.takeoff_timer.timeout.connect(self.take_off)
-
-		self.check_timer = QtCore.QTimer()
-		self.check_timer.setInterval(6000) # ms
-		self.check_timer.timeout.connect(self.check)
-
-	def next_state(self):
-		# Create next state
-		return HoverState(self._coop,self.drones,self.drone_controllers)
-		
-	def action(self):
-		# Start trying to take off drones
-		print("----In Ground State----")
-		self.reset_timer.start()
-		
-	def reset(self):
-		print("beat-reset")
-		# Reset then try to take off
-		for drone in self.drone_controllers:
-			if drone.current_state['altitude'] < 150.0:
-				drone.reset()
-		self.reset_timer.stop()
-		self.takeoff_timer.start()
-		
-	def take_off(self):
-		print("beat-takeoff")
-		# Try to take off then reset (should be enough delay before reset for state to exit if take off actually works)
-		for drone in self.drone_controllers:
-			drone.take_off()
-		self.takeoff_timer.stop()
-		self.check_timer.start()
-
-	def check(self):
-		print("beat-check")
-		# Check state
-		for drone in self.drone_controllers:
-			drone.update_status()
-		self.check_timer.stop()
-		self.reset_timer.start()
-
-class HoverState(State):
-	"""
-	ID = 2
-	
-	The CooperativeController state for when the drones are initially airborne.
-	State entry requirements: drones are airborne.
-	State purpose: to get drones hovering stably at height.
-	State exit: when drones are stable and ready to manoeuvre
-	
-	State exit conditions:
-		height_stable == True for all drones
-	"""
-
-	def __init__(self,_coop,drones,drone_controllers):
-		# Initialise as per State base class
-		State.__init__(self,_coop,drones,drone_controllers)
-
-		# Set exit conditions (same for each drones)
-		self.exit_conditions = []
-		for count in drone_controllers:
-			self.exit_conditions.append ({'height_stable':True})
-				
-	def next_state(self):
-		# Create next state
-		return MarkerState(self._coop,self.drones,self.drone_controllers)
-		
-	def action(self):
-		# Start trying to stablise the drones' height
-		print("----In Hover State----")
-		for drone in self.drone_controllers:
-			drone.set_altitude(1000)
-
-class MarkerState(State):
-	"""
-	ID = 3
-	
-	The CooperativeController state for when the drones are stable in height.
-	State entry requirements: drones are stable at altitude.
-	State purpose: to get drones hovering stably over target marker, transitioning through marker transition vector to achieve this.
-	State exit: when marker is stable over target marker.
-	
-	State exit conditions:
-		completed marker transition
-	"""
-
-	def __init__(self,_coop,drones,drone_controllers):
-		# Initialise as per State base class
-		State.__init__(self,_coop,drones,drone_controllers)
-
-		# Set exit conditions (same for each drones)
-		self.exit_conditions = []
-		for count in drone_controllers:
-			self.exit_conditions.append ({'airborne':False})
-
-		# Marker transition vector (same for each drones)
-		marker_list1 = [24,23,22,21,20,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0] # list of ids
-		marker_list2 = [12,11,10,9,8,7,6,5,4,3,2,1,0,24,23,22,21,20,19,18,17,16,15,14,13]
-		self.marker_transition = []
-		self.marker_transition.append(marker_list1)
-		self.marker_transition.append(marker_list2)
-
-		# Setup timer to look for next marker every so often
-		self.look_timer = QtCore.QTimer()
-		self.look_timer.setInterval(1000) # ms
-		self.look_timer.timeout.connect(self.look)
-	
-	def next_state(self):
-		# Create next state
-		print "----Finished Marker Transition----"
-	
-	def action(self):
-		# Stablise the drone over a marker
-		print("----In Marker State----")
-
-		# Start timer to look for next markers
-		self.look_timer.start()
-
-	def hold_marker(self,marker_id,drone_id):
-		print ("holding marker: %s" % marker_id)
-		self.drone_controllers[drone_id-1].hold_marker(marker_id)
-
-	def look(self):
-		# Check to see whether drones can see their next marker
-		for drone_id in self.drones:
-			marker_id = self.pop_marker(drone_id)
-			if (str(marker_id) in self.drone_controllers[drone_id-1].get_visible_markers()):
-				self.hold_marker(marker_id,drone_id)
+	def next(self,pos):
+		"""
+		Returns markers next to current marker in order [forward,backward]
+		"""
+		if self.path['type'] == loop:
+			local_path = list(self.path['markers'])
+			if pos == local_path[len(local_path)]: # if current position is last position in markers tuple
+				backward = local_path[local_path.index(pos)-1]
+				forward = local_path.reverse().pop()
+			elif pos == local_path[1]: # if current position is the first position in markers tuple
+				forward = local_path[2]
+				backward = local_path.pop()
 			else:
-				self.add_marker(marker_id,drone_id)
-	
-	def add_marker(self,marker_id,drone_id):
-		# Add a marker id into the transition vector
-		self.marker_transition[drone_id-1].append(marker_id)
+				forward = local_path[local_path.index(pos)+1]
+				backward = local_path[local_path.index(pos)-1]
 
-	def pop_marker(self,drone_id):
-		# Pop the next marker from transition vector if such an element exists
-		if not self.marker_transition[drone_id-1]:
-			return None
-		return self.marker_transition[drone_id-1].pop()			
-	
+		return [forward,backward]
+			
 class NetworkManager(object):
 	"""
 	A class which manages the sending and receiving of packets over the network.
-	It stores the relevant data of received packets and sends packets when requested.
-	
+	It stores the relevant data of received packets and sends packets when requested.	
 	IP address of drone: config.['host']
 	Localhost: 127.0.0.1
 	"""
@@ -362,12 +224,6 @@ class NetworkManager(object):
 		"""
 		self._coop = initialiser
 		
-		# Set up a UDP listening socket on port for status data
-#		self.socket_status = QtNetwork.QUdpSocket()
-#		if not self.socket_status.bind(QtNetwork.QHostAddress.Any, self.PORT_STATUS):
-#			raise RuntimeError('Error binding to port: %s' % (self.socket_status.errorString()))
-#		self.socket_status.readyRead.connect(self.readStatusData)
-
 	def readStatusData_pseudo(self,data):
 		# Call CooperativeControl with status message if it is a dictionary data structure
 		if type(data)==type({}):
@@ -375,17 +231,4 @@ class NetworkManager(object):
 		else:
 			print("rogue status message received")
 			
-	#def readStatusData(self):
-		#"""
-		#Called when there is some interesting data to read on the status socket.
-		#The status message is passed onto CooperativeControl object for processing.
-		#"""
-		#while self.socket_status.hasPendingDatagrams():
-			#sz = self.socket_status.pendingDatagramSize()
-			#(data, host, port) = self.socket_status.readDatagram(sz)
-	
-			## Call CooperativeControl with status message if it is a dictionary data structure
-			#if type(data)==type({}):
-				#self._coop.update(data)
-			#else:
-				#print("rogue status message received")
+
