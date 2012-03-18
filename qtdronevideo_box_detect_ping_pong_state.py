@@ -77,6 +77,16 @@ turn_right_state = {
       'hover': False,
 }
 
+slow_left_state = {
+      'roll': 0.0,
+      'pitch': 0.0,
+      'yaw': -0.4,
+      'gas': 0.0,
+      'take_off': False,
+      'reset': False,
+      'hover': False,
+}
+
 move_forward_state = {
       'roll':0.0,
       'pitch': -0.06,
@@ -344,12 +354,16 @@ class imageProcessor(object):
               seq_ext=seq_ext.h_next()   
             #h_next: points to sequences on the same level
             seq=seq.h_next()
-          if abs(convertAngle(self.yaw_angle)-self.y_beg)<1000.0 and time.clock()>4:
+            
+          #if we have turned 360  or if we have been turning for too long we nee to stop  
+          if (abs(convertAngle(self.yaw_angle)-self.y_beg)>10000.0)or time.clock()<8:
+            send_state(slow_left_state)
             print abs(convertAngle(self.yaw_angle)-self.y_beg)
-            self.state = 'move'
             return
           else:
-            send_state(turn_left_state)  
+            print abs(convertAngle(self.yaw_angle)-self.y_beg)
+            self.state = 'turned'
+            return
           
 
         def move_state(self,frame):
@@ -511,19 +525,36 @@ class imageProcessor(object):
                      self.box_in_distance = True  
                      self.detected_time=time.clock()
 
-                     if sqr[1] <0.1*edges.width:
-                       print 'turn/move to the left'
-                       send_state(move_left_state)
-                       return
-                       
-                     elif sqr[1] >0.9*edges.width :
-                       print 'turn/move to the right'
-                       send_state(move_right_state)
-                       return
-                       
-                     else:
-                       self.state='move'
-                       return
+                     #dependiong on the direction we are moving, if we are off the centre correct accordingly
+                     if self.direction == -1:
+                       if abs(convertAngle(self.yaw_angle)-convertAngle(self.y_beg)) >self.landmarks[4]:
+                         print 'turn/move to the left'
+                         send_state(turn_left_state)
+                         return
+                         
+                       elif abs(convertAngle(self.yaw_angle)-convertAngle(self.y_beg)) > self.landmarks[len(self.landmarks)-3]:
+                         print 'turn/move to the right'
+                         send_state(turn_right_state)
+                         return
+                         
+                       else:
+                         self.state='move'
+                         return
+                     elif self.direction == 1:
+                       if abs(convertAngle(self.yaw_angle)-convertAngle(self.y_beg)) >self.landmarks[len(self.landmarks)/2+3]:
+                         print 'turn/move to the left'
+                         send_state(turn_left_state)
+                         return
+                         
+                       elif abs(convertAngle(self.yaw_angle)-convertAngle(self.y_beg)) < self.landmarks[len(self.landmarks)/2-3]:
+                         print 'turn/move to the right'
+                         send_state(turn_right_state)
+                         return
+                         
+                       else:
+                         self.state='move'
+                         return
+                                                
                         
                             
                   else:
@@ -538,30 +569,6 @@ class imageProcessor(object):
                       return
                   
                   
-               
-                 
-
-          
-                    
-
-
-                  
-        
-                    
-                 #if we are not facing the box in the distance
-##                 
-##                 if box_in_distance and self.box_time<4:
-##                  if sqr[0]< 0.2*edges.width:
-##                   send_state(turn_right_state)
-##                   box_in_distance=False
-##                   print 'rrrrrrr', sqr[0],edges.width
-##                  elif sqr[0]> 0.85*edges.width:
-##                   send_state(turn_left_state)
-##                   print 'lllllll',sqr[0],edges.width
-##                   print self.box_time
-##                   box_in_distance=False
-##                       
-##                  else:
                      
                     
 class imageViewer(object):
