@@ -166,12 +166,19 @@ class imageProcessor(object):
         #time a box was found
         box_time=0
         detected_time=0
+        box_in_distance=0
 
-        #initialise the gyro rift to a value marking the first run
+        #initialise the gyro drift to a value marking the first run
         drift=-1
+        #time t0
         t_beg=0
+        #yaw value at take-off
         y_beg=0.0
 
+
+        landmarks=[]
+        
+        #initialise the state
         state = 'take off'
         
         def __init__(self):
@@ -251,7 +258,9 @@ class imageProcessor(object):
 
                 if self.state == 'take off':
                   self.take_off_state(frame)
-                if self.state == 'move':
+                elif self.state == 'mapping':
+                  self.mapping_state(frame)
+                elif self.state == 'move':
                   self.move_state(frame)
                 elif self.state == 'box found':
                   self.found_box_state(frame)
@@ -266,7 +275,8 @@ class imageProcessor(object):
                 print self.state, ' state'
                 
                 return im
-              
+
+                    
         def take_off_state(self,frame):
 
           #script to get an estimate of gyro drift after take off
@@ -283,8 +293,64 @@ class imageProcessor(object):
             t_end = time.clock()
             self.drift=(abs(y_end-self.y_beg)/(t_end-self.t_beg))
             print self.drift ,'  time end', t_end, 'tbeg',self.t_beg, 'yend ',convertAngle(y_end),y_end, ' ybeg', convertAngle(self.y_beg)
-            self.state = 'turned'
+            self.state = 'mapping'
             return
+
+        def mapping_state(self,frame):
+        
+
+          #load greyscale image
+          img = cv.LoadImageM("frame.png",cv.CV_LOAD_IMAGE_GRAYSCALE)
+
+          #canny edge detector
+          edges= cv.CreateImage(cv.GetSize(img), 8, 1)
+          cv.Canny(img,edges, 50, 400.0)
+
+          #low-pass filter the image
+          cv.Smooth(edges, edges, cv.CV_GAUSSIAN,25)
+
+          #create space to store the cvseq sequence seq containing the contours
+          storage = cv.CreateMemStorage(0)
+
+          #find countours returns a sequence of countours so we need to go through all of them
+          #to find rectangles. see http://opencv.willowgarage.com/wiki/PythonInterface
+          #for details
+
+          #find all contours and draw inner ones in green, outter in blues
+          seq=cv.FindContours(edges, storage,cv.CV_RETR_LIST,cv.CV_CHAIN_APPROX_SIMPLE,(0, 0))
+
+          #find external contours
+          seq_ext=cv.FindContours(edges, storage,cv.CV_RETR_EXTERNAL,cv.CV_CHAIN_APPROX_SIMPLE,(0, 0))
+
+          while seq:
+            
+            #do not take into account external countours
+            if not(list(seq)==list(seq_ext)):
+              
+             perim= cv.ArcLength(seq) #contour perimeter
+             area=cv.ContourArea(seq) #contour area      
+             polygon=cv.ApproxPoly(list(seq), storage,cv.CV_POLY_APPROX_DP,perim*0.02,0)
+             sqr=cv.BoundingRect(polygon,0) #get square approximation for the contour
+             
+             #check if there are any rectangles in the distance that have appropriate width/height ratio
+             #and area close enough to that of the approximated rectangle
+             #this is used to correct drone orientation when moving towards box
+             if (float(sqr[2]*sqr[3])/(edges.height*edges.width)>0.004)&(abs(sqr[2]-sqr[3])<((sqr[2]+sqr[3])/4))& (area/float(sqr[2]*sqr[3])>0.7):
+               self.landmarks.append(abs(convertAngle(self.yaw_angle)-self.y_beg))
+               print 'landmarks', self.landmarks
+                      
+            else:
+              #move on to the next outter contour      
+              seq_ext=seq_ext.h_next()   
+            #h_next: points to sequences on the same level
+            seq=seq.h_next()
+          if abs(convertAngle(self.yaw_angle)-self.y_beg)<1000.0 and time.clock()>4:
+            print abs(convertAngle(self.yaw_angle)-self.y_beg)
+            self.state = 'move'
+            return
+          else:
+            send_state(turn_left_state)  
+          
 
         def move_state(self,frame):
 
@@ -350,7 +416,7 @@ class imageProcessor(object):
                   seq=seq.h_next()
                 if not self.box_in_distance:
                   print ' I think I am lost'
-                  if abs(convertAgle(self.yaw_angle)-convertAngle(self.y_beg))<160:
+                  if abs(convertAngle(self.yaw_angle)-convertAngle(self.y_beg))<160:
                       send_state(turn_right_state)
                       return
                   
