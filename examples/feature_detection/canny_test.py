@@ -13,6 +13,8 @@ edges= cv.CreateImage(cv.GetSize(img), 8, 1);
 
 cv.Canny(img,edges, 50, 200.0);
 
+cv.Smooth(edges, edges, cv.CV_GAUSSIAN,25)
+
 cv.NamedWindow("test1",cv.CV_WINDOW_AUTOSIZE)
 cv.ShowImage("test1", edges)
 cv.WaitKey(0) 

@@ -87,6 +87,27 @@ move_forward_state = {
       'hover': False,
 }
 
+move_left_state = {
+      'roll':-0.06,
+      'pitch': 0.0,
+      'yaw': 0.0,
+      'gas': 0.0,
+      'take_off': False,
+      'reset': False,
+      'hover': False,
+}
+
+move_right_state = {
+      'roll':0.06,
+      'pitch': 0.0,
+      'yaw': 0.0,
+      'gas': 0.0,
+      'take_off': False,
+      'reset': False,
+      'hover': False,
+}
+    
+
 #function to convert angles from gyro output to usable values
 def convertAngle(angle):
 
@@ -128,6 +149,8 @@ class navdataUpdate(object):
                   #pass on yaw angle data to the image processor
                   #packet['psi'] is the yaw angle value
                   self._im_proc.yaw_angle = packet['psi']
+                  
+
 
 
 class imageProcessor(object):
@@ -143,10 +166,19 @@ class imageProcessor(object):
         #time a box was found
         box_time=0
         detected_time=0
+
+        #initialise the gyro rift to a value marking the first run
+        drift=-1
+        t_beg=0
+        y_beg=0.0
+
+        state = 'take off'
         
         def __init__(self):
+
+                #update the navigation data   
                 self._navdata_update=navdataUpdate(self)
-       
+                      
 
         def detect_markers (self, frame):
 
@@ -156,7 +188,7 @@ class imageProcessor(object):
                 #load greyscale image
                 img = cv.LoadImageM("frame.png",cv.CV_LOAD_IMAGE_GRAYSCALE)
                 #load colour image for displaying
-                im = cv.LoadImageM("frame.png");
+                im = cv.LoadImageM("frame.png");        
 
                 #canny edge detector
                 edges= cv.CreateImage(cv.GetSize(img), 8, 1)
@@ -179,8 +211,107 @@ class imageProcessor(object):
                 #find external contours
                 seq_ext=cv.FindContours(edges, storage,cv.CV_RETR_EXTERNAL,cv.CV_CHAIN_APPROX_SIMPLE,(0, 0))
 
-                found_box = False
-                box_in_distance = False
+                while seq:
+                  
+                  #do not take into account external countours
+                  if not(list(seq)==list(seq_ext)):
+                    
+                   perim= cv.ArcLength(seq) #contour perimeter
+                   area=cv.ContourArea(seq) #contour area      
+                   polygon=cv.ApproxPoly(list(seq), storage,cv.CV_POLY_APPROX_DP,perim*0.02,0)
+                   sqr=cv.BoundingRect(polygon,0) #get square approximation for the contour
+                   
+                   #check if there are any rectangles in the distance that have appropriate width/height ratio
+                   #and area close enough to that of the approximated rectangle
+                   #this is used to correct drone orientation when moving towards box
+                   if (float(sqr[2]*sqr[3])/(edges.height*edges.width)>0.004)&(abs(sqr[2]-sqr[3])<((sqr[2]+sqr[3])/4))& (area/float(sqr[2]*sqr[3])>0.7):
+                     self.box_in_distance = True
+                     cv.PolyLine(im,[polygon], True, (0,255,255),2, cv.CV_AA, 0)
+                     
+                   
+                   #Only keep rectangles big enough to be of interest,
+                   #that have an appropriate width/height ratio
+                   #and whose area is close enough to that of the approximated rectangle
+                   if (float(sqr[2]*sqr[3])/(edges.height*edges.width)>0.06)&(abs(sqr[2]-sqr[3])<((sqr[2]+sqr[3])/4))& (area/float(sqr[2]*sqr[3])>0.7): 
+
+                    #draw polygon and approximated rectangle 
+                    cv.PolyLine(im,[polygon], True, (0,0,255),2, cv.CV_AA, 0)
+                    cv.Rectangle(im,(sqr[0],sqr[1]),(sqr[0]+sqr[2],sqr[1]+sqr[3]),(255,0,255),1,8,0)
+
+                    #check whether the box is too close and whether it could be green
+                    if ((sqr[2]>100) or (sqr[3]>80)): 
+                          pass
+
+                            
+                  else:
+                    #move on to the next outter contour      
+                    seq_ext=seq_ext.h_next()   
+                  #h_next: points to sequences on the same level
+                  seq=seq.h_next()
+
+                if self.state == 'take off':
+                  self.take_off_state(frame)
+                if self.state == 'move':
+                  self.move_state(frame)
+                elif self.state == 'box found':
+                  self.found_box_state(frame)
+                elif self.state == 'yaw right':
+                  self.yaw_right_state(frame)
+                elif self.state == 'yaw left':
+                   self.yaw_left_state(frame)
+                elif self.state == 'turned':
+                  self.turned_state(frame)
+                
+                  
+                print self.state, ' state'
+                
+                return im
+              
+        def take_off_state(self,frame):
+
+          #script to get an estimate of gyro drift after take off
+          if self.drift == -1:
+            t_beg = time.clock()
+            self.drift = 0
+            self.y_beg = convertAngle(self.yaw_angle)
+          print self.yaw_angle  
+          if time.clock()<0.5:
+            send_state(normal_state)
+          else:
+            print 'done'
+            y_end = convertAngle(self.yaw_angle)
+            t_end = time.clock()
+            self.drift=(abs(y_end-self.y_beg)/(t_end-self.t_beg))
+            print self.drift ,'  time end', t_end, 'tbeg',self.t_beg, 'yend ',convertAngle(y_end),y_end, ' ybeg', convertAngle(self.y_beg)
+            self.state = 'turned'
+            return
+
+        def move_state(self,frame):
+
+                send_state(move_forward_state)
+
+                #load greyscale image
+                img = cv.LoadImageM("frame.png",cv.CV_LOAD_IMAGE_GRAYSCALE)      
+
+                #canny edge detector
+                edges= cv.CreateImage(cv.GetSize(img), 8, 1)
+                cv.Canny(img,edges, 50, 400.0)
+
+                #low-pass filter the image
+                cv.Smooth(edges, edges, cv.CV_GAUSSIAN,25)
+
+                #create space to store the cvseq sequence seq containing the contours
+                storage = cv.CreateMemStorage(0)
+
+                #find countours returns a sequence of countours so we need to go through all of them
+                #to find rectangles. see http://opencv.willowgarage.com/wiki/PythonInterface
+                #for details
+
+                #find all contours and draw inner ones in green, outter in blues
+                seq=cv.FindContours(edges, storage,cv.CV_RETR_LIST,cv.CV_CHAIN_APPROX_SIMPLE,(0, 0))
+
+                #find external contours
+                seq_ext=cv.FindContours(edges, storage,cv.CV_RETR_EXTERNAL,cv.CV_CHAIN_APPROX_SIMPLE,(0, 0))
 
                 while seq:
                   
@@ -196,66 +327,160 @@ class imageProcessor(object):
                    #and area close enough to that of the approximated rectangle
                    #this is used to correct drone orientation when moving towards box
                    if (float(sqr[2]*sqr[3])/(edges.height*edges.width)>0.004)&(abs(sqr[2]-sqr[3])<((sqr[2]+sqr[3])/4))& (area/float(sqr[2]*sqr[3])>0.7):
-                     box_in_distance = True
-                     cv.PolyLine(im,[polygon], True, (0,255,255),2, cv.CV_AA, 0)
-                     self.detect_time=time.clock()
-                     
-                   
+                     self.box_in_distance = True
+      
                    #Only keep rectangles big enough to be of interest,
                    #that have an appropriate width/height ratio
                    #and whose area is close enough to that of the approximated rectangle
                    if (float(sqr[2]*sqr[3])/(edges.height*edges.width)>0.06)&(abs(sqr[2]-sqr[3])<((sqr[2]+sqr[3])/4))& (area/float(sqr[2]*sqr[3])>0.7): 
 
-                    #draw polygon and approximated rectangle 
-                    cv.PolyLine(im,[polygon], True, (0,0,255),2, cv.CV_AA, 0)
-                    cv.Rectangle(im,(sqr[0],sqr[1]),(sqr[0]+sqr[2],sqr[1]+sqr[3]),(255,0,255),1,8,0)
 
                     #check whether the box is too close and whether it could be green
                     if ((sqr[2]>100) or (sqr[3]>80)): 
  
                             print 'warning', sqr[2],sqr[3]
-                            found_box = True
+                            self.state =  'box found'
                             #record the time the box was found
                             self.box_time=time.clock()
-                            
-                            
+                            return         
+                  else:
+                    #move on to the next outter contour      
+                    seq_ext=seq_ext.h_next()   
+                  #h_next: points to sequences on the same level
+                  seq=seq.h_next()
+                if not self.box_in_distance:
+                  print ' I think I am lost'
+                  if abs(convertAgle(self.yaw_angle)-convertAngle(self.y_beg))<160:
+                      send_state(turn_right_state)
+                      return
+                  
+                
+                    
+        def found_box_state(self,frame):
 
+                  
+        
+                  #find whether we are going 'forward' or back depending on whether the
+                  #angle magnitude is more or less that 180 degrees (values given by the drone
+                  #are degrees*1000
+                  self.direction=cmp(convertAngle(self.yaw_angle), 180000.0)
+                  #save the orientation the drone had when it found the box
+                  self.init_angle=self.yaw_angle
+                  #turn if box found
+                  if self.direction==-1:
+                   send_state(turn_right_state)
+                   self.state = 'yaw right'
+                   return    
+                  if self.direction==1:
+                   send_state(turn_left_state)
+                   self.state = 'yaw left'
+                   return
+
+                  
+        def yaw_right_state(self,frame):
+
+                # provided we have detected a box and it has not rotated more than 180 degrees
+                if(abs(-convertAngle(self.init_angle)+convertAngle(self.yaw_angle))<150000.0):
+                     send_state(turn_right_state)
+                     return
+                    
+                else:
+                  #reset the timer
+                  #self.box_time=0
+                  self.state = 'turned'
+                  return
+
+        def yaw_left_state(self,frame):
+
+              # provided we have detected a box and it has not rotated more than 180 degrees
+              if(abs(convertAngle(self.init_angle)-convertAngle(self.yaw_angle))<150000.0 ):
+                   send_state(turn_left_state)
+                   return
+                  
+              else:
+                #reset the timer
+                #self.box_time=0
+                self.state = 'turned'
+                return
+
+        def turned_state(self, frame):
+          
+                #load greyscale image
+                img = cv.LoadImageM("frame.png",cv.CV_LOAD_IMAGE_GRAYSCALE)
+
+                #canny edge detector
+                edges= cv.CreateImage(cv.GetSize(img), 8, 1)
+                cv.Canny(img,edges, 50, 400.0)
+
+                #low-pass filter the image
+                cv.Smooth(edges, edges, cv.CV_GAUSSIAN,25)
+
+                #create space to store the cvseq sequence seq containing the contours
+                storage = cv.CreateMemStorage(0)
+
+                #find countours returns a sequence of countours so we need to go through all of them
+                #to find rectangles. see http://opencv.willowgarage.com/wiki/PythonInterface
+                #for details
+
+                #find all contours and draw inner ones in green, outter in blues
+                seq=cv.FindContours(edges, storage,cv.CV_RETR_LIST,cv.CV_CHAIN_APPROX_SIMPLE,(0, 0))
+
+                #find external contours
+                seq_ext=cv.FindContours(edges, storage,cv.CV_RETR_EXTERNAL,cv.CV_CHAIN_APPROX_SIMPLE,(0, 0))
+
+                while seq:
+                  
+                  #do not take into account external countours
+                  if not(list(seq)==list(seq_ext)):
+                    
+                   perim= cv.ArcLength(seq) #contour perimeter
+                   area=cv.ContourArea(seq) #contour area      
+                   polygon=cv.ApproxPoly(list(seq), storage,cv.CV_POLY_APPROX_DP,perim*0.02,0)
+                   sqr=cv.BoundingRect(polygon,0) #get square approximation for the contour
+                   
+                   #check if there are any rectangles in the distance that have appropriate width/height ratio
+                   #and area close enough to that of the approximated rectangle
+                   #this is used to correct drone orientation when moving towards box
+                   if (float(sqr[2]*sqr[3])/(edges.height*edges.width)>0.004)&(abs(sqr[2]-sqr[3])<((sqr[2]+sqr[3])/4))& (area/float(sqr[2]*sqr[3])>0.7):
+                     self.box_in_distance = True  
+                     self.detected_time=time.clock()
+
+                     if sqr[1] <0.1*edges.width:
+                       print 'turn/move to the left'
+                       send_state(move_left_state)
+                       return
+                       
+                     elif sqr[1] >0.9*edges.width :
+                       print 'turn/move to the right'
+                       send_state(move_right_state)
+                       return
+                       
+                     else:
+                       self.state='move'
+                       return
+                        
                             
                   else:
                     #move on to the next outter contour      
                     seq_ext=seq_ext.h_next()   
                   #h_next: points to sequences on the same level
                   seq=seq.h_next()
-                    
-                
-                if found_box:
+                if not self.box_in_distance :
+                  print ' I think i am lost, I can''t see any boxes'
+                  if abs(convertAgle(self.yaw_angle)-convertAngle(self.y_beg))<160:
+                      send_state(turn_right_state)
+                      return
                   
-                  #find whether we are going 'forward' or back depending on whether the
-                  #angle magnitude is more or less that 180 degrees (values given by the drone
-                  #are degrees*1000
-                  self.direction=cmp(convertAngle(self.yaw_angle), 180000.0)
-                  #turn if box found
-                  if self.direction==-1:
-                   send_state(turn_right_state)
-                  if self.direction==1:
-                   send_state(turn_left_state)
-                  self.init_angle=self.yaw_angle
-                  print self.direction
-                  #box_in_distance = False
- 
-                
-                # provided we have detected a box and it has not rotated more than 180 degrees:  
-                elif ((not self.box_time==0) and abs(-convertAngle(self.init_angle)+convertAngle(self.yaw_angle))<150000.0 and self.direction==-1): #(time.clock()- self.box_time <2) :
-                  send_state(turn_right_state)
-                  print 'turn', abs(convertAngle(self.init_angle)-convertAngle(self.yaw_angle))
-                  print 'right', self.init_angle
                   
-                elif ((not self.box_time==0) and abs(convertAngle(self.init_angle)-convertAngle(self.yaw_angle))<150000.0 and self.direction==1): #(time.clock()- self.box_time <2) :
-                  send_state(turn_left_state)
-                  print 'turn', convertAngle(self.init_angle)-convertAngle(self.yaw_angle)
-                  print 'left' ,self.init_angle                     
+               
                  
-                else:
+
+          
+                    
+
+
+                  
+        
                     
                  #if we are not facing the box in the distance
 ##                 
@@ -271,17 +496,8 @@ class imageProcessor(object):
 ##                   box_in_distance=False
 ##                       
 ##                  else:
-                    #reset the timer
-                    self.box_time=0
+                     
                     
-                    send_state(move_forward_state)
-                    print  ' forwars' , convertAngle(self.init_angle)-convertAngle(self.yaw_angle)
-                    
-                    
- 
-                return im  
- 
-
 class imageViewer(object):
 
         win_title = "Drone Video Feed"
@@ -356,14 +572,3 @@ class imageViewer(object):
 if (__name__ == '__main__'):
   image_app = imageViewer()
   image_app.run()
-
-                  #if we haven't seen another box 3 seconds after we saw the last one then we most probably missed it
-##                #so look for it  
-##                elif not box_in_distance and time.clock()- self.box_time >3 and time.clock()- self.box_time <6:
-##                    send_state(turn_right_state)
-##                    print ' can i see a box? ', box_in_distance,' how long since i dodged?', self.box_time
-##                   
-##                elif not box_in_distance and time.clock()- self.box_time >6 and time.clock()- self.box_time <9:
-##                    send_state(turn_left_state)
-##                    print ' can i see a box? ', box_in_distance,' how long since i dodged?', self.box_time
-

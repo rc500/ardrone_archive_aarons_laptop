@@ -231,7 +231,7 @@ class imageProcessor(object):
                 if found_box:
                   
                   #find whether we are going 'forward' or back depending on whether the
-                  #angle magnitude is more or less that 180 degrees (values given by the drone
+                  #angle magnitude is more or less that 90 degrees (values given by the drone
                   #are degrees*1000
                   self.direction=cmp(convertAngle(self.yaw_angle), 180000.0)
                   #turn if box found
