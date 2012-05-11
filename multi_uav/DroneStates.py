@@ -16,8 +16,9 @@ class State(object):
 	A class which determines states of a drone.
 	This is the base class from which all states inherit.
 	As status messages are received, the state machine determines the next state and changes it accordingly.
-	
-	drone_properties =
+	"""
+	"""	
+	drone_status =
 					{
 					'talking': False
 					'airborne': False
@@ -27,38 +28,25 @@ class State(object):
 	"""
 
 	def __init__(self,_drone,drone_id):
-		
 		# Variables
-		
-		self.drone_properties = {
-							'talking':False,
-							'airborne':False,
-							'height_stable':False,
-							};
+		self.drone_status = _drone.drone_status;
 		self.drone_id = drone_id
 
 		# Assign pointers
 		self._drone = _drone
 		
-	def parse_status(self,status):
-		"""
-		When given a new status, parse the information and update the state properties.
-		"""
+	def update(self,status):
 		# Pop drone id
 		status.pop('drone_id')
 
 		# Update state properties
-		self.drone_properties = status
+		self.drone_status = status
 		
 	def check_exit(self):
 		"""
 		Check the exit conditions against the state_properties.
 		If state requires changing, return the new state id.
 		"""
-		print "foo"
-		# Ensure status is up to date
-		self.parse_status(self._drone.update_status())
-
 		exit_state = []
 		#print ("Checking exit conditions %s against properties %s" % (self.exit_conditions,self.drone_properties))
 		# Check exit conditions
@@ -69,7 +57,7 @@ class State(object):
 			else:
 				exit_state = False # Set flag for respective drone	
 					
-		# Only change state is all exit conditions have been met
+		# Only change state if all exit conditions have been met
 		if exit_state == True:
 			self._drone.change_state(self.next_state())
 	
@@ -133,7 +121,7 @@ class GroundState(State):
 
 		# Setup timer to enable repeated attempts to reset and take off the drones at given intervals
 		self.reset_timer = QtCore.QTimer()
-		self.reset_timer.setInterval(6000) # ms
+		self.reset_timer.setInterval(7000) # ms
 		self.reset_timer.timeout.connect(self.reset)
 		
 		self.takeoff_timer = QtCore.QTimer()
@@ -149,7 +137,8 @@ class GroundState(State):
 	def action(self):
 		# Start trying to take off drones
 		print("--%s--In Ground State--%s--" % (self.drone_id,self.drone_id))
-		self.reset_timer.start()
+		self._drone.flat_trim()
+		self.take_off()
 		
 	def reset(self):
 		print("beat-reset")
@@ -213,7 +202,7 @@ class ControlledState(State):
 
 	def __init__(self,_drone,drone_id):
 		# Initialise as per State base class
-		State.__init__(self,_drone,self.drone_id)
+		State.__init__(self,_drone,drone_id)
 
 		# Set exit conditions (same for each drones)
 		self.exit_conditions = {}
@@ -247,12 +236,16 @@ class ControlledState(State):
 	def look(self):
 		# Check to see whether drones can see their next marker
 		marker_id = self.pop_marker()
+		print("next marker: %s" % marker_id)
 		if marker_id == None:
 			return
+		# Of they can see their next marker then hold it
 		if (str(marker_id) in self._drone.get_visible_markers()):
 			self.hold_marker(marker_id)
+		# Otherwise revert the changes made and set status flag
 		else:
 			self.add_marker(marker_id)
+			self._drone.holding_marker=False
 	
 	def add_marker(self,marker_id):
 		# Add a marker id into the transition vector

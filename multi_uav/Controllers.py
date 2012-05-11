@@ -21,6 +21,7 @@ class Controller(object):
 		self.error_count = 0
 		self.correction_step = 0.1
 		self.error_margin = error_margin
+		self.controller_status = {'type': 'raw'};
 
 		# Assign pointers
 		self._control = _control
@@ -50,6 +51,9 @@ class Controller(object):
 		# Stop control
 		self.heartbeat_timer.stop()
 
+		# Update status to reflect lack of control
+		self.set_stability(False)
+	
 	def y(self):
 		# Fetch feedback value
 		y = self._control.current_state[self.feedback_type]
@@ -69,7 +73,7 @@ class Controller(object):
 		Checks whether the error is within acceptable limits.
 		If it is within limits then the controller has achieved its goal and posts this status to the network.
 		"""
-		#print ("check_error: %s" %error)
+		#print ("check_error: %s against error_margin: %s" % (error,self.error_margin))
 		# Check whether error is within limits
 		if error <= self.error_margin and error >= -1*self.error_margin:
 			self.error_count = self.error_count + 1
@@ -78,15 +82,21 @@ class Controller(object):
 		
 		# If error within limits for a suitable length of time then it has achieved its goal
 		if self.error_count == 50:
-			# Update state
-			#print ("Error within limits for %s" % self.output_type)
-			self._control.current_state[self.update_key] = True
-		else:
-			self._control.current_state[self.update_key] = False
+			self.set_stability(True)
+
+		elif self.error_count == 0:
+			self.set_stability(False)			
+		
+	def set_stability(self,boolean):
+		# Update flag denoting whether status has changed (this is so we can prevent overloading the StatusUpdater with unecessary updates)
+		status_change_flag = not boolean and self.controller_status[self.update_key]
+
+		# Update class status
+		self.controller_status[self.update_key] = boolean
 
 		# Update status
-		self._control.update_status()
-
+		if status_change_flag:
+			self._status_updater.update(self.controller_status)
 			
 	def output(self,output):
 		# Hard limit output
@@ -99,9 +109,9 @@ class Controller(object):
 		#print ("%s correction = %s" % (self.output_type,output))
 		
 		# Send the update to the drone, via the structure in PositionalControl (so it has a copy)
-		self._control.commanded_state[self.output_type] = output
-		#print (self._control.commanded_state[self.output_type])
-		self._control._network.sendControl(self._control.commanded_state)
+		self._control.drone_input[self.output_type] = output
+		#print (self._control.drone_input[self.output_type])
+		self._control._network.sendControl(self._control.drone_input)
 
 class ProportionalController(Controller):
 	"""
@@ -126,7 +136,7 @@ class ProportionalController(Controller):
 		error = self.r-self.y()
 		psuedo_error = error * self.k
 		correction = self.correction_step * psuedo_error
-		
+	
 		# Continue as per Controller base class
 		self.check_error(correction)
 		self.output(correction)
