@@ -18,44 +18,39 @@ class State(object):
 	As status messages are received, the state machine determines the next state and changes it accordingly.
 	
 	"""
-	"""
-	swarm_status =
-					{
-					'talking': False
-					'following_marker': False
-					'position':[]
-					# etc.
-					}
-	"""
 	def __init__(self,_coop,drones,drone_controllers):
 		
 		# Variables
 		self.drones = drones
-		self.swarm_status = _coop.swarm_status
 		self.state_ids = (0,1,2)
 
 		# Assign pointers
 		self.drone_controllers = drone_controllers # NB - actually a tuple of pointers
 		self._coop = _coop
-	
-	def update(self,status):
-		self.swarm_status = status
-	
+
+	def transition(self,state_id):
+		"""
+		Carry out action to transition towards requested state.
+		"""
+		pass
+
+	def maintain(self):
+		"""
+		Carry out action to maintain state.
+		"""
+		pass
+
 	def check_exit(self):
 		"""
-		Check the exit conditions against the state_properties.
+		Check the exit conditions against swarm status.
 		If state requires changing then do so to the correct state.
 		"""
-		# Ensure up-to-date status is held
-		print "status update"
-		self.update_status()
-
 		# Check exit condition for each state against all exit conditions for the respective state
 		for state in self.state_ids:
 			for key in self.exit_conditions[state].keys():
 				#print ("checking condition against: %s" % key)
-				#print ("comparisson: %s" % ([self.exit_conditions[state][key],self.state_properties[key]]))
-				if self.exit_conditions[state][key] == self.state_properties[key]:
+				#print ("comparisson: %s" % ([self.exit_conditions[state][key],self._coop.swarm_status[key]]))
+				if self.exit_conditions[state][key] == self._coop.swarm_status[key]:
 					self.next_state(state)
 					return
 
@@ -66,9 +61,6 @@ class State(object):
 			self._coop.change_state(TaskBad(self._coop,self.drones,self.drone_controllers))
 		elif state_id == 2:
 			self._coop.change_state(TaskGood(self._coop,self.drones,self.drone_controllers))
-		
-	def action(self):
-		pass
 
 class SetupState(State):
 	"""
@@ -98,11 +90,14 @@ class SetupState(State):
 		self.exit_conditions = [{}, {'height_stable':True}, {}]
 
 		print("======In Setup State======")
-	
-	def action(self):
-		# Check for change in drone status
-		self._coop.start_drones()
 
+	def maintain(self):
+		for drone in self.drone_controllers:
+			drone.request_state(2)
+
+	def transition(self,state_id):
+		self.maintain()
+		self.check_exit()
 			
 class TaskBad(State):
 	"""
@@ -139,7 +134,7 @@ class TaskBad(State):
 		
 	def action(self):
 		# Get route for drones
-		new_routes = self._coop._navigator.route(self.state_properties['position'])
+		new_routes = self._coop._navigator.route(self._coop.swarm_status['position'])
 		print("new routes: %s" %new_routes)
 		self._coop.send_routes(new_routes)
 		

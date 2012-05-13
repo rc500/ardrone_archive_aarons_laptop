@@ -61,9 +61,7 @@ class StatusUpdater(object):
 
 		self.push_drone_status(initial_raw_status)
 		self.push_drone_status(initial_drone_status)
-		self.push_drone_state_status(initial_drone_status)
 		self.push_swarm_status(initial_swarm_status)
-		self.push_swarm_state_status(initial_swarm_status)
 
 	def update(self,status):
 		"""
@@ -79,7 +77,6 @@ class StatusUpdater(object):
 			# Push out statuses
 			self.push_drone_status(status)
 			self.push_drone_status(parsed_status)
-			self.push_drone_state_status(parsed_status)
 			# Recursively call update to push up to swarm level
 			self.update(parsed_status)
 
@@ -87,7 +84,6 @@ class StatusUpdater(object):
 		if status['type'] == 'drone':
 			parsed_status = self.parse_drone_for_swarm(status)
 			self.push_swarm_status(parsed_status)
-			self.push_swarm_state_status(parsed_status)
 
 	def push_drone_status(self,status):
 		"""
@@ -104,19 +100,6 @@ class StatusUpdater(object):
 		if status['type'] == 'swarm':
 			print ("StatusUpdater - push_status error - status of given type should not be sent to given destination")
 
-	def push_drone_state_status(self,status):
-		"""
-		Pushes status message to DroneState
-		"""
-		if status['type'] == 'raw':
-			print ("StatusUpdater - push_status error - status of given type should not be sent to given destination")
-		if status['type'] == 'drone':
-			for index in range (0,len(self.drones)):
-				status['drone_id']=self.drones[index]
-				self.drone_controllers[index]._state.update(status)
-		if status['type'] == 'swarm':
-			print ("StatusUpdater - push_status error - status of given type should not be sent to given destination")
-
 	def push_swarm_status(self,status):
 		"""
 		Pushes status message to SwarmControl
@@ -127,17 +110,6 @@ class StatusUpdater(object):
 			print ("StatusUpdater - push_status error - status of given type should not be sent to given destination")
 		if status['type'] == 'swarm':
 			self._swarm_controller.update(status)
-
-	def push_swarm_state_status(self,status):
-		"""
-		Pushes status message to SwarmState
-		"""
-		if status['type'] == 'raw':
-			print ("StatusUpdater - push_status error - status of given type should not be sent to given destination")
-		if status['type'] == 'drone':
-			print ("StatusUpdater - push_status error - status of given type should not be sent to given destination")
-		if status['type'] == 'swarm':
-			self._swarm_controller._state.update(status)
 
 	def parse_drone_for_swarm(self,status):
 		"""

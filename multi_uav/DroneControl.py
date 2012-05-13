@@ -71,38 +71,35 @@ class DroneControl(object):
 		# Reset drone
 		self._control.reset()
 	
-		# Set initial state
-		self._state = State.CommunicationState(self,self.drone_id)
+		# Variables
+		self.state_id = -1
+		self._state = -1
 	
 		# Keep drone_id
 		self.raw_status['drone_id'] = drone_id
-	
-		# Setup timer to detect for state changes
-		self.check_timer = QtCore.QTimer()
-		self.check_timer.setInterval(5000) # ms
-		self.check_timer.timeout.connect(self.check_exit)
 
-	def update(self,status):
-		self._updater.update(status)
+	def request_state(self,state_id):
+		"""
+		Decide what to do based on a requested state_id
+			Either  maintain current state
+			Or 	request transition towards requested state
+		"""
 
-	def update_raw(self,status):
-		self.raw_status = dict(self.raw_status.items() + status.items())
+		if state_id == 0 or self.state_id == -1:
+			self._state = CommunicationState(self._drone,self.drone_id)
+			self.state_id = 0
 
-	def update_drone(self,status):
-		self.drone_status = status
+		if state_id == self.state_id:
+			self._state.maintain()
+		else:
+			self._state.transition(state_id)
 
 	def check_exit(self):
-		self.e1()
-
-	def e1(self):
 		self._state.check_exit()
 	
 	def change_state(self,state):
-		self._state = state
-
-	def start(self):
-		self.check_timer.start()
-		self._state.action()	
+		self._state = state[0]
+		self.state_id = state[1]
 
 	def reset(self):
 		self._control.reset()
@@ -162,6 +159,15 @@ class DroneControl(object):
 		
 		# Print to console
 		#print(self.marker_distance)
+
+	def update(self,status):
+		self._updater.update(status)
+
+	def update_raw(self,status):
+		self.raw_status = dict(self.raw_status.items() + status.items())
+
+	def update_drone(self,status):
+		self.drone_status = status
 
 class NetworkManager(object):
 	"""

@@ -36,34 +36,33 @@ class SwarmControl(object):
 		#self._status_viewer = # add at some point
 		self._navigator = Navigator.Navigator(self.drones)	
 
-		# Set initial state
-		self._state = State.SetupState(self,self.drones,self.drone_controllers)
-		
 		# Setup timer to detect for state changes
 		self.check_timer = QtCore.QTimer()
 		self.check_timer.setInterval(5000) # ms
-		self.check_timer.timeout.connect(self._state.check_exit)
+		self.check_timer.timeout.connect(self.action)
+
+		# States
+		self._state = -1
+		self.state_id = -1
 	
 		# Start program
 		self.start_program()
-
-	def update(self,status):
-		self.swarm_status = status
-
-	def start_drones(self):
-		for drone in self.drone_controllers:
-			drone.start()
 		
 	def start_program(self):
 		print("======Program started======")
+		# Enter initial state
+		self._state = State.SetupState(self,self.drones,self.drone_controllers)
+
+		# Start SwarmControl timing loop	
 		self.check_timer.start()
-		self._state.action()
-				
-	def change_state(self,_state):
+
+	def action(self):
 		"""
-		Function called to update the state used by the SwarmController object
+		Decide what to do.
 		"""
-		self._state = _state
+		# First, go into Setup State
+		if self.state_id == -1:
+			self.transition_to_state(0)
 
 	def send_routes(self,routes):
 		"""
@@ -76,8 +75,25 @@ class SwarmControl(object):
 			print "update drone with route"
 			local_drone.pop().update_route(route)
 
-	def operation(self):
+	def maintain_state(self):
 		"""
-		Carry out the next required action.
+		Maintain current state.
 		"""
-		self._state.action()
+		self._state.maintain()
+
+	def transition_to_state(self,state_id):
+		"""
+		Progress to new state.
+		"""
+		self._state.transition(state_id)
+
+	def update(self,status):
+		self.swarm_status = status
+				
+	def change_state(self,state):
+		"""
+		Function called to update the state used by the SwarmController object
+		"""
+		self._state = state[0]
+		self.state_id = state[1]
+

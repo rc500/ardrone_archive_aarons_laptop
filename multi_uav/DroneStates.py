@@ -16,43 +16,40 @@ class State(object):
 	A class which determines states of a drone.
 	This is the base class from which all states inherit.
 	As status messages are received, the state machine determines the next state and changes it accordingly.
-	"""
-	"""	
-	drone_status =
-					{
-					'talking': False
-					'airborne': False
-					'height_stable':False
-					# etc.
-					}
+
+	Upon creation of a new state, the state is initialised and then runs action() which carries out further initialisation.
 	"""
 
 	def __init__(self,_drone,drone_id):
 		# Variables
-		self.drone_status = _drone.drone_status;
 		self.drone_id = drone_id
 
 		# Assign pointers
 		self._drone = _drone
 		
-	def update(self,status):
-		# Pop drone id
-		status.pop('drone_id')
+	def maintain(self):
+		"""
+		Take action to maintain current state.
+		"""
+		pass # State will maintain itself
+	
+	def transition(self,state_id):
+		"""
+		Take action to change drone's state to that requested.
+		"""
+		self.check_exit() # State will transition automatically (if allowed sufficient time)
 
-		# Update state properties
-		self.drone_status = status
-		
 	def check_exit(self):
 		"""
 		Check the exit conditions against the state_properties.
 		If state requires changing, return the new state id.
 		"""
 		exit_state = []
-		#print ("Checking exit conditions %s against properties %s" % (self.exit_conditions,self.drone_properties))
+		#print ("Checking exit conditions %s against properties %s" % (self.exit_conditions,self._drone.drone_status))
 		# Check exit conditions
 		exit_state.append(False) # Initialise a bool for each drone
 		for key in self.exit_conditions.keys():
-			if self.exit_conditions[key] == self.drone_properties[key]:
+			if self.exit_conditions[key] == self._drone.drone_status[key]:
 				exit_state = True # Set flag for respective drone
 			else:
 				exit_state = False # Set flag for respective drone	
@@ -62,12 +59,9 @@ class State(object):
 			self._drone.change_state(self.next_state())
 	
 	def next_state(self):
-		# Be sure to return pointer to next state
+		# Be sure to return tuple of pointer and id of next state
 		pass
 		
-	def action(self):
-		pass
-
 class CommunicationState(State):
 	"""
 	ID = 0
@@ -88,16 +82,14 @@ class CommunicationState(State):
 		# Set exit conditions (same for each drones)
 		self.exit_conditions = {}
 		self.exit_conditions['talking']=True
-		
+	
+		print("--%s--In Communication State--%s--" % (self.drone_id,self.drone_id))
+	
 	def next_state(self):
 		# Create next state
-		return GroundState(self._drone,self.drone_id)
-	
-	def action(self):
-		# Check for change in drone status
-		print("--%s--In Communication State--%s--" % (self.drone_id,self.drone_id))
-		pass
-	
+		state = (GroundState(self._drone,self.drone_id),1)
+		return state
+
 class GroundState(State):
 	"""
 	ID = 1
@@ -128,18 +120,15 @@ class GroundState(State):
 		self.takeoff_timer.setInterval(2000) # ms
 		self.takeoff_timer.timeout.connect(self.take_off)
 
-		self.action()
-
-	def next_state(self):
-		# Create next state
-		return AirborneState(self._drone,self.drone_id)
-		
-	def action(self):
-		# Start trying to take off drones
 		print("--%s--In Ground State--%s--" % (self.drone_id,self.drone_id))
 		self._drone.flat_trim()
 		self.take_off()
-		
+
+	def next_state(self):
+		# Create next state
+		state = (AirborneState(self._drone,self.drone_id),2)
+		return state
+
 	def reset(self):
 		print("beat-reset")
 		# Reset then try to take off
@@ -176,16 +165,13 @@ class AirborneState(State):
 		self.exit_conditions = {}
 		self.exit_conditions['height_stable']=True
 
-		self.action()
+		print("--%s--In Airborne State--%s--" % (self.drone_id,self.drone_id))
+		self._drone.set_altitude(1000)
 				
 	def next_state(self):
 		# Create next state
-		return ControlledState(self._drone,self.drone_id)
-		
-	def action(self):
-		# Start trying to stablise the drones' height
-		print("--%s--In Airborne State--%s--" % (self.drone_id,self.drone_id))
-		self._drone.set_altitude(1000)
+		state = (ControlledState(self._drone,self.drone_id),2)
+		return state
 
 class ControlledState(State):
 	"""
@@ -216,19 +202,15 @@ class ControlledState(State):
 		# Grab current route
 		self.marker_transition = list(self._drone.route)
 
-		self.action()
-
-	def next_state(self):
-		# Create next state
-		print "----Finished Marker Transition----"
-	
-	def action(self):
-		# Stablise the drone over a marker
 		print("--%s--In Controlled State--%s--" % (self.drone_id,self.drone_id))
 
 		# Start timer to look for next markers
 		self.look_timer.start()
 
+	def next_state(self):
+		# Create next state
+		print "----Finished Marker Transition----"
+	
 	def hold_marker(self,marker_id):
 		print ("holding marker: %s" % marker_id)
 		self._drone.hold_marker(marker_id)
