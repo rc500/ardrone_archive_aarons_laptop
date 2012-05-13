@@ -20,10 +20,9 @@ class SwarmControl(object):
 	"""
 	The base class for overseeing cooperative control of multiple drones.
 
-	Uses navigation logic (from Navigator class) and task logic (from Task States) to decide on actions.
+	Uses navigation logic (from Navigator class) and task logic (from Swarm States) to decide on actions.
 	Actions are sent to each drone's Individual Controller.
 	"""
-
 	def __init__(self,drones,drone_controllers): # Will want to add in _drone2 in time
 		# --- STORE VARIABLES ---
 		self.drones = drones # tuple of drone ids
@@ -44,23 +43,23 @@ class SwarmControl(object):
 		# States
 		self._state = -1
 		self.state_id = -1
-	
-		# Start program
-		self.start_program()
 		
 	def start_program(self):
 		print("======Program started======")
 		# Enter initial state
 		self._state = State.SetupState(self,self.drones,self.drone_controllers)
 
+		print ("Initialisation of SetupState complete - Swarm")
 		# Start SwarmControl timing loop	
 		self.check_timer.start()
+		print ("Check timer started - Swarm")
 
 	def action(self):
 		"""
 		Decide what to do.
 		"""
 		# First, go into Setup State
+		print ("action function called - Swarm")
 		if self.state_id == -1:
 			self.transition_to_state(0)
 

@@ -71,9 +71,9 @@ class DroneControl(object):
 		# Reset drone
 		self._control.reset()
 	
-		# Variables
-		self.state_id = -1
-		self._state = -1
+		# State setup
+		self._state = State.CommunicationState(self,drone_id)
+		self.state_id = 0
 	
 		# Keep drone_id
 		self.raw_status['drone_id'] = drone_id
@@ -84,10 +84,6 @@ class DroneControl(object):
 			Either  maintain current state
 			Or 	request transition towards requested state
 		"""
-
-		if state_id == 0 or self.state_id == -1:
-			self._state = CommunicationState(self._drone,self.drone_id)
-			self.state_id = 0
 
 		if state_id == self.state_id:
 			self._state.maintain()

@@ -29,7 +29,7 @@ class AppController(object):
 			# Create ControlLoop object to interface with drone
 			control_loops.append(ControlLoop(connection, **configs[index]))
 		
-		# --- INITIALISE APPLICATION OBJECTS ----
+		# ---- INITIALISE APPLICATION OBJECTS ----
 		# List of DroneControl objects for use in managing individual drone actions
 		self.drone_controls = []
 		
@@ -42,6 +42,13 @@ class AppController(object):
 
 		# StatusUpdater
 		self._status_updater = StatusUpdater.StatusUpdater(drones,tuple(self.drone_controls),self._swarm_control)
+
+	def start(self):
+		"""
+		Start app
+		"""
+		print ("start called - AppController")
+		self._swarm_control.start_program()
 
 	def update(self,something):
 		"""
