@@ -525,30 +525,44 @@ class imageProcessor(object):
                      self.box_in_distance = True  
                      self.detected_time=time.clock()
 
+                     if ((sqr[2]>100) or (sqr[3]>80)): 
+ 
+                            print 'warning', sqr[2],sqr[3]
+                            self.state =  'box found'
+                            #record the time the box was found
+                            self.box_time=time.clock()
+                            return         
+
                      #dependiong on the direction we are moving, if we are off the centre correct accordingly
                      if self.direction == -1:
-                       if abs(convertAngle(self.yaw_angle)-convertAngle(self.y_beg)) >self.landmarks[4]:
+                       if abs(convertAngle(self.yaw_angle)-convertAngle(self.y_beg)) > 30000.0:
                          print 'turn/move to the left'
                          send_state(turn_left_state)
+                         print 'current location' ,next(i for i,v in enumerate(self.landmarks) if v >30000.0)
                          return
                          
-                       elif abs(convertAngle(self.yaw_angle)-convertAngle(self.y_beg)) > self.landmarks[len(self.landmarks)-3]:
+                       elif abs(convertAngle(self.yaw_angle)-convertAngle(self.y_beg))>290000.0:
                          print 'turn/move to the right'
                          send_state(turn_right_state)
+                         print 'current location' ,next(i for i,v in enumerate(self.landmarks) if v <290000.0)
                          return
                          
                        else:
                          self.state='move'
                          return
+                        
                      elif self.direction == 1:
-                       if abs(convertAngle(self.yaw_angle)-convertAngle(self.y_beg)) >self.landmarks[len(self.landmarks)/2+3]:
+                       if abs(convertAngle(self.yaw_angle)-convertAngle(self.y_beg)) >160000.0:
                          print 'turn/move to the left'
                          send_state(turn_left_state)
+                         print 'current location' ,next(i for i,v in enumerate(self.landmarks) if v >195000.0)
+                         print abs(convertAngle(self.yaw_angle)-convertAngle(self.y_beg))
                          return
                          
-                       elif abs(convertAngle(self.yaw_angle)-convertAngle(self.y_beg)) < self.landmarks[len(self.landmarks)/2-3]:
+                       elif abs(convertAngle(self.yaw_angle)-convertAngle(self.y_beg)) <150000.0:
                          print 'turn/move to the right'
                          send_state(turn_right_state)
+                         print 'current location' ,next(i for i,v in enumerate(self.landmarks) if v <160000.0)
                          return
                          
                        else:
