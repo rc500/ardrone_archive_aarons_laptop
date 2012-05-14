@@ -45,7 +45,7 @@ class State(object):
 		If state requires changing, return the new state id.
 		"""
 		exit_state = []
-		#print ("Checking exit conditions %s against properties %s" % (self.exit_conditions,self._drone.drone_status))
+		print ("Checking exit conditions %s against drone status %s" % (self.exit_conditions,self._drone.drone_status))
 		# Check exit conditions
 		exit_state.append(False) # Initialise a bool for each drone
 		for key in self.exit_conditions.keys():
@@ -132,7 +132,7 @@ class GroundState(State):
 	def reset(self):
 		print("beat-reset")
 		# Reset then try to take off
-		if self._drone.current_state['altitude'] < 30.0:
+		if self._drone.raw_status['altitude'] < 30.0:
 			self._drone.reset()
 		self.reset_timer.stop()
 		self.takeoff_timer.start()

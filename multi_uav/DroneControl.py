@@ -39,19 +39,31 @@ class DroneControl(object):
 	                'take_off': False,
 	                'reset': False,
 	                'hover': True,
-                     };
+                     			};
 
-		self.holding_marker = False
-		self.route = [-1]
-		self.drone_id = drone_id	
-		self.control_network_activity_flag = False
-		self.video_network_activity_flag = False
-		
-		self.marker_position = {
+		self.stability_info = {
+			'gas_stable' : False,
+			'roll_stable' : False,
+			'pitch_stable' : False,
+					};
+		self.current_marker_info = {
+			'marker_id':-1,
+			'marker_distance_x':-1,
+			'marker_distance_y':-1,
+					};
+
+		self.visible_marker_info = {
 				#'marker_id': [x error,y error]
 				'-1':(0,0),
 				};			
 	           
+		self.control_network_activity_flag = False
+		self.video_network_activity_flag = False
+
+		self.holding_marker = False
+		self.route = [-1]
+		self.drone_id = drone_id	
+		
 		# --- ASSIGN POINTERS ---
 		self._control=_control
 		self._updater=updater
@@ -118,7 +130,7 @@ class DroneControl(object):
 		self.holding_marker = True
 
 		# Change marker being tracked
-		self.drone_properties['marker_id'] = marker_id
+		self.raw_status['marker_id'] = marker_id
 		
 		# Update route here 
 		self.route = self._state.marker_transition
@@ -139,24 +151,28 @@ class DroneControl(object):
 		"""
 		 Returns a list of currently visible marker ids
 		"""
-		return self.marker_position.keys()
+		return self.visible_marker_info.keys()
 
 	def update_route(self,route):
 		self.route = route
 
-	def update_position(self,marker_info):
+	def update_position(self,marker_data):
 		# Update object's record of marker positions
-		self.marker_position = marker_info
+		self.visible_marker_info = marker_data
 
 		# Update record for the marker currently being tracked if there is no new information then keep old information
-		if str(self.drone_properties['marker_id']) in marker_info:
-			self.drone_properties['marker_distance_x'] = -1 * marker_info[str(self.drone_properties['marker_id'])][0]
-			self.drone_properties['marker_distance_y'] = -1 * marker_info[str(self.drone_properties['marker_id'])][1]
+		if str(self.current_marker_info['marker_id']) in marker_data:
+			self.current_marker_info['marker_distance_x'] = -1 * marker_data[str(self.current_marker_info['marker_id'])][0]
+			self.current_marker_info['marker_distance_y'] = -1 * marker_data[str(self.current_marker_info['marker_id'])][1]
 		
 		# Print to console
 		#print(self.marker_distance)
 
 	def update(self,status):
+		"""
+		Send status provided to the status updater with appropriate drone_id label.
+		"""
+		status['drone_id'] = self.drone_id
 		self._updater.update(status)
 
 	def update_raw(self,status):

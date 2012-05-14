@@ -21,7 +21,6 @@ class Controller(object):
 		self.error_count = 0
 		self.correction_step = 0.1
 		self.error_margin = error_margin
-		self.controller_status = {'type': 'raw'};
 
 		# Assign pointers
 		self._control = _control
@@ -56,7 +55,7 @@ class Controller(object):
 	
 	def y(self):
 		# Fetch feedback value
-		y = self._control.current_state[self.feedback_type]
+		y = self._control.raw_status[self.feedback_type]
 		return y
 
 	def heartbeat(self):
@@ -88,15 +87,8 @@ class Controller(object):
 			self.set_stability(False)			
 		
 	def set_stability(self,boolean):
-		# Update flag denoting whether status has changed (this is so we can prevent overloading the StatusUpdater with unecessary updates)
-		status_change_flag = not boolean and self.controller_status[self.update_key]
-
-		# Update class status
-		self.controller_status[self.update_key] = boolean
-
 		# Update status
-		if status_change_flag:
-			self._status_updater.update(self.controller_status)
+		self._control.stability_info[self.update_key] = boolean
 			
 	def output(self,output):
 		# Hard limit output

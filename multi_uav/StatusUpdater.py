@@ -20,6 +20,7 @@ class StatusUpdater(object):
 		- swarm_status 
 		- drone_status
 		- raw_status
+	Expand documentation here - e.g. contents of statuses
 	"""
 
 	def __init__(self,drones,drone_controllers,swarm_controller):
@@ -50,53 +51,64 @@ class StatusUpdater(object):
 					'talking':False,
 					'airborne':False,
 					'height_stable':False,
+					'position':-1,
 					};
 
-		initial_swarm_status = {
+		self.swarm_status = {
 					'type': 'swarm',
 					'position':[],
 					'talking':False,
 					'height_stable':False,
+					'following_marker':False,
+					'airprox':False,
 					};		
 
-		self.push_drone_status(initial_raw_status)
-		self.push_drone_status(initial_drone_status)
-		self.push_swarm_status(initial_swarm_status)
+		self.drone_status = []
+		for count in self.drones:
+			self.drone_status.append(initial_drone_status) 
+
+		# Push initial statuses
+		for drone in self.drones:
+			initial_drone_status['drone_id'] = drone
+			initial_raw_status['drone_id'] = drone
+			self.push_drone_status(initial_raw_status)
+			self.push_drone_status(initial_drone_status)
+		self.push_swarm_status(self.swarm_status)
 
 	def update(self,status):
 		"""
 		Take status (dictionary structure) and parse given status to propagate up levels (raw->drone->swarm)
-
-		Allows both raw and drone status to be parsed up, however it is recommended that only raw statuses are fed in from outside the class
+		Only raw statuses should be passed into the class - all others will be rejected
 		"""
 
-		# Push all raw statuses to DroneControl, parse and push all raw statuses to DroneState
+		# Print it prettily
+		#print(status)
+
+		# Parse and push all raw and drone statuses to DroneControl
 		if status['type'] == 'raw':
 			# Parse raw status
-			parsed_status = self.parse_raw_for_drone(status)
+			_drone_status = self.parse_raw_for_drone(status)
+			# Update local version of drone_status
+			self.drone_status[self.drones.index(status['drone_id'])] = _drone_status
 			# Push out statuses
 			self.push_drone_status(status)
-			self.push_drone_status(parsed_status)
-			# Recursively call update to push up to swarm level
-			self.update(parsed_status)
+			self.push_drone_status(_drone_status)
+			# Update and push swarm status
+			self.parse_drone_for_swarm()
+			self.push_swarm_status(self.swarm_status)
 
-		# Parse and push all drone statuses to SwarmControl
-		if status['type'] == 'drone':
-			parsed_status = self.parse_drone_for_swarm(status)
-			self.push_swarm_status(parsed_status)
+		else:
+			print("non-raw status passed - StatusUpdater")
 
 	def push_drone_status(self,status):
 		"""
-		Pushes status message to DroneControl
+		Pushes status message to appropriate DroneControl
 		"""
+		drone_id = status['drone_id']
 		if status['type'] == 'raw':
-			for index in range (0,len(self.drones)):
-				status['drone_id']=self.drones[index]
-				self.drone_controllers[index].update_raw(status)
+			self.drone_controllers[self.drones.index(drone_id)].update_raw(status)
 		if status['type'] == 'drone':
-			for index in range (0,len(self.drones)):
-				status['drone_id']=self.drones[index]
-				self.drone_controllers[index].update_drone(status)
+			self.drone_controllers[self.drones.index(drone_id)].update_drone(status)
 		if status['type'] == 'swarm':
 			print ("StatusUpdater - push_status error - status of given type should not be sent to given destination")
 
@@ -111,32 +123,32 @@ class StatusUpdater(object):
 		if status['type'] == 'swarm':
 			self._swarm_controller.update(status)
 
-	def parse_drone_for_swarm(self,status):
+	def parse_drone_for_swarm(self):
 		"""
-		Parse drone status into format for swarm status
+		Parse drone status into format for swarm status.
+		This takes the current swarm_status and updates it.
 		"""
-		swarm_status = {}
 
 		# talking - only True if True for all drones
-		swarm_status['talking'] = True
+		self.swarm_status['talking'] = True
 		for drone in range(0,len(self.drones)):
-			swarm_status['talking'] = swarm_status['talking'] and status[drone]['talking']
+			self.swarm_status['talking'] = self.swarm_status['talking'] and self.drone_status[drone]['talking']
 
 		# following_marker - only True if True for all drones
-		swarm_status['following_marker'] = True
+		self.swarm_status['following_marker'] = True
 		for drone in range(0,len(self.drones)):
-			swarm_status['following_marker'] = swarm_status['following_marker'] and status[drone]['following_marker']
+			self.swarm_status['following_marker'] = self.swarm_status['following_marker'] and self.drone_status[drone]['following_marker']
 
 		# height_stable - only True if True for all drones
 
-		swarm_status['height_stable'] = True
+		self.swarm_status['height_stable'] = True
 		for drone in range(0,len(self.drones)):
-			swarm_status['height_stable'] = swarm_status['height_stable'] and status[drone]['height_stable']
+			self.swarm_status['height_stable'] = self.swarm_status['height_stable'] and self.drone_status[drone]['height_stable']
 
 		# position - list of all drone positions
-		swarm_status['position'] = []
+		self.swarm_status['position'] = []
 		for drone in range(0,len(self.drones)):
-			swarm_status['position'].append(status[drone]['position'])
+			self.swarm_status['position'].append(self.drone_status[drone]['position'])
 
 		# airprox - True if closer than 5 markers
 		airprox = 5
@@ -153,59 +165,66 @@ class StatusUpdater(object):
 			others = list(self.drones)
 			other_index.remove(others.index(self.drones[drone]))
 			for other in other_index:
-				diff_dist = swarm_status['position'][drone] - swarm_status['position'][other]
+				diff_dist = self.swarm_status['position'][drone] - self.swarm_status['position'][other]
 				if diff_dist < closest_dist:
 					closest_dist = diff_dist
 			other_index.append(others.index(self.drones[drone]))
 		# check distance with airprox
 		if closest_dist <= airprox:
-			swarm_status['airprox']=True
+			self.swarm_status['airprox']=True
 		else:
-			swarm_status['airprox']=False
+			self.swarm_status['airprox']=False
 
-		return swarm_status
+		return self.swarm_status
 				
 	def parse_raw_for_drone(self,status):
 		"""
 		Parse raw status into format for drone status
 		"""
 
+		# work out useful information
+		drone_id = status['drone_id']
+		drone_controller = self.drone_controllers[self.drones.index(drone_id)]
+
 		# drone_id
-		drone_status = {'drone_id':self.status['drone_id']}
+		drone_status = {'drone_id':drone_id}
 	
+		# assign type
+		drone_status['type'] = 'drone'
+
 		# talking
-		drone_status['talking'] = self.control_network_activity_flag and self.video_network_activity_flag
+		drone_status['talking'] = drone_controller.control_network_activity_flag and drone_controller.video_network_activity_flag
 		
 		# airborne
-		if self.status['altitude'] >= 270.0:
+		if status['altitude'] >= 270.0:
 			drone_status['airborne'] = True
 		else:
 			drone_status['airborne'] = False
 		#print (self.status['altitude'])
 	
 		# height_stable
-		drone_status['height_stable'] = self.status['gas_stable']
+		drone_status['height_stable'] = drone_controller.stability_info['gas_stable']
 		
 		# following_marker
-		if len(self.route)>1:
+		if len(drone_controller.route)>1:
 			drone_status['following_marker'] = True
 		else:
 			drone_status['following_marker'] = False
 
-		if self.holding_marker == False:
+		if drone_controller.holding_marker == False:
 			drone_status['following_marker'] = False
 
 		# position (marker_id)
 		# currently tracked marker
-		if self.status['marker_id'] == -1:
-			visible = self.get_visible_markers()
+		if drone_controller.current_marker_info['marker_id'] == -1:
+			visible = drone_controller.get_visible_markers()
 			#print ("visible: %s" %visible)
 			if not visible:
 				drone_status['position'] = -1
 			else:	
 				drone_status['position'] = int(visible[0])
 		else:
-			drone_status['position'] = self.status['marker_id']
+			drone_status['position'] = drone_controller.curent_marker_info['marker_id']
 
 		# Update status
 		#print ("Sending state : %s" % drone_status)
