@@ -236,7 +236,8 @@ class imageProcessor(object):
                    perim= cv.ArcLength(seq) #contour perimeter
                    area=cv.ContourArea(seq) #contour area      
                    polygon=cv.ApproxPoly(list(seq), storage,cv.CV_POLY_APPROX_DP,perim*0.02,0)
-                   sqr=cv.BoundingRect(polygon,0) #get square approximation for the contour
+                   sqr=cv.BoundingRect(polygon,0) #get square approximation for the contour;
+                   # note: (sqr[0],sqr[1]) are the (x,y) coordinates of the top left corner of the square and sqr[2] its height and sqr[3] its width
                    
                    #check if there are any rectangles in the distance that have appropriate width/height ratio
                    #and area close enough to that of the approximated rectangle
@@ -303,7 +304,7 @@ class imageProcessor(object):
             t_end = time.clock()
             self.drift=(abs(y_end-self.y_beg)/(t_end-self.t_beg))
             print self.drift ,'  time end', t_end, 'tbeg',self.t_beg, 'yend ',convertAngle(y_end),y_end, ' ybeg', convertAngle(self.y_beg)
-            self.state = 'mapping'
+            self.state = 'turned'
             return
 
         def mapping_state(self,frame):
@@ -428,11 +429,12 @@ class imageProcessor(object):
                     seq_ext=seq_ext.h_next()   
                   #h_next: points to sequences on the same level
                   seq=seq.h_next()
+                #if when we set out to move towards a box we haven't detected one let us know 
                 if not self.box_in_distance:
                   print ' I think I am lost'
-                  if abs(convertAngle(self.yaw_angle)-convertAngle(self.y_beg))<160:
-                      send_state(turn_right_state)
-                      return
+                 # if abs(convertAngle(self.yaw_angle)-convertAngle(self.y_beg))<160:
+                  #    send_state(turn_right_state)
+                  return
                   
                 
                     
@@ -516,7 +518,7 @@ class imageProcessor(object):
                    perim= cv.ArcLength(seq) #contour perimeter
                    area=cv.ContourArea(seq) #contour area      
                    polygon=cv.ApproxPoly(list(seq), storage,cv.CV_POLY_APPROX_DP,perim*0.02,0)
-                   sqr=cv.BoundingRect(polygon,0) #get square approximation for the contour
+                   sqr=cv.BoundingRect(polygon,0) #get square approximation for the contour 
                    
                    #check if there are any rectangles in the distance that have appropriate width/height ratio
                    #and area close enough to that of the approximated rectangle
@@ -527,49 +529,37 @@ class imageProcessor(object):
 
                      if ((sqr[2]>100) or (sqr[3]>80)): 
  
-                            print 'warning', sqr[2],sqr[3]
-                            self.state =  'box found'
+                            print 'warning', sqr[2],sqr[3], area
+                            #self.state =  'box found' -not needed
                             #record the time the box was found
                             self.box_time=time.clock()
-                            return         
+                            #return
 
-                     #dependiong on the direction we are moving, if we are off the centre correct accordingly
-                     if self.direction == -1:
-                       if abs(convertAngle(self.yaw_angle)-convertAngle(self.y_beg)) > 30000.0:
-                         print 'turn/move to the left'
-                         send_state(turn_left_state)
-                         print 'current location' ,next(i for i,v in enumerate(self.landmarks) if v >30000.0)
+                     #get a list of the (x,y) points used to define the contour (in the case of a perfect rectangle those
+                     #would be its edges       
+                     cont_points=list(seq)
+
+                     #find the maximum (x,y) pair (see report for details)
+                     max_xy=max(cont_points)
+
+                     #find the minimum (x,y) pair (see report for details)
+                     min_xy=min(cont_points)                     
+
+                     #if the square if off-centre decide how to adjust the drone based on scene geometry   
+                     if sqr[0]<0.2*edges.width or sqr[0]+sqr[2]>0.7*edges.width:
+
+                       #if the minimum y value corresponds to a point on the left of the image
+                       if min_xy[0]< edges.width*0.25:
+                         print 'move right and turn left', min_xy[0]
+                         #send_state(turn_right_state)
                          return
-                         
-                       elif abs(convertAngle(self.yaw_angle)-convertAngle(self.y_beg))>290000.0:
-                         print 'turn/move to the right'
-                         send_state(turn_right_state)
-                         print 'current location' ,next(i for i,v in enumerate(self.landmarks) if v <290000.0)
-                         return
-                         
-                       else:
-                         self.state='move'
-                         return
-                        
-                     elif self.direction == 1:
-                       if abs(convertAngle(self.yaw_angle)-convertAngle(self.y_beg)) >160000.0:
-                         print 'turn/move to the left'
-                         send_state(turn_left_state)
-                         print 'current location' ,next(i for i,v in enumerate(self.landmarks) if v >195000.0)
-                         print abs(convertAngle(self.yaw_angle)-convertAngle(self.y_beg))
-                         return
-                         
-                       elif abs(convertAngle(self.yaw_angle)-convertAngle(self.y_beg)) <150000.0:
-                         print 'turn/move to the right'
-                         send_state(turn_right_state)
-                         print 'current location' ,next(i for i,v in enumerate(self.landmarks) if v <160000.0)
-                         return
-                         
-                       else:
-                         self.state='move'
+
+                       #if the maximum y value corresponds to a point on the right of the image 
+                       elif max_xy[0]> edges.width*0.75:
+                         print 'move left and turn right', max_xy[0]
+                         #send_state(turn_right_state)
                          return
                                                 
-                        
                             
                   else:
                     #move on to the next outter contour      
@@ -578,7 +568,7 @@ class imageProcessor(object):
                   seq=seq.h_next()
                 if not self.box_in_distance :
                   print ' I think i am lost, I can''t see any boxes'
-                  if abs(convertAgle(self.yaw_angle)-convertAngle(self.y_beg))<160:
+                  if abs(convertAngle(self.yaw_angle)-convertAngle(self.y_beg))<160:
                       send_state(turn_right_state)
                       return
                   
