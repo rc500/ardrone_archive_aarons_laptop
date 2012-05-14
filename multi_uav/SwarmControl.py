@@ -49,17 +49,14 @@ class SwarmControl(object):
 		# Enter initial state
 		self._state = State.SetupState(self,self.drones,self.drone_controllers)
 
-		print ("Initialisation of SetupState complete - Swarm")
 		# Start SwarmControl timing loop	
 		self.check_timer.start()
-		print ("Check timer started - Swarm")
 
 	def action(self):
 		"""
 		Decide what to do.
 		"""
 		# First, go into Setup State
-		print ("action function called - Swarm")
 		if self.state_id == -1:
 			self.transition_to_state(0)
 

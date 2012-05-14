@@ -81,7 +81,6 @@ class StatusUpdater(object):
 		Only raw statuses should be passed into the class - all others will be rejected
 		"""
 
-		# Print it prettily
 		#print(status)
 
 		# Parse and push all raw and drone statuses to DroneControl
@@ -128,7 +127,6 @@ class StatusUpdater(object):
 		Parse drone status into format for swarm status.
 		This takes the current swarm_status and updates it.
 		"""
-
 		# talking - only True if True for all drones
 		self.swarm_status['talking'] = True
 		for drone in range(0,len(self.drones)):
@@ -194,7 +192,7 @@ class StatusUpdater(object):
 
 		# talking
 		drone_status['talking'] = drone_controller.control_network_activity_flag and drone_controller.video_network_activity_flag
-		
+	
 		# airborne
 		if status['altitude'] >= 270.0:
 			drone_status['airborne'] = True
