@@ -43,10 +43,13 @@ class Navigator(object):
 		A basic algorithm for setting a looping route around a continuous path. Route is never longer than 6 markers ahead.
 		"""
 		self.positions = pos
-
+		print(pos)
 		# check position is known
 		if -1 in pos:
-			return [[-1],[-1]]
+			return_value = []
+			for count in self.positions:
+				return_value.append([-1])
+				return return_value 
 		# check path is a loop
 		if self.path['type'] == 'loop':
 			for drone in range(0,len(self.drones)):
