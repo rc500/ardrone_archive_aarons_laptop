@@ -45,7 +45,7 @@ class State(object):
 		If state requires changing, return the new state id.
 		"""
 		exit_state = []
-		print ("Checking exit conditions %s against drone status %s" % (self.exit_conditions,self._drone.drone_status))
+		#print ("Checking exit conditions %s against drone status %s" % (self.exit_conditions,self._drone.drone_status))
 		# Check exit conditions
 		exit_state.append(False) # Initialise a bool for each drone
 		for key in self.exit_conditions.keys():
@@ -83,7 +83,20 @@ class CommunicationState(State):
 		self.exit_conditions = {}
 		self.exit_conditions['talking']=True
 	
+		# Setup timer to enable repeated attempts to reset and take off the drones at given intervals
+		self.reset_timer = QtCore.QTimer()
+		self.reset_timer.setInterval(4000) # ms
+		self.reset_timer.timeout.connect(self.reset)
+		self.reset_timer.start()	
 		print("--%s--In Communication State--%s--" % (self.drone_id,self.drone_id))
+
+	def reset(self):
+		# Reset drone and request nav/video data again
+		print("--%s--beat-reset--%s--" % (self.drone_id,self.drone_id))
+		self._drone._control.start_navdata()
+		self._drone._control.start_video()
+		if self._drone.raw_status['altitude'] < 30.0:
+			self._drone.reset()
 	
 	def next_state(self):
 		# Create next state
@@ -130,7 +143,7 @@ class GroundState(State):
 		return state
 
 	def reset(self):
-		print("beat-reset")
+		print("--%s--beat-reset--%s--" %(self.drone_id,self.drone_id))
 		# Reset then try to take off
 		if self._drone.raw_status['altitude'] < 30.0:
 			self._drone.reset()
@@ -138,7 +151,7 @@ class GroundState(State):
 		self.takeoff_timer.start()
 		
 	def take_off(self):
-		print("beat-takeoff")
+		print("--%s--beat-takeoff--%s--" %(self.drone_id,self.drone_id))
 		# Try to take off then reset (should be enough delay before reset for state to exit if take off actually works)
 		self._drone.take_off()
 		self.takeoff_timer.stop()

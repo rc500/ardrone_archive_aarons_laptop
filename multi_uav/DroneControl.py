@@ -245,20 +245,20 @@ class NetworkManager(object):
 
 	        # Parse the packet
 			self.packet = json.loads(data.decode())
-			
 			# Keep packet if it contains status information
 			if self.packet['type'] == 'demo':
 				self.packet['type'] = 'raw' #Change type to conform to status format of application
 				self._update.update(self.packet)
-				#Print it prettily
-				#print(json.dumps(self.packet, indent=True))
 
-			# Update status of the Control Network when ready
-			if self.ready_control == False:
-				#print("Control Ready")
-				self.ready_control = True
-				self._update.control_network_activity_flag = True
+				# Update status of the Control Network when ready
+				if self.ready_control == False:
+					#print("Control Ready")
+					self.ready_control = True
+					self._update.control_network_activity_flag = True
 				
+			#Print it prettily
+			#print(json.dumps(self.packet, indent=True))
+
 	def readVideoData(self):
 		"""Called when there is some interesting data to read on the video socket."""
 		while self.socket_video.hasPendingDatagrams():
