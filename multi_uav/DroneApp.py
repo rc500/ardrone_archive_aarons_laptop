@@ -23,8 +23,8 @@ class DroneApp(object):
 
 	def __init__(self):
 		# ---- SYSTEM CONFIGURATION ----
-		drones = (1,)
-		configs = (config.drone1,)
+		self.drones = (1,)
+		self.configs = (config.drone1,)
 
 		# Wire up Ctrl-C to safely land drones and end the application
 		signal.signal(signal.SIGINT, lambda *args: self.finish())
@@ -32,18 +32,12 @@ class DroneApp(object):
 		# ---- APPLICATION SETUP ----
 		# Create a QtCoreApplication loop (NB remember to use QApplication instead if wanting GUI features)
 		self.app = QtCore.QCoreApplication(sys.argv)
-		self.app_controller = AppController.AppController(drones,configs)
-
-		print("DroneApp finished initialising - DroneApp")
+		self.app_controller = AppController.AppController(self.drones,self.configs)
 
 	def run(self):
-		print("Run called - DroneApp")
-		#self.app.exec_()
-		print("App.exec_() run successfully - DroneApp")
 		self.app_controller.start()
+		self.app.exec_()
 	
 	def finish(self):
-		# NB - Currently Drones are landed in an unconfirmed way (i.e. commands are sent and being on the ground is not confirmed - this should be done via states)
-		self._pos_control_1.land()
-		self._pos_control_2.land()
+		self.app_controller.finish()
 		self.app.quit()

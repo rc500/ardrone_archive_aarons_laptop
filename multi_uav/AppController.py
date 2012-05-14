@@ -47,8 +47,15 @@ class AppController(object):
 		"""
 		Start app
 		"""
-		print ("start called - AppController")
 		self._swarm_control.start_program()
+
+	def finish(self):
+		"""
+		Finish app
+		"""
+		# NB - Currently Drones are landed in an unconfirmed way (i.e. commands are sent and being on the ground is not confirmed - this should be done via states)
+		for drone in self.drone_controls:
+			drone.land()
 
 	def update(self,something):
 		"""
