@@ -28,7 +28,7 @@ storage = cv.CreateMemStorage(0)
 
 #find all contours and draw inner ones in green, outter in blues
 seq=cv.FindContours(edges, storage,cv.CV_RETR_LIST,cv.CV_CHAIN_APPROX_SIMPLE,(0, 0))
-cv.DrawContours(im, seq, (255,0,0), (0,255,0), 20,1)
+cv.DrawContours(im, seq, (255,0,0), (0,255,0), 20,2)
 
 #find external contours
 seq_ext=cv.FindContours(edges, storage,cv.CV_RETR_EXTERNAL,cv.CV_CHAIN_APPROX_SIMPLE,(0, 0))
@@ -46,12 +46,17 @@ while seq:
    #and whose area is close enogh to that of the approximated rectangle
    if  (float(sqr[2]*sqr[3])/(edges.height*edges.width)>0.1) & (abs(sqr[2]-sqr[3])<((sqr[2]+sqr[3])/4))& (area/float(sqr[2]*sqr[3])>0.7): 
     #cv.PolyLine(im,[polygon], True, (0,255,0),2, cv.CV_AA, 0)
-    cv.Rectangle(im,(sqr[0],sqr[1]),(sqr[0]+sqr[2],sqr[1]+sqr[3]),(255,0,255),3,8,0)
+    cv.Rectangle(im,(sqr[0],sqr[1]),(sqr[0]+sqr[2],sqr[1]+sqr[3]),(255,0,255),2,8,0)
     print sqr[2],sqr[3], len(seq), 
     #area_small=cv.ContourArea(seq, (0, ))
     #print area_small
     sub=cv.GetSubRect(im, (sqr[0], sqr[1], int(round(sqr[2]/2)), int(round(sqr[3]))))
     subim = cv.CreateImage(cv.GetSize(sub), 8, 3)
+    cont_points=list(seq)
+    r=cv.Get2D(im,int(round(img.width/2)),int(round(img.height/2)) )[2]
+    g=cv.Get2D(im,int(round(img.width/2)),int(round(img.height/2)))[1]
+    b=cv.Get2D(im,int(round(img.width/2)),int(round(img.height/2)))[0]
+
     subim=sub
     a=list(seq)
     print 'dim' ,(sqr[0]+sqr[2],sqr[1]), max(a)
