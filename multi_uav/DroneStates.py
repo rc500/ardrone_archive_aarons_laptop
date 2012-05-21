@@ -31,11 +31,12 @@ class State(object):
 		"""
 		Take action to maintain current state.
 		"""
-		pass # State will maintain itself
+		pass # State will maintain itself in most states
 	
 	def transition(self,state_id):
 		"""
 		Take action to change drone's state to that requested.
+			Note - the state is merely allowed to transition (it does so automatically if allowed)
 		"""
 		self.check_exit() # State will transition automatically (if allowed sufficient time)
 
@@ -92,7 +93,7 @@ class CommunicationState(State):
 
 	def restart(self):
 		# Reset drone and request nav/video data again
-		print("--%s--beat-restart--%s--" % (self.drone_id,self.drone_id))
+		#print("--%s--beat-restart--%s--" % (self.drone_id,self.drone_id))
 		self._drone._control.start_navdata()
 		self._drone._control.start_video()
 		if self._drone.raw_status['altitude'] < 30.0:
@@ -143,7 +144,7 @@ class GroundState(State):
 		return state
 
 	def reset(self):
-		print("--%s--beat-reset--%s--" %(self.drone_id,self.drone_id))
+		#print("--%s--beat-reset--%s--" %(self.drone_id,self.drone_id))
 		# Reset then try to take off
 		if self._drone.raw_status['altitude'] < 30.0:
 			self._drone.reset()
@@ -151,7 +152,7 @@ class GroundState(State):
 		self.takeoff_timer.start()
 		
 	def take_off(self):
-		print("--%s--beat-takeoff--%s--" %(self.drone_id,self.drone_id))
+		#print("--%s--beat-takeoff--%s--" %(self.drone_id,self.drone_id))
 		# Try to take off then reset (should be enough delay before reset for state to exit if take off actually works)
 		self._drone.take_off()
 		self.takeoff_timer.stop()
@@ -183,7 +184,7 @@ class AirborneState(State):
 				
 	def next_state(self):
 		# Create next state
-		state = (ControlledState(self._drone,self.drone_id),2)
+		state = (ControlledState(self._drone,self.drone_id),3)
 		return state
 
 class ControlledState(State):
@@ -207,48 +208,39 @@ class ControlledState(State):
 		self.exit_conditions = {}
 		self.exit_conditions['airborne']=False
 
-		# Setup timer to look for next marker every so often
-		self.look_timer = QtCore.QTimer()
-		self.look_timer.setInterval(1000) # ms
-		self.look_timer.timeout.connect(self.look)
-
-		# Grab current route
-		self.marker_transition = list(self._drone.route)
-
 		print("--%s--In Controlled State--%s--" % (self.drone_id,self.drone_id))
-
-		# Start timer to look for next markers
-		self.look_timer.start()
 
 	def next_state(self):
 		# Create next state
 		print "----Finished Marker Transition----"
 	
 	def hold_marker(self,marker_id):
-		print ("holding marker: %s" % marker_id)
+		print ("--%s--holding marker: %s --%s--" % (self.drone_id,marker_id,self.drone_id))
 		self._drone.hold_marker(marker_id)
 
-	def look(self):
-		# Check to see whether drones can see their next marker
-		marker_id = self.pop_marker()
-		print("next marker: %s" % marker_id)
-		if marker_id == None:
-			return
-		# Of they can see their next marker then hold it
-		if (str(marker_id) in self._drone.get_visible_markers()):
-			self.hold_marker(marker_id)
-		# Otherwise revert the changes made and set status flag
-		else:
-			self.add_marker(marker_id)
-			self._drone.holding_marker=False
+	def maintain(self):
+		# Carry out action if there is another marker in route
+		if not len(self._drone.route) == 0:
+			# Check to see whether drones can see their next marker
+			marker_id = self.pop_marker()
+			print("--%s--next marker: %s --%s--" % (self.drone_id,marker_id,self.drone_id))
+
+			# If they can see their next marker then hold it
+			if (str(marker_id) in self._drone.get_visible_markers()):
+				self.hold_marker(marker_id)
+
+			# Otherwise revert the changes made and set status flag
+			else:
+				self.add_marker(marker_id)
+				self._drone.holding_marker=False
 	
 	def add_marker(self,marker_id):
 		# Add a marker id into the transition vector
-		self.marker_transition.append(marker_id)
+		self._drone.route.append(marker_id)
 
 	def pop_marker(self):
 		# Pop the next marker from transition vector if such an element exists
-		if not self.marker_transition:
-			return None
-		return self.marker_transition.pop()			
+		if not self._drone.route:
+			print("No further markers in route, should not be trying to look for one! - DroneState")
+		return self._drone.route.pop()			
 	
