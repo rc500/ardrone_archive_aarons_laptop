@@ -51,20 +51,20 @@ class State(object):
 		# Check exit condition for each state against all exit conditions for the respective state
 		for state in self.state_ids:
 			for key in self.exit_conditions[state].keys():
-				#print ("checking condition against: %s" % key)
-				#print ("comparisson: %s" % ([self.exit_conditions[state][key],self._coop.swarm_status[key]]))
+				print ("checking condition against: %s" % key)
+				print ("comparisson: %s" % ([self.exit_conditions[state][key],self._coop.swarm_status[key]]))
 				if self.exit_conditions[state][key] == self._coop.swarm_status[key]:
 					conditions_met_count = conditions_met_count + 1
 
-		# Check met conditions against total conditions, accept or reject exit as specified in state
-		if conditions_met_count == len(self.exit_conditions):
-			self.next_state(state)
-		elif conditions_met_count > 0 and self.exit_conditional == 'or':
-			self.next_state(state)
-		elif conditions_met_count == 0 or self.exit_conditional == 'and':
-			pass
-		else: 
-			print("Unexpected condition grouping - check_exit - SwarmStates")
+			# Check met conditions against total conditions, accept or reject exit as specified in state
+			if conditions_met_count == len(self.exit_conditions[state]) and not self.exit_conditional[state] == 'none':
+				self.next_state(state)
+			elif conditions_met_count > 0 and self.exit_conditional[state] == 'or':
+				self.next_state(state)
+			elif conditions_met_count == 0 or self.exit_conditional[state] == 'and':
+				pass
+			else: 
+				print("Unexpected condition grouping - check_exit - SwarmStates")
 
 	def next_state(self,state_id):
 		if state_id == 0:
@@ -100,7 +100,7 @@ class SetupState(State):
 		
 		# Set exit conditions
 		self.exit_conditions = [{}, {'height_stable':True}, {}]
-		self.exit_conditional = 'and'
+		self.exit_conditional = ['none','and','none']
 		print("======In Setup State======")
 
 	def maintain(self):
@@ -140,7 +140,7 @@ class TaskBad(State):
 		
 		# Set exit conditions
 		self.exit_conditions = [{}, {},{'airprox':False, 'marker_following':True}]
-		self.exit_conditional = 'and'
+		self.exit_conditional = ['none','none','and']
 		print("======Task not being achieved======")
 	
 	def maintain(self):
@@ -152,10 +152,10 @@ class TaskBad(State):
 			print("Trying to change from TaskBad state into a SwarmState which isn't sensible. No action taken - SwarmState")
 		
 		if state_id == 2:
-			# Get route for drones
+			# Continue route for front-most drone only to increase separation
 			new_routes = self._coop._navigator.route(self._coop.swarm_status['position'])
 			print("new routes: %s" %new_routes)
-			self._coop.send_routes(new_routes)
+			self._coop.send_routes(new_routes,[self._navigator.front_drone(),])
 			# Check success
 			self.check_exit()
 		
@@ -186,12 +186,19 @@ class TaskGood(State):
 		
 		# Set exit conditions
 		self.exit_conditions = [{}, {'airprox':True,'following_marker':False}, {}]
-		self.exit_conditional = 'or'
+		self.exit_conditional = ['none','or','none']
 		print("======Task being achieved======")
 
 	def maintain(self):
-		pass
-		# nothing yet - will want to control spacings here
+		# Continue route
+		new_routes = self._coop._navigator.route(self._coop.swarm_status['position'],self.drones)
+		print("new routes: %s" %new_routes)
+		self._coop.send_routes(new_routes)
+
+		# Check State
+		self.check_exit()
+
+		# will want to control spacings here
 
 	def transition(self,state_id):
 		pass
