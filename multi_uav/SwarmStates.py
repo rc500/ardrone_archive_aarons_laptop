@@ -51,13 +51,15 @@ class State(object):
 		# Check exit condition for each state against all exit conditions for the respective state
 		for state in self.state_ids:
 			for key in self.exit_conditions[state].keys():
-				print ("checking condition against: %s" % key)
-				print ("comparisson: %s" % ([self.exit_conditions[state][key],self._coop.swarm_status[key]]))
+				#print ("checking condition against: %s" % key)
+				#print ("comparisson: %s" % ([self.exit_conditions[state][key],self._coop.swarm_status[key]]))
 				if self.exit_conditions[state][key] == self._coop.swarm_status[key]:
 					conditions_met_count = conditions_met_count + 1
 
 			# Check met conditions against total conditions, accept or reject exit as specified in state
-			if conditions_met_count == len(self.exit_conditions[state]) and not self.exit_conditional[state] == 'none':
+			if self.exit_conditional[state] == 'none':
+				pass
+			elif conditions_met_count == len(self.exit_conditions[state]):
 				self.next_state(state)
 			elif conditions_met_count > 0 and self.exit_conditional[state] == 'or':
 				self.next_state(state)
@@ -130,7 +132,7 @@ class TaskBad(State):
 	-
 
 	State 2:
-	airprox == False && marker_following == True
+	airprox == False && following_marker == True
 
 	"""
 	
@@ -139,8 +141,12 @@ class TaskBad(State):
 		State.__init__(self,_coop,drones,drone_controllers)
 		
 		# Set exit conditions
-		self.exit_conditions = [{}, {},{'airprox':False, 'marker_following':True}]
+		self.exit_conditions = [{}, {},{'airprox':False, 'following_marker':True}]
 		self.exit_conditional = ['none','none','and']
+
+		# Ask each drone to hold current position
+		self._coop.send_routes(self._coop._navigator.hold_position_route(self._coop.swarm_status['position']),self.drones)
+
 		print("======Task not being achieved======")
 	
 	def maintain(self):
@@ -154,11 +160,13 @@ class TaskBad(State):
 		if state_id == 2:
 			# Continue route for front-most drone only to increase separation
 			new_routes = self._coop._navigator.route(self._coop.swarm_status['position'])
-			print("new routes: %s" %new_routes)
-			self._coop.send_routes(new_routes,[self._navigator.front_drone(),])
+			self._coop.send_routes(new_routes,[self._coop._navigator.front_drone(),])
+			# Request drones to move into a state able to follow markers
+			for drone in self.drone_controllers:
+				drone.request_state(3)
 			# Check success
 			self.check_exit()
-		
+				
 class TaskGood(State):
 	"""
 	ID = 2
@@ -175,7 +183,7 @@ class TaskGood(State):
 	-
 
 	State 1:
-	airprox == True || marker_following == False
+	airprox == True || following_marker == False
 
 	State 2:
 	-

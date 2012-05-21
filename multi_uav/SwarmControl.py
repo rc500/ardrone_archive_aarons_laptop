@@ -48,6 +48,7 @@ class SwarmControl(object):
 		print("======Program started======")
 		# Enter initial state
 		self._state = State.SetupState(self,self.drones,self.drone_controllers)
+		self._state.next_state(0)
 
 		# Start SwarmControl timing loop	
 		self.check_timer.start()
@@ -81,7 +82,7 @@ class SwarmControl(object):
 		"""
 		for drone in self.drones:
 			if drone in send_to:
-				print("update drone %s with route" % (drone))
+				print("update drone %s with route %s" % (drone,routes[self.drones.index(drone)]))
 				self.drone_controllers[self.drones.index(drone)].update_route(routes[self.drones.index(drone)])
 
 	def maintain_state(self):
