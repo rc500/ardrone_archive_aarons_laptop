@@ -11,16 +11,86 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 import ardrone.util.qtcompat as qt
 QtCore = qt.import_module('QtCore')
 
+class ControllerManager(object):
+	"""
+	Class to manage all the controllers for one drone.
+	Regulates the packets being sent to the drone so only one command is sent every heartbeat (otherwise we may overload the system).
+	"""
+	def __init__(self,_control):
+		# Store 'pointers'
+		self._control = _control
+
+		# Current controllers
+		self.controllers = {
+				'gas':-1,
+				'roll':-1,
+				'pitch':-1,
+				};
+
+		# Create a little 'heartbeat' timer that will call heartbeat() every so often.
+		self.heartbeat_timer = QtCore.QTimer()
+		self.heartbeat_timer.setInterval(40) # ms
+		self.heartbeat_timer.timeout.connect(self.heartbeat)
+		self.heartbeat_timer.start()
+
+	def heartbeat(self):
+		"""
+		Get each controller to update its variables and then send them all to the drone at once.
+		"""
+		no_controller_count = 0
+		# Update
+		for controller in self.controllers.values():
+			# ignore controller if it doesn't exist
+			if controller == -1:
+				no_controller_count = no_controller_count + 1
+				continue
+			# call its function if it does
+			controller.heartbeat()
+		# Send commands to drone if a controller exists
+		if not no_controller_count == 3:
+			self._control._network.sendControl(self._control.drone_input)
+
+	def stop_control(self,output_type):
+		"""
+		Removes the current controller for output_type passed.
+		"""
+		self.controllers[output_type]=-1
+
+	def create_lead_lag_controller(self,*args,**kwargs):
+		"""
+		Creates a lead lag controller of type 1
+		"""
+		new_controller = LeadLagController(*args,**kwargs)
+		self.controllers[new_controller.get_type()] = new_controller		
+		return new_controller
+ 
+	def create_lead_lag_2_controller(self,*args,**kwargs):
+		"""
+		Creates a lead lag controller of type 2 
+		"""
+		new_controller = LeadLagController2(*args,**kwargs)
+		self.controllers[new_controller.get_type()] = new_controller		
+		return new_controller
+
+	def create_proportional_controller(self,*args,**kwargs):
+		"""
+		Creates a proportional controller 
+		"""
+		new_controller = ProportionalController(*args,**kwargs)
+		self.controllers[new_controller.get_type()] = new_controller		
+		return new_controller
+
 class Controller(object):
 	"""
 	Class forming the base functionality of a controller
 	"""
 		
-	def __init__(self,_control,feedback_type,output_type,update_key,error_margin,hard_limit=1):
+	def __init__(self,_control,feedback_type,output_type,update_key,reference,error_margin,hard_limit=1):
 		# Variables
 		self.error_count = 0
 		self.correction_step = 0.1
 		self.error_margin = error_margin
+		self.r = reference
 
 		# Assign pointers
 		self._control = _control
@@ -31,28 +101,9 @@ class Controller(object):
 		self.hard_limit = hard_limit
 		self.update_key = update_key
 		
-		# Create a little 'heartbeat' timer that will call heartbeat() every so often.
-		self.heartbeat_timer = QtCore.QTimer()
-		self.heartbeat_timer.setInterval(40) # ms
-		self.heartbeat_timer.timeout.connect(self.heartbeat)
-
 		# Debug initialisation
 		#print ("%s control object initiated" % (self.feedback_type))
 		
-	def start_control(self,r):
-		# Assign control reference
-		self.r = r
-		
-		# Start control
-		self.heartbeat_timer.start()
-	
-	def stop_control(self):
-		# Stop control
-		self.heartbeat_timer.stop()
-
-		# Update status to reflect lack of control
-		self.set_stability(False)
-	
 	def y(self):
 		# Fetch feedback value
 		y = self._control.raw_status[self.feedback_type]
@@ -103,7 +154,10 @@ class Controller(object):
 		# Send the update to the drone, via the structure in PositionalControl (so it has a copy)
 		self._control.drone_input[self.output_type] = output
 		#print (self._control.drone_input[self.output_type])
-		self._control._network.sendControl(self._control.drone_input)
+
+	def get_type(self):
+		# return variable controller controls
+		return self.output_type
 
 class ProportionalController(Controller):
 	"""
@@ -113,12 +167,12 @@ class ProportionalController(Controller):
 	G(s) = K
 	"""
 		
-	def __init__(self,_control,feedback_type,output_type,update_key,k,error_margin,hard_limit=1):
+	def __init__(self,_control,feedback_type,output_type,update_key,k,reference,error_margin,hard_limit=1):
 		# Set up controller parameters
 		self.k = k
 
 		# Initialise as Controller base class
-		Controller.__init__(self, _control,feedback_type,output_type,update_key,error_margin,hard_limit)
+		Controller.__init__(self, _control,feedback_type,output_type,update_key,reference,error_margin,hard_limit)
 		
 	def heartbeat(self):
 		# Debug heartbeat
@@ -157,7 +211,7 @@ class LeadLagController(Controller):
 			(T+b)
 	"""
 
-	def __init__(self,_control,feedback_type,output_type,update_key,k,a,b,T,error_margin,hard_limit=1):
+	def __init__(self,_control,feedback_type,output_type,update_key,k,a,b,T,reference,error_margin,hard_limit=1):
 		# Set up controller parameters
 		self.a = a
 		self.b = b
@@ -169,7 +223,7 @@ class LeadLagController(Controller):
 		self.e = [0,0]	# e[k-1],e[k]
 
 		# Initialise as Controller base class
-		Controller.__init__(self, _control,feedback_type,output_type,update_key,error_margin,hard_limit)
+		Controller.__init__(self, _control,feedback_type,output_type,update_key,reference,error_margin,hard_limit)
 		
 	def heartbeat(self):
 		# Debug heartbeat

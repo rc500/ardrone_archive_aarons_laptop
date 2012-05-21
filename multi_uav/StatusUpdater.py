@@ -52,6 +52,7 @@ class StatusUpdater(object):
 					'airborne':False,
 					'height_stable':False,
 					'position':-1,
+					'following_marker':False,
 					};
 
 		self.swarm_status = {
@@ -90,7 +91,6 @@ class StatusUpdater(object):
 			# Update local version of drone_status
 			self.drone_status[self.drones.index(status['drone_id'])] = _drone_status
 			# Push out statuses
-			self.push_drone_status(status)
 			self.push_drone_status(_drone_status)
 			# Update and push swarm status
 			self.parse_drone_for_swarm()
@@ -206,17 +206,14 @@ class StatusUpdater(object):
 		drone_status['height_stable'] = drone_controller.stability_info['gas_stable']
 
 		# following_marker
-		if len(drone_controller.route)>1:
+		if len(drone_controller.route) > 1: # drone with routes of length 1 are not following a marker 
 			drone_status['following_marker'] = True
 		else:
 			drone_status['following_marker'] = False
 
-		if drone_controller.holding_marker == False:
-			drone_status['following_marker'] = False
-
 		# position (marker_id)
 		# currently tracked marker
-		if drone_controller.current_marker_info['marker_id'] == -1:
+		if status['marker_id'] == -1:
 			visible = drone_controller.get_visible_markers()
 			#print ("visible: %s" %visible)
 			if not visible:
@@ -224,7 +221,7 @@ class StatusUpdater(object):
 			else:	
 				drone_status['position'] = int(visible[0])
 		else:
-			drone_status['position'] = drone_controller.curent_marker_info['marker_id']
+			drone_status['position'] = status['marker_id']
 
 		# Update status
 		#print ("Sending state : %s" % drone_status)

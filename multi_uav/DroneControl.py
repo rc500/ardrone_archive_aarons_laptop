@@ -46,11 +46,6 @@ class DroneControl(object):
 			'roll_stable' : False,
 			'pitch_stable' : False,
 					};
-		self.current_marker_info = {
-			'marker_id':-1,
-			'marker_distance_x':-1,
-			'marker_distance_y':-1,
-					};
 
 		self.visible_marker_info = {
 				#'marker_id': [x error,y error]
@@ -61,7 +56,7 @@ class DroneControl(object):
 		self.video_network_activity_flag = False
 
 		self.holding_marker = False
-		self.route = [-1]
+		self.route = [-1,]
 		self.drone_id = drone_id	
 		
 		# --- ASSIGN POINTERS ---
@@ -75,7 +70,8 @@ class DroneControl(object):
 		self._im_proc = ImageProcessor.ImageProcessor(self,drone_id)
 		self._vid_decoder = Videopacket.Decoder(self._im_proc.process)
 		self._network = NetworkManager(self._vid_decoder,self,network_config)
-		
+		self._controller_manager = Controller.ControllerManager(self)	
+
 		# Start video and navdata stream on drone
 		self._control.start_navdata()
 		self._control.start_video()
@@ -125,34 +121,28 @@ class DroneControl(object):
 		self._control.land()
 		
 	def set_altitude(self,r):
-		self._height_control = Controller.ProportionalController(self,'altitude','gas','gas_stable',0.02,0.2)
-		self._height_control.start_control(r)
+		self._height_control = self._controller_manager.create_proportional_controller(self,'altitude','gas','gas_stable',0.02,r,0.2)
 
 	def hold_marker(self,marker_id):
 		# Set flag
 		self.holding_marker = True
 
-		# Change marker being tracked
-		self.raw_status['marker_id'] = marker_id
+		# Change marker being tracked and update info
+		if not self.raw_status['marker_id'] == marker_id:
+			self.raw_status['marker_id'] = marker_id
+			self.raw_status['marker_position_x'] = self.visible_marker_info[str(marker_id)][0]
+			self.raw_status['marker_posistion_y'] = self.visible_marker_info[str(marker_id)][1]
 		
-		# Update route here 
-		self.route = self._state.marker_transition
-		print(self.route)
-
-		# Stop the drone hovering by itself
+		# Stop the drone hovering by itself (this is only sent to the drone with another command but that's OK)
 		self.drone_input['hover'] = False
 		
 		# Initiate roll and pitch controllers
-		self._marker_control_roll = Controller.LeadLagController2(self,'marker_distance_x','roll','roll_stable',0.001,0.15,0.025,0.04,0.5)
-		self._marker_control_pitch = Controller.LeadLagController2(self,'marker_distance_y','pitch','pitch_stable',0.001,0.15,0.025,0.04,0.5)
-		
-		# Start control
-		self._marker_control_roll.start_control(0)
-		self._marker_control_pitch.start_control(0)
+		self._marker_control_roll = self._controller_manager.create_lead_lag_2_controller(self,'marker_distance_x','roll','roll_stable',0.001,0.15,0.025,0.04,0,0.5)
+		self._marker_control_pitch = self._controller_manager.create_lead_lag_2_controller(self,'marker_distance_y','pitch','pitch_stable',0.001,0.15,0.025,0.04,0,0.5)
 	
 	def get_visible_markers(self):
 		"""
-		 Returns a list of currently visible marker ids
+		Returns a list of currently visible marker ids
 		"""
 		return self.visible_marker_info.keys()
 
@@ -164,19 +154,20 @@ class DroneControl(object):
 		self.visible_marker_info = marker_data
 
 		# Update record for the marker currently being tracked if there is no new information then keep old information
-		if str(self.current_marker_info['marker_id']) in marker_data:
-			self.current_marker_info['marker_distance_x'] = -1 * marker_data[str(self.current_marker_info['marker_id'])][0]
-			self.current_marker_info['marker_distance_y'] = -1 * marker_data[str(self.current_marker_info['marker_id'])][1]
+		if str(self.raw_status['marker_id']) in marker_data:
+			self.raw_status['marker_distance_x'] = -1 * marker_data[str(self.raw_status['marker_id'])][0]
+			self.raw_status['marker_distance_y'] = -1 * marker_data[str(self.raw_status['marker_id'])][1]
 		
 		# Print to console
 		#print(self.marker_distance)
 
 	def update(self,status):
 		"""
-		Send status provided to the status updater with appropriate drone_id label.
+		Merge status with local version and send to the status updater with appropriate drone_id label.
 		"""
 		status['drone_id'] = self.drone_id
-		self._updater.update(status)
+		self.update_raw(status)
+		self._updater.update(self.raw_status)
 
 	def update_raw(self,status):
 		self.raw_status = dict(self.raw_status.items() + status.items())
