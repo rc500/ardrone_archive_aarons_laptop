@@ -148,8 +148,7 @@ class StatusUpdater(object):
 		for drone in range(0,len(self.drones)):
 			self.swarm_status['position'].append(self.drone_status[drone]['position'])
 
-		# airprox - True if closer than 5 markers
-		airprox = 5
+		# airprox - shortest distance between drones
 		# work out shortest distance between drones
 		closest_dist = 1000 # arbitrarily large
 		drone_index = []
@@ -168,10 +167,13 @@ class StatusUpdater(object):
 					closest_dist = diff_dist
 			other_index.append(others.index(self.drones[drone]))
 		# check distance with airprox
-		if closest_dist <= airprox:
-			self.swarm_status['airprox']=True
+		if closest_dist < 9:
+			self.swarm_status['airprox'] = True
 		else:
-			self.swarm_status['airprox']=False
+			self.swarm_status['airprox'] = False
+
+		# separation
+		self.swarm_status['separation'] = closest_dist
 
 		return self.swarm_status
 				
@@ -202,7 +204,7 @@ class StatusUpdater(object):
 	
 		# height_stable
 		drone_status['height_stable'] = drone_controller.stability_info['gas_stable']
-		
+
 		# following_marker
 		if len(drone_controller.route)>1:
 			drone_status['following_marker'] = True
