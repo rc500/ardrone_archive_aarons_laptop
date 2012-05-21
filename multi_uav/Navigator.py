@@ -26,7 +26,7 @@ class Navigator(object):
 		# define map
 		self.path = {
 			'type' : 'loop',
-			'markers' : (25,26,27,28,29,31,32,33,35,36,50,51,52,53,54,55,56,57,58,59,60,61,62,63),
+			'markers' : (0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16)
 			};
 
 		# setup variables
@@ -37,31 +37,48 @@ class Navigator(object):
 		self.positions = [] # one marker id for each drone giving last known position
 		self.targets = [] # 0 or 1  marker id for each drone giving the current target for the drone
 		self.drones = drones # tuple of drone ids
-
+		
 	def route(self,pos):
 		"""
 		A basic algorithm for setting a looping route around a continuous path. Route is never longer than 6 markers ahead.
 		"""
 		self.positions = pos
-		print(pos)
+		print("Current positions: %s" % pos)
 		# check position is known
 		if -1 in pos:
 			return_value = []
 			for count in self.positions:
 				return_value.append([-1])
-				return return_value 
+			return return_value 
+		# check position is in current mapping
+		for location in pos:
+			if location not in self.path['markers']:
+				print("Error: Drone has location not on known path. Originator: Navigator")
+				return
 		# check path is a loop
 		if self.path['type'] == 'loop':
+			# for each drone
 			for drone in range(0,len(self.drones)):
+				# calculate the next marker in route
 				posi = pos[drone]
-				self.routes[drone] = [posi]
+				posi = self.next(posi)[0]
+				self.routes[drone] = [posi,]
+				# calculate remaining markers in route (up to 6 ahead)
 				for number in range(1,6):
 					posi = self.next(posi)[0]
 					self.routes[drone].append(posi)
-			self.routes[drone].reverse()
+				self.routes[drone].reverse()
 
-		print("routes: %s" % self.routes)
 		# return deconflicted routes
+		return self.check_deconflict(self.positions)
+
+	def hold_position_route(self,pos):
+		"""
+		Returns a route which is the current positions passed
+		"""
+		self.positions = pos
+		for drone in range(0,len(self.drones)):
+			self.routes[drone] = [pos[drone],]
 		return self.check_deconflict(self.positions)
 
 	def front_drone(self):
@@ -70,14 +87,13 @@ class Navigator(object):
 		'Front' drone is determined by whichever drone has the most number of clear spaces in front of them.
 		"""
 		# this will need updating but for now the front drone will always be drone with id 1
-		return 1
+		return 2 
 
 	def check_deconflict(self,pos):
 		"""
 		A basic deconfliction algorithm which changes the routes of all drones that have unsafe routes
 		Only guarantees deconfliction on maps with no junctions
 		"""
-## refactor - stop navigator controlling drones
 		# update position
 		self.position = pos
 
@@ -87,8 +103,8 @@ class Navigator(object):
 		# for unsafe routes, change a drones route to prevent airprox
 		for drone in safe_routes:
 			if drone == False:
-				self.routes[drone] = self.positions[drone]
-	
+				self.routes[drone] = [self.positions[drone],]
+		print("New routes: %s" % self.routes)
 		return self.routes
 
 # PRIVATE
@@ -96,7 +112,7 @@ class Navigator(object):
 		"""
 		Checks the routes of each drone with the current position of the other drones.
 		A list containing bools is returned.
-		If a route risks collision with another drone then False is returned for that drone.
+		If a drone's route risks collision with another then False is returned for that drone.
 		""" 
 		safe_route = []
 		drone_index = []
@@ -125,9 +141,10 @@ class Navigator(object):
 			local_path = list(self.path['markers'])
 			if pos == local_path[len(local_path)-1]: # if current position is last position in markers tuple
 				backward = local_path[local_path.index(pos)-1]
-				forward = local_path.reverse().pop()
-			elif pos == local_path[1]: # if current position is the first position in markers tuple
-				forward = local_path[2]
+				local_path.reverse()
+				forward = local_path.pop()
+			elif pos == local_path[0]: # if current position is the first position in markers tuple
+				forward = local_path[1]
 				backward = local_path.pop()
 			elif pos == -1:
 				print "no markers visible"
