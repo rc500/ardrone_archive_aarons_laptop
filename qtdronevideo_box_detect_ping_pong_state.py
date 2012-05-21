@@ -297,11 +297,7 @@ class imageProcessor(object):
                 elif self.state == 'yaw left':
                    self.yaw_left_state(frame)
                 elif self.state == 'turned':
-                  self.turned_state(frame)
-                elif self.state == 'adjusting_off_left':
-                  self.adjusting_left_state(frame)                  
-                elif self.state == 'adjusting_off_right':
-                  self.adjusting_right_state(frame)                   
+                  self.turned_state(frame)                 
                   
                 print self.state, ' state'
 
@@ -576,7 +572,7 @@ class imageProcessor(object):
 
                          #save the time the box was detected and use to determine how much we turn
                          self.detected_time=time.clock()
-                         self.state = 'adjusting_off_left'
+                         send_state(slow_left_state)
                          return
 
                        #if the maximum y value corresponds to a point on the right of the image 
@@ -585,7 +581,7 @@ class imageProcessor(object):
 
                          #save the time the box was detected and use to determine how much we turn
                          self.detected_time=time.clock()
-                         self.state = 'adjusting_off_right'
+                         send_state(slow_right_state)
                          return
                         
                      else:
@@ -604,37 +600,7 @@ class imageProcessor(object):
                   if abs(convertAngle(self.yaw_angle)-convertAngle(self.y_beg))<160:
                       send_state(turn_right_state)
                       return
-
-        #adjusting states are used to get teh drone facing the box again.
-        #the drone moves riefly in the appropriate direction and then yaws briefly in teh appropriate direction
-        def adjusting_left_state(self,frame):
-
-            if (time.clock()-self.detected_time)<2:
-              send_state(move_right_state)
-              print 'moving right', self.detected_time-time.clock()
-              
-            elif(time.clock()-self.detected_time)<4:
-              send_state(slow_left_state)
-              print 'yawing left'   
-              
-            else:
-              self.state='move'
-              
-              
-              
-
-        def adjusting_right_state(self,frame):  
-
-            if (time.clock()-self.detected_time)<2:
-              send_state(move_left_state)
-              print 'moving left'
-              
-            elif(time.clock()-self.detected_time)<4:
-              send_state(slow_right_state)
-              print 'yawing right'
-              
-            else:
-              self.state='move'                  
+          
                      
                     
 class imageViewer(object):
