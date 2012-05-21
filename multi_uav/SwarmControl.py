@@ -37,7 +37,7 @@ class SwarmControl(object):
 
 		# Setup timer to detect for state changes
 		self.check_timer = QtCore.QTimer()
-		self.check_timer.setInterval(5000) # ms
+		self.check_timer.setInterval(1000) # ms
 		self.check_timer.timeout.connect(self.action)
 
 		# States
@@ -60,16 +60,29 @@ class SwarmControl(object):
 		if self.state_id == -1:
 			self.transition_to_state(0)
 
-	def send_routes(self,routes):
-		"""
-		Function which gives each drone a route in the form of a list of marker ids.
-		"""
-		local_drone = list(self.drone_controllers)
-		local_drone.reverse()
+		# If in Setup State, then transition to Bad State
+		if self.state_id == 0:
+			self.transition_to_state(1)
 
-		for route in routes:
-			print "update drone with route"
-			local_drone.pop().update_route(route)
+		# If in Bad State, then transition to Good State
+		if self.state_id == 1:
+			self.transition_to_state(2)
+
+		# If in Good State, then maintain
+		if self.state_id == 2:
+			self.maintain_state()
+
+	def send_routes(self,routes,send_to):
+		"""
+		Function which gives drones a route in the form of a list of marker ids.
+		Only drone ids defined in the 'send_to' parameter are sent to.
+
+		send_to must be a list or tuple
+		"""
+		for drone in self.drones:
+			if drone in send_to:
+				print("update drone %s with route" % (drone))
+				self.drone_controllers[self.drones.index(drone)].update_route(routes[self.drones.index(drone)])
 
 	def maintain_state(self):
 		"""

@@ -26,7 +26,7 @@ class Navigator(object):
 		# define map
 		self.path = {
 			'type' : 'loop',
-			'markers' : (0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24),
+			'markers' : (25,26,27,28,29,31,32,33,35,36,50,51,52,53,54,55,56,57,58,59,60,61,62,63),
 			};
 
 		# setup variables
@@ -63,6 +63,14 @@ class Navigator(object):
 		print("routes: %s" % self.routes)
 		# return deconflicted routes
 		return self.check_deconflict(self.positions)
+
+	def front_drone(self):
+		"""
+		Returns drone_id of the drone in front of loop.
+		'Front' drone is determined by whichever drone has the most number of clear spaces in front of them.
+		"""
+		# this will need updating but for now the front drone will always be drone with id 1
+		return 1
 
 	def check_deconflict(self,pos):
 		"""
