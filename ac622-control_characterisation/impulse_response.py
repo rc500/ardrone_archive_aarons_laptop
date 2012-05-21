@@ -4,7 +4,7 @@ Script to setup loggers to log a drone's sensor outputs in response to an impuls
 This script creates an application which sets up loggers to record sensor outputs, does nothing for a period, applies an impulse to the drone, then waits a period before finishing (and therefore removing the logger objects).
 This application also logs the commands sent to the drone.
 
-NB - Drone should already be airborne, stable and MUST be passing navdata information before running this script
+NB - Drone should already be airborne, stable and MUST be passing navdata information before running this script. Suggest using qtdronegui.py to achieve this.
 """
 
 import os
@@ -33,7 +33,7 @@ class App(object):
   def __init__(self):
     # Initialise
 
-    self.flag = False
+    self.flag = 1
     log_file = 'command_dump.dat'
     self._log_file = open(log_file, 'w')
 
@@ -52,7 +52,7 @@ class App(object):
 
     # Create a little 'heartbeat' timer that will call impulse() every so often.
     self.impulse_timer = QtCore.QTimer()
-    self.impulse_timer.setInterval(6000) # ms # NB - nothing will happen for this long
+    self.impulse_timer.setInterval(4000) # ms # NB - hover will happen for this long
     self.impulse_timer.timeout.connect(self.impulse)
     self.impulse_timer.start()
 
@@ -60,6 +60,11 @@ class App(object):
     self.do_nothing_timer = QtCore.QTimer()
     self.do_nothing_timer.setInterval(400) # ms # NB - impulse will last for this long
     self.do_nothing_timer.timeout.connect(self.do_nothing)
+
+    # Create a little 'heartbeat' timer that will call hover() every so often.
+    self.hover_timer = QtCore.QTimer()
+    self.hover_timer.setInterval(5000) # ms # NB - nothing will last for this long
+    self.hover_timer.timeout.connect(self.hover)
 
     # Set up a UDP listening socket on port 5561.
     self.socket = QtNetwork.QUdpSocket()
@@ -72,26 +77,38 @@ class App(object):
 #------------------------------------------------------------------------
   def flip_flag(self):
     """
-    Flips bool of self.flag
+    Increments state
     """
-    self.flag = not self.flag
-    print ("flag flipped!") 
-#------------------------------------------------------------------------
-  def do_nothing(self):
-    """
-    Flips bool and swaps timers
-    """
-    self.flip_flag()
-    self.do_nothing_timer.stop()
-    self.impulse_timer.start()
+    states = 3
+    if self.flag == states:
+      self.flag = 1
+    else:
+      self.flag = self.flag + 1
+    print ("state %s" % (self.flag)) 
 #------------------------------------------------------------------------
   def impulse(self):
     """
-    Flips bool and swaps timers
+    Increments state and swaps timers
     """
     self.flip_flag()
     self.impulse_timer.stop()
     self.do_nothing_timer.start()
+#------------------------------------------------------------------------
+  def do_nothing(self):
+    """
+    Increments state and swaps timers
+    """
+    self.flip_flag()
+    self.do_nothing_timer.stop()
+    self.hover_timer.start()
+#------------------------------------------------------------------------
+  def hover(self):
+    """
+    Increments state and swaps timers
+    """
+    self.flip_flag()
+    self.hover_timer.stop()
+    self.impulse_timer.start()
 #------------------------------------------------------------------------
   def socketReadyRead(self):
     """Called when there is some interesting data to read on the control socket."""
@@ -117,13 +134,20 @@ class App(object):
                 'reset': False,
                 'hover': True,
                                 };
-
-    # Apply impulse if flag true and then turn flag off
-    if self.flag:
-      state['hover'] = False
-      state['pitch'] = 1.0
-    else:
+    # if want to hover
+    if self.flag == 1:
       state['hover'] = True
+      state['pitch'] = 0.0
+    # if want to impulse
+    elif self.flag == 2:
+      state['hover'] = False
+      state['pitch'] = -1.0
+    # if want to do nothing
+    elif self.flag == 3:
+      state['hover'] = False
+      state['pitch'] = 0.0
+    else:
+      print("states not working - impuse_response.py")
 
     # Send state to drone
     self.send_state(state)
