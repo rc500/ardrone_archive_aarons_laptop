@@ -58,12 +58,12 @@ class App(object):
 
     # Create a little 'heartbeat' timer that will call do_nothing() every so often.
     self.do_nothing_timer = QtCore.QTimer()
-    self.do_nothing_timer.setInterval(400) # ms # NB - impulse will last for this long
+    self.do_nothing_timer.setInterval(2000) # ms # NB - impulse will last for this long
     self.do_nothing_timer.timeout.connect(self.do_nothing)
 
     # Create a little 'heartbeat' timer that will call hover() every so often.
     self.hover_timer = QtCore.QTimer()
-    self.hover_timer.setInterval(5000) # ms # NB - nothing will last for this long
+    self.hover_timer.setInterval(8000) # ms # NB - nothing will last for this long
     self.hover_timer.timeout.connect(self.hover)
 
     # Set up a UDP listening socket on port 5561.
@@ -120,8 +120,11 @@ class App(object):
       for logger in self.loggers:
         logger.log(data)
 
+      # Parse the packet
+      packet = json.loads(data.decode())
       # Send command to drone
-      self.send_command()
+      if packet['type'] == 'demo':
+        self.send_command()
 
 #------------------------------------------------------------------------
   def send_command(self):
@@ -132,7 +135,7 @@ class App(object):
                 'gas': 0.0,
                 'take_off': False,
                 'reset': False,
-                'hover': True,
+                'hover': False,
                                 };
     # if want to hover
     if self.flag == 1:
@@ -141,7 +144,7 @@ class App(object):
     # if want to impulse
     elif self.flag == 2:
       state['hover'] = False
-      state['pitch'] = -1.0
+      state['pitch'] = -0.5
     # if want to do nothing
     elif self.flag == 3:
       state['hover'] = False
