@@ -1,3 +1,5 @@
+#Code used for the final demonstration produced
+
 import os
 import signal
 import sys
@@ -199,7 +201,7 @@ class imageProcessor(object):
         #yaw value at take-off
         y_beg=0.0
 
-
+        #initialise a vector that will store the yaw angle at which landmarks were detected-used for mapping
         landmarks=[]
         
         #initialise the state
@@ -280,7 +282,8 @@ class imageProcessor(object):
                     seq_ext=seq_ext.h_next()   
                   #h_next: points to sequences on the same level
                   seq=seq.h_next()
-
+                  
+                #check what state we are in and call the relevant function
                 if self.state == 'take off':
                   self.take_off_state(frame)
                 elif self.state == 'mapping':
@@ -301,7 +304,8 @@ class imageProcessor(object):
                   self.adjusting_right_state(frame)                   
                   
                 print self.state, ' state'
-                
+
+                #return teh image to be displayed 
                 return im
 
                     
@@ -364,6 +368,7 @@ class imageProcessor(object):
              #and area close enough to that of the approximated rectangle
              #this is used to correct drone orientation when moving towards box
              if (float(sqr[2]*sqr[3])/(edges.height*edges.width)>0.004)&(abs(sqr[2]-sqr[3])<((sqr[2]+sqr[3])/4))& (area/float(sqr[2]*sqr[3])>0.7):
+               #log the yaw angle of the deteced square (landmark)
                self.landmarks.append(abs(convertAngle(self.yaw_angle)-self.y_beg))
                print 'landmarks', self.landmarks
                       
@@ -461,11 +466,11 @@ class imageProcessor(object):
         
                   #find whether we are going 'forward' or back depending on whether the
                   #angle magnitude is more or less that 180 degrees (values given by the drone
-                  #are degrees*1000
+                  #are degrees*1000)
                   self.direction=cmp(convertAngle(self.yaw_angle), 180000.0)
                   #save the orientation the drone had when it found the box
                   self.init_angle=self.yaw_angle
-                  #turn if box found
+                  #turn accordingly if box found
                   if self.direction==-1:
                    send_state(turn_right_state)
                    self.state = 'yaw right'
@@ -553,7 +558,7 @@ class imageProcessor(object):
                             #return
 
                      #get a list of the (x,y) points used to define the contour (in the case of a perfect rectangle those
-                     #would be its edges       
+                     #would be its vertices       
                      cont_points=list(seq)
 
                      #find the maximum (x,y) pair (see report for details)
@@ -567,7 +572,7 @@ class imageProcessor(object):
                        
                        #if the minimum y value corresponds to a point on the left of the image
                        if min_xy[0]< edges.width*0.25:
-                         print 'move rightt and turn left', max_xy[0]
+                         print 'move right and turn left', max_xy[0]
 
                          #save the time the box was detected and use to determine how much we turn
                          self.detected_time=time.clock()
