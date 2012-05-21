@@ -68,13 +68,13 @@ class DroneControl(object):
 		self._control=_control
 		self._updater=updater
 
+		# Configure drone camera
+		self._control.view_camera(1) # channel 1 = downward facing camera
+		
 		# --- INITIALISE APPLICATION OBJECTS ----
 		self._im_proc = ImageProcessor.ImageProcessor(self,drone_id)
 		self._vid_decoder = Videopacket.Decoder(self._im_proc.process)
 		self._network = NetworkManager(self._vid_decoder,self,network_config)
-		
-		# Configure drone camera
-		self._control.view_camera(1) # channel 1 = downward facing camera
 		
 		# Start video and navdata stream on drone
 		self._control.start_navdata()
@@ -83,6 +83,9 @@ class DroneControl(object):
 		# Reset drone
 		self._control.reset()
 	
+		# Configure drone camera - again! Just to make sure it happens.
+		self._control.view_camera(1) # channel 1 = downward facing camera
+		
 		# State setup
 		self._state = State.CommunicationState(self,drone_id)
 		self.state_id = 0
