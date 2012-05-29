@@ -1,0 +1,363 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>multi_uav.DroneControl &mdash; Developing a strategy for multiple UAVs to achieve a common objective v1.0 documentation</title>
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="Developing a strategy for multiple UAVs to achieve a common objective v1.0 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">Developing a strategy for multiple UAVs to achieve a common objective v1.0 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for multi_uav.DroneControl</h1><div class="highlight"><pre>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">json</span><span class="o">,</span> <span class="nn">socket</span><span class="o">,</span> <span class="nn">time</span>
+
+<span class="c"># This makes sure the path which python uses to find things when using import</span>
+<span class="c"># can find all our code.</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="s">&#39;..&#39;</span><span class="p">))</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">__file__</span><span class="p">),</span> <span class="s">&#39;..&#39;</span><span class="p">)))</span>
+
+<span class="c"># Import qt modules (platform independant)</span>
+<span class="kn">import</span> <span class="nn">ardrone.util.qtcompat</span> <span class="kn">as</span> <span class="nn">qt</span>
+<span class="n">QtCore</span> <span class="o">=</span> <span class="n">qt</span><span class="o">.</span><span class="n">import_module</span><span class="p">(</span><span class="s">&#39;QtCore&#39;</span><span class="p">)</span>
+<span class="n">QtNetwork</span> <span class="o">=</span> <span class="n">qt</span><span class="o">.</span><span class="n">import_module</span><span class="p">(</span><span class="s">&#39;QtNetwork&#39;</span><span class="p">)</span>
+
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">Controllers</span> <span class="k">as</span> <span class="n">Controller</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">DroneStates</span> <span class="k">as</span> <span class="n">State</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">ImageProcessor</span>
+<span class="kn">import</span> <span class="nn">ardrone.core.videopacket</span> <span class="kn">as</span> <span class="nn">Videopacket</span>
+
+<span class="kn">import</span> <span class="nn">logging</span> 
+<span class="c">#logging.basicConfig(level=logging.DEBUG)</span>
+
+<div class="viewcode-block" id="DroneControl"><a class="viewcode-back" href="../../demonstrator.html#multi_uav.DroneControl.DroneControl">[docs]</a><span class="k">class</span> <span class="nc">DroneControl</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">	The base class for overseeing actions of an individual drone.</span>
+<span class="sd">	</span>
+<span class="sd">	Acts upon messages from SwarmControl class by changing position (using Controller class) or carrying out standard land, take off, change camera actions (using ControlLoop class).</span>
+<span class="sd">	&quot;&quot;&quot;</span>
+	
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">drone_id</span><span class="p">,</span><span class="n">_control</span><span class="p">,</span><span class="n">network_config</span><span class="p">,</span><span class="n">updater</span><span class="p">):</span>
+		<span class="c"># --- INITIALISE VARIABLES ---</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">raw_status</span> <span class="o">=</span> <span class="p">{};</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">drone_status</span> <span class="o">=</span> <span class="p">{};</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">drone_input</span> <span class="o">=</span> <span class="p">{</span>
+	                <span class="s">&#39;roll&#39;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+	                <span class="s">&#39;pitch&#39;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+	                <span class="s">&#39;yaw&#39;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+	                <span class="s">&#39;gas&#39;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+	                <span class="s">&#39;take_off&#39;</span><span class="p">:</span> <span class="bp">False</span><span class="p">,</span>
+	                <span class="s">&#39;reset&#39;</span><span class="p">:</span> <span class="bp">False</span><span class="p">,</span>
+	                <span class="s">&#39;hover&#39;</span><span class="p">:</span> <span class="bp">True</span><span class="p">,</span>
+                     			<span class="p">};</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">stability_info</span> <span class="o">=</span> <span class="p">{</span>
+			<span class="s">&#39;gas_stable&#39;</span> <span class="p">:</span> <span class="bp">False</span><span class="p">,</span>
+			<span class="s">&#39;roll_stable&#39;</span> <span class="p">:</span> <span class="bp">False</span><span class="p">,</span>
+			<span class="s">&#39;pitch_stable&#39;</span> <span class="p">:</span> <span class="bp">False</span><span class="p">,</span>
+					<span class="p">};</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">visible_marker_info</span> <span class="o">=</span> <span class="p">{</span>
+				<span class="c">#&#39;marker_id&#39;: [x error,y error]</span>
+				<span class="s">&#39;-1&#39;</span><span class="p">:(</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">),</span>
+				<span class="p">};</span>			
+	           
+		<span class="bp">self</span><span class="o">.</span><span class="n">control_network_activity_flag</span> <span class="o">=</span> <span class="bp">False</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">video_network_activity_flag</span> <span class="o">=</span> <span class="bp">False</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">holding_marker</span> <span class="o">=</span> <span class="bp">False</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">route</span> <span class="o">=</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,]</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">drone_id</span> <span class="o">=</span> <span class="n">drone_id</span>	
+		
+		<span class="c"># --- ASSIGN POINTERS ---</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_control</span><span class="o">=</span><span class="n">_control</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_updater</span><span class="o">=</span><span class="n">updater</span>
+
+		<span class="c"># Configure drone camera</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_control</span><span class="o">.</span><span class="n">view_camera</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="c"># channel 1 = downward facing camera</span>
+		
+		<span class="c"># --- INITIALISE APPLICATION OBJECTS ----</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_im_proc</span> <span class="o">=</span> <span class="n">ImageProcessor</span><span class="o">.</span><span class="n">ImageProcessor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">drone_id</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_vid_decoder</span> <span class="o">=</span> <span class="n">Videopacket</span><span class="o">.</span><span class="n">Decoder</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_im_proc</span><span class="o">.</span><span class="n">process</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_network</span> <span class="o">=</span> <span class="n">NetworkManager</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_vid_decoder</span><span class="p">,</span><span class="bp">self</span><span class="p">,</span><span class="n">network_config</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_controller_manager</span> <span class="o">=</span> <span class="n">Controller</span><span class="o">.</span><span class="n">ControllerManager</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>	
+
+		<span class="c"># Start video and navdata stream on drone</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_control</span><span class="o">.</span><span class="n">start_navdata</span><span class="p">()</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_control</span><span class="o">.</span><span class="n">start_video</span><span class="p">()</span>
+				
+		<span class="c"># Reset drone</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_control</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+	
+		<span class="c"># Configure drone camera - again! Just to make sure it happens.</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_control</span><span class="o">.</span><span class="n">view_camera</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="c"># channel 1 = downward facing camera</span>
+		
+		<span class="c"># State setup</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">=</span> <span class="n">State</span><span class="o">.</span><span class="n">CommunicationState</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">drone_id</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">state_id</span> <span class="o">=</span> <span class="mi">0</span>
+	
+		<span class="c"># Keep drone_id</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">raw_status</span><span class="p">[</span><span class="s">&#39;drone_id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">drone_id</span>
+
+<div class="viewcode-block" id="DroneControl.request_state"><a class="viewcode-back" href="../../demonstrator.html#multi_uav.DroneControl.DroneControl.request_state">[docs]</a>	<span class="k">def</span> <span class="nf">request_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">state_id</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Decide what to do based on a requested state_id</span>
+<span class="sd">			Either  maintain current state</span>
+<span class="sd">			Or 	request transition towards requested state</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+
+		<span class="k">if</span> <span class="n">state_id</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">state_id</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_state</span><span class="o">.</span><span class="n">maintain</span><span class="p">()</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_state</span><span class="o">.</span><span class="n">transition</span><span class="p">(</span><span class="n">state_id</span><span class="p">)</span>
+</div>
+	<span class="k">def</span> <span class="nf">check_exit</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_state</span><span class="o">.</span><span class="n">check_exit</span><span class="p">()</span>
+	
+	<span class="k">def</span> <span class="nf">change_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">state</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">=</span> <span class="n">state</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">state_id</span> <span class="o">=</span> <span class="n">state</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+	<span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_control</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+
+	<span class="k">def</span> <span class="nf">flat_trim</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_control</span><span class="o">.</span><span class="n">flat_trim</span><span class="p">()</span>
+		
+	<span class="k">def</span> <span class="nf">take_off</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_control</span><span class="o">.</span><span class="n">take_off</span><span class="p">()</span>
+
+	<span class="k">def</span> <span class="nf">land</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_control</span><span class="o">.</span><span class="n">land</span><span class="p">()</span>
+		
+	<span class="k">def</span> <span class="nf">set_altitude</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">r</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_height_control</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_controller_manager</span><span class="o">.</span><span class="n">create_proportional_controller</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="s">&#39;altitude&#39;</span><span class="p">,</span><span class="s">&#39;gas&#39;</span><span class="p">,</span><span class="s">&#39;gas_stable&#39;</span><span class="p">,</span><span class="mf">0.02</span><span class="p">,</span><span class="n">r</span><span class="p">,</span><span class="mf">0.2</span><span class="p">)</span>
+
+	<span class="k">def</span> <span class="nf">hold_marker</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">marker_id</span><span class="p">):</span>
+		<span class="c"># Set flag</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">holding_marker</span> <span class="o">=</span> <span class="bp">True</span>
+
+		<span class="c"># Change marker being tracked and update info</span>
+		<span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">raw_status</span><span class="p">[</span><span class="s">&#39;marker_id&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">marker_id</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">raw_status</span><span class="p">[</span><span class="s">&#39;marker_id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">marker_id</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">raw_status</span><span class="p">[</span><span class="s">&#39;marker_position_x&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">visible_marker_info</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">marker_id</span><span class="p">)][</span><span class="mi">0</span><span class="p">]</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">raw_status</span><span class="p">[</span><span class="s">&#39;marker_posistion_y&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">visible_marker_info</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">marker_id</span><span class="p">)][</span><span class="mi">1</span><span class="p">]</span>
+		
+		<span class="c"># Stop the drone hovering by itself (this is only sent to the drone with another command but that&#39;s OK)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">drone_input</span><span class="p">[</span><span class="s">&#39;hover&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">False</span>
+		
+		<span class="c"># Initiate roll and pitch controllers</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_marker_control_roll</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_controller_manager</span><span class="o">.</span><span class="n">create_lead_lag_2_controller</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="s">&#39;marker_distance_x&#39;</span><span class="p">,</span><span class="s">&#39;roll&#39;</span><span class="p">,</span><span class="s">&#39;roll_stable&#39;</span><span class="p">,</span><span class="mf">0.001</span><span class="p">,</span><span class="mf">0.15</span><span class="p">,</span><span class="mf">0.025</span><span class="p">,</span><span class="mf">0.04</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mf">0.5</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_marker_control_pitch</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_controller_manager</span><span class="o">.</span><span class="n">create_lead_lag_2_controller</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="s">&#39;marker_distance_y&#39;</span><span class="p">,</span><span class="s">&#39;pitch&#39;</span><span class="p">,</span><span class="s">&#39;pitch_stable&#39;</span><span class="p">,</span><span class="mf">0.001</span><span class="p">,</span><span class="mf">0.15</span><span class="p">,</span><span class="mf">0.025</span><span class="p">,</span><span class="mf">0.04</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mf">0.5</span><span class="p">)</span>
+	
+<div class="viewcode-block" id="DroneControl.get_visible_markers"><a class="viewcode-back" href="../../demonstrator.html#multi_uav.DroneControl.DroneControl.get_visible_markers">[docs]</a>	<span class="k">def</span> <span class="nf">get_visible_markers</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Returns a list of currently visible marker ids</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">visible_marker_info</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+</div>
+	<span class="k">def</span> <span class="nf">update_route</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">route</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">route</span> <span class="o">=</span> <span class="n">route</span>
+
+	<span class="k">def</span> <span class="nf">update_position</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">marker_data</span><span class="p">):</span>
+		<span class="c"># Update object&#39;s record of marker positions</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">visible_marker_info</span> <span class="o">=</span> <span class="n">marker_data</span>
+
+		<span class="c"># Update record for the marker currently being tracked if there is no new information then keep old information</span>
+		<span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">raw_status</span><span class="p">[</span><span class="s">&#39;marker_id&#39;</span><span class="p">])</span> <span class="ow">in</span> <span class="n">marker_data</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">raw_status</span><span class="p">[</span><span class="s">&#39;marker_distance_x&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span> <span class="o">*</span> <span class="n">marker_data</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">raw_status</span><span class="p">[</span><span class="s">&#39;marker_id&#39;</span><span class="p">])][</span><span class="mi">0</span><span class="p">]</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">raw_status</span><span class="p">[</span><span class="s">&#39;marker_distance_y&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span> <span class="o">*</span> <span class="n">marker_data</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">raw_status</span><span class="p">[</span><span class="s">&#39;marker_id&#39;</span><span class="p">])][</span><span class="mi">1</span><span class="p">]</span>
+		
+		<span class="c"># Print to console</span>
+		<span class="c">#print(self.marker_distance)</span>
+
+<div class="viewcode-block" id="DroneControl.update"><a class="viewcode-back" href="../../demonstrator.html#multi_uav.DroneControl.DroneControl.update">[docs]</a>	<span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">status</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Merge status with local version and send to the status updater with appropriate drone_id label.</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">status</span><span class="p">[</span><span class="s">&#39;drone_id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">drone_id</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">update_raw</span><span class="p">(</span><span class="n">status</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_updater</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">raw_status</span><span class="p">)</span>
+</div>
+	<span class="k">def</span> <span class="nf">update_raw</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">status</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">raw_status</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">raw_status</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="o">+</span> <span class="n">status</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
+
+	<span class="k">def</span> <span class="nf">update_drone</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">status</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">drone_status</span> <span class="o">=</span> <span class="n">status</span>
+</div>
+<div class="viewcode-block" id="NetworkManager"><a class="viewcode-back" href="../../demonstrator.html#multi_uav.DroneControl.NetworkManager">[docs]</a><span class="k">class</span> <span class="nc">NetworkManager</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">	A class which manages the sending and receiving of packets over the network.</span>
+<span class="sd">	It stores the relevant data of received packets and sends packets when requested.</span>
+<span class="sd">	</span>
+<span class="sd">	IP address of drone: config.[&#39;host&#39;]</span>
+<span class="sd">	Localhost: 127.0.0.1</span>
+<span class="sd">	&quot;&quot;&quot;</span>
+
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">_vid_decoder</span><span class="p">,</span><span class="n">_update</span><span class="p">,</span><span class="n">network_config</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Initialise the class</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		
+		<span class="c"># Variables</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">seq</span> <span class="o">=</span> <span class="mi">0</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">ready_video</span> <span class="o">=</span> <span class="bp">False</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">ready_control</span> <span class="o">=</span> <span class="bp">False</span>
+		
+		<span class="c"># Variable assignment</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">network_config</span>
+		
+		<span class="c"># Pointer assignment</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_vid_decoder</span> <span class="o">=</span> <span class="n">_vid_decoder</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_update</span> <span class="o">=</span> <span class="n">_update</span>
+		
+		<span class="c"># Variable assignment</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">network_config</span>
+		
+		<span class="c"># Set up a UDP listening socket on port for control data</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">socket_control</span> <span class="o">=</span> <span class="n">QtNetwork</span><span class="o">.</span><span class="n">QUdpSocket</span><span class="p">()</span>
+		<span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">socket_control</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="n">QtNetwork</span><span class="o">.</span><span class="n">QHostAddress</span><span class="o">.</span><span class="n">Any</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s">&#39;control_data_port&#39;</span><span class="p">]):</span>
+			<span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s">&#39;Error binding to port: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">socket_control</span><span class="o">.</span><span class="n">errorString</span><span class="p">()))</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">socket_control</span><span class="o">.</span><span class="n">readyRead</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">readControlData</span><span class="p">)</span>
+    
+		<span class="c"># Set up a UDP listening socket on port for video data</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">socket_video</span> <span class="o">=</span> <span class="n">QtNetwork</span><span class="o">.</span><span class="n">QUdpSocket</span><span class="p">()</span>
+		<span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">socket_video</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="n">QtNetwork</span><span class="o">.</span><span class="n">QHostAddress</span><span class="o">.</span><span class="n">Any</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s">&#39;video_data_port&#39;</span><span class="p">]):</span>
+			<span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s">&#39;Error binding to port: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">socket_video</span><span class="o">.</span><span class="n">errorString</span><span class="p">()))</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">socket_video</span><span class="o">.</span><span class="n">readyRead</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">readVideoData</span><span class="p">)</span>
+
+		<span class="c"># </span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">sock</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">socket</span><span class="o">.</span><span class="n">SOCK_DGRAM</span><span class="p">)</span>
+
+	<span class="k">def</span> <span class="nf">sendControl</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">data</span><span class="p">):</span>
+		<span class="c"># Send state to the drone</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">seq</span> <span class="o">+=</span> <span class="mi">1</span>
+		<span class="c">#print(&#39;state is&#39;, json.dumps({&#39;seq&#39;: self.seq, &#39;state&#39;: data}))</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">sock</span><span class="o">.</span><span class="n">sendto</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">({</span><span class="s">&#39;seq&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">seq</span><span class="p">,</span> <span class="s">&#39;state&#39;</span><span class="p">:</span> <span class="n">data</span><span class="p">}),</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s">&#39;bind_host&#39;</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s">&#39;control_port&#39;</span><span class="p">]))</span> 
+	
+<div class="viewcode-block" id="NetworkManager.readControlData"><a class="viewcode-back" href="../../demonstrator.html#multi_uav.DroneControl.NetworkManager.readControlData">[docs]</a>	<span class="k">def</span> <span class="nf">readControlData</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Called when there is some interesting data to read on the control socket</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">socket_control</span><span class="o">.</span><span class="n">hasPendingDatagrams</span><span class="p">():</span>
+			<span class="n">sz</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">socket_control</span><span class="o">.</span><span class="n">pendingDatagramSize</span><span class="p">()</span>
+			<span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">host</span><span class="p">,</span> <span class="n">port</span><span class="p">)</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">socket_control</span><span class="o">.</span><span class="n">readDatagram</span><span class="p">(</span><span class="n">sz</span><span class="p">)</span>
+	
+			<span class="c"># Some hack to account for PySide vs. PyQt differences</span>
+			<span class="k">if</span> <span class="n">qt</span><span class="o">.</span><span class="n">USES_PYSIDE</span><span class="p">:</span>
+				<span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">data</span><span class="p">()</span>
+
+	        <span class="c"># Parse the packet</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">packet</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">decode</span><span class="p">())</span>
+			<span class="c"># Keep packet if it contains status information</span>
+			<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">packet</span><span class="p">[</span><span class="s">&#39;type&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;demo&#39;</span><span class="p">:</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">packet</span><span class="p">[</span><span class="s">&#39;type&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s">&#39;raw&#39;</span> <span class="c">#Change type to conform to status format of application</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">_update</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">packet</span><span class="p">)</span>
+
+				<span class="c"># Update status of the Control Network when ready</span>
+				<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ready_control</span> <span class="o">==</span> <span class="bp">False</span><span class="p">:</span>
+					<span class="c">#print(&quot;Control Ready&quot;)</span>
+					<span class="bp">self</span><span class="o">.</span><span class="n">ready_control</span> <span class="o">=</span> <span class="bp">True</span>
+					<span class="bp">self</span><span class="o">.</span><span class="n">_update</span><span class="o">.</span><span class="n">control_network_activity_flag</span> <span class="o">=</span> <span class="bp">True</span>
+				
+			<span class="c">#Print it prettily</span>
+			<span class="c">#print(json.dumps(self.packet, indent=True))</span>
+</div>
+<div class="viewcode-block" id="NetworkManager.readVideoData"><a class="viewcode-back" href="../../demonstrator.html#multi_uav.DroneControl.NetworkManager.readVideoData">[docs]</a>	<span class="k">def</span> <span class="nf">readVideoData</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;Called when there is some interesting data to read on the video socket.&quot;&quot;&quot;</span>
+		<span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">socket_video</span><span class="o">.</span><span class="n">hasPendingDatagrams</span><span class="p">():</span>
+			<span class="n">sz</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">socket_video</span><span class="o">.</span><span class="n">pendingDatagramSize</span><span class="p">()</span>
+			<span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">host</span><span class="p">,</span> <span class="n">port</span><span class="p">)</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">socket_video</span><span class="o">.</span><span class="n">readDatagram</span><span class="p">(</span><span class="n">sz</span><span class="p">)</span>
+
+			<span class="c"># Some hack to account for PySide vs. PyQt differences</span>
+			<span class="k">if</span> <span class="n">qt</span><span class="o">.</span><span class="n">USES_PYSIDE</span><span class="p">:</span>
+					<span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">data</span><span class="p">()</span>
+		
+			<span class="c"># Decode video data and pass result to the ImageProcessor instance</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_vid_decoder</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+			
+			<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ready_video</span> <span class="o">==</span> <span class="bp">False</span><span class="p">:</span>
+				<span class="c">#print(&quot;Video Ready&quot;)</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">ready_video</span> <span class="o">=</span> <span class="bp">True</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">_update</span><span class="o">.</span><span class="n">video_network_activity_flag</span> <span class="o">=</span> <span class="bp">True</span></div></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" size="18" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">Developing a strategy for multiple UAVs to achieve a common objective v1.0 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2012, Aaron Croucher, Rich Wareham, Christina Georgiou.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.7.
+    </div>
+  </body>
+</html>

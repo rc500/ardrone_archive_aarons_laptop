@@ -1,0 +1,5 @@
+
+Welcome to Developing a strategy for multiple UAVs to achieve a common objective's documentation!
+*************************************************************************************************
+
+Contents:

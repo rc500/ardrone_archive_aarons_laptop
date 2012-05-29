@@ -1,0 +1,589 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Drone control and cooperation &mdash; Developing a strategy for multiple UAVs to achieve a common objective v1.0 documentation</title>
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="Developing a strategy for multiple UAVs to achieve a common objective v1.0 documentation" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="index.html">Developing a strategy for multiple UAVs to achieve a common objective v1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <span class="target" id="module-multi_uav"></span><div class="section" id="drone-control-and-cooperation">
+<h1>Drone control and cooperation<a class="headerlink" href="#drone-control-and-cooperation" title="Permalink to this headline">¶</a></h1>
+<p>Contains code</p>
+<p>This package is made up of the following modules:</p>
+<blockquote>
+<div><ul class="simple">
+<li>DroneApp: Defines the configuration of drones in the swarm used for task completion.</li>
+<li>AppController: Creates objects from the below modules from the specification in the DroneApp module.</li>
+<li>DroneControl: Sends commands and listens to packets from a drone via the controlloop module.</li>
+<li>DroneStates: Defines the state of an individual drone based on status messages.</li>
+<li>SwarmControl: Manages multiple drone controllers to complete a task using logic.</li>
+<li>SwarmStates: Defines the state of a group (or swarm) of drones in relation to a set task based on status messages.</li>
+<li>StatusUpdater: Handles raw sensor readings pushed up from the drone and parses them into formats which are useful for different parts of the program. Statuses are then pushed out to DroneControl and SwarmControl objects.</li>
+<li>ImageProcessor: Processes video frames direct from the drone, pushes output to DroneControl and provides a video feed in an external window. Utilises the aruco library to process reference markers.</li>
+<li>Navigator: Handles all logic relating to routing over a known mapped area.</li>
+<li>Controllers: Manages access to a range of controllers which use the DroneControl module to push control inputs to the drone.</li>
+</ul>
+</div></blockquote>
+<span class="target" id="module-multi_uav.DroneApp"></span><span class="target" id="module-multi_uav.AppController"></span><dl class="class">
+<dt id="multi_uav.AppController.AppController">
+<em class="property">class </em><tt class="descclassname">multi_uav.AppController.</tt><tt class="descname">AppController</tt><big>(</big><em>drones</em>, <em>configs</em><big>)</big><a class="reference internal" href="_modules/multi_uav/AppController.html#AppController"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#multi_uav.AppController.AppController" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initially sets up system in configuration provided. Routes communication of status messages to status updater.</p>
+<dl class="method">
+<dt id="multi_uav.AppController.AppController.finish">
+<tt class="descname">finish</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/multi_uav/AppController.html#AppController.finish"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#multi_uav.AppController.AppController.finish" title="Permalink to this definition">¶</a></dt>
+<dd><p>Finish app</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="multi_uav.AppController.AppController.start">
+<tt class="descname">start</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/multi_uav/AppController.html#AppController.start"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#multi_uav.AppController.AppController.start" title="Permalink to this definition">¶</a></dt>
+<dd><p>Start app</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="multi_uav.AppController.AppController.update">
+<tt class="descname">update</tt><big>(</big><em>something</em><big>)</big><a class="reference internal" href="_modules/multi_uav/AppController.html#AppController.update"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#multi_uav.AppController.AppController.update" title="Permalink to this definition">¶</a></dt>
+<dd><p>Passes on updates to status updater</p>
+</dd></dl>
+
+</dd></dl>
+
+<span class="target" id="module-multi_uav.DroneControl"></span><dl class="class">
+<dt id="multi_uav.DroneControl.DroneControl">
+<em class="property">class </em><tt class="descclassname">multi_uav.DroneControl.</tt><tt class="descname">DroneControl</tt><big>(</big><em>drone_id</em>, <em>_control</em>, <em>network_config</em>, <em>updater</em><big>)</big><a class="reference internal" href="_modules/multi_uav/DroneControl.html#DroneControl"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#multi_uav.DroneControl.DroneControl" title="Permalink to this definition">¶</a></dt>
+<dd><p>The base class for overseeing actions of an individual drone.</p>
+<p>Acts upon messages from SwarmControl class by changing position (using Controller class) or carrying out standard land, take off, change camera actions (using ControlLoop class).</p>
+<dl class="method">
+<dt id="multi_uav.DroneControl.DroneControl.get_visible_markers">
+<tt class="descname">get_visible_markers</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/multi_uav/DroneControl.html#DroneControl.get_visible_markers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#multi_uav.DroneControl.DroneControl.get_visible_markers" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a list of currently visible marker ids</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="multi_uav.DroneControl.DroneControl.request_state">
+<tt class="descname">request_state</tt><big>(</big><em>state_id</em><big>)</big><a class="reference internal" href="_modules/multi_uav/DroneControl.html#DroneControl.request_state"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#multi_uav.DroneControl.DroneControl.request_state" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="docutils">
+<dt>Decide what to do based on a requested state_id</dt>
+<dd>Either  maintain current state
+Or      request transition towards requested state</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="multi_uav.DroneControl.DroneControl.update">
+<tt class="descname">update</tt><big>(</big><em>status</em><big>)</big><a class="reference internal" href="_modules/multi_uav/DroneControl.html#DroneControl.update"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#multi_uav.DroneControl.DroneControl.update" title="Permalink to this definition">¶</a></dt>
+<dd><p>Merge status with local version and send to the status updater with appropriate drone_id label.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="multi_uav.DroneControl.NetworkManager">
+<em class="property">class </em><tt class="descclassname">multi_uav.DroneControl.</tt><tt class="descname">NetworkManager</tt><big>(</big><em>_vid_decoder</em>, <em>_update</em>, <em>network_config</em><big>)</big><a class="reference internal" href="_modules/multi_uav/DroneControl.html#NetworkManager"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#multi_uav.DroneControl.NetworkManager" title="Permalink to this definition">¶</a></dt>
+<dd><p>A class which manages the sending and receiving of packets over the network.
+It stores the relevant data of received packets and sends packets when requested.</p>
+<p>IP address of drone: config.[&#8216;host&#8217;]
+Localhost: 127.0.0.1</p>
+<dl class="method">
+<dt id="multi_uav.DroneControl.NetworkManager.readControlData">
+<tt class="descname">readControlData</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/multi_uav/DroneControl.html#NetworkManager.readControlData"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#multi_uav.DroneControl.NetworkManager.readControlData" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called when there is some interesting data to read on the control socket</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="multi_uav.DroneControl.NetworkManager.readVideoData">
+<tt class="descname">readVideoData</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/multi_uav/DroneControl.html#NetworkManager.readVideoData"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#multi_uav.DroneControl.NetworkManager.readVideoData" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called when there is some interesting data to read on the video socket.</p>
+</dd></dl>
+
+</dd></dl>
+
+<span class="target" id="module-multi_uav.DroneStates"></span><dl class="class">
+<dt id="multi_uav.DroneStates.AirborneState">
+<em class="property">class </em><tt class="descclassname">multi_uav.DroneStates.</tt><tt class="descname">AirborneState</tt><big>(</big><em>_drone</em>, <em>drone_id</em><big>)</big><a class="reference internal" href="_modules/multi_uav/DroneStates.html#AirborneState"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#multi_uav.DroneStates.AirborneState" title="Permalink to this definition">¶</a></dt>
+<dd><p>ID = 2</p>
+<p>The state for when the drones are initially airborne.
+State entry requirements: drones are airborne.
+State purpose: to get drones hovering stably at height.
+State exit: when drones are stable and ready to manoeuvre</p>
+<dl class="docutils">
+<dt>State exit conditions:</dt>
+<dd>height_stable == True for all drones</dd>
+</dl>
+</dd></dl>
+
+<dl class="class">
+<dt id="multi_uav.DroneStates.CommunicationState">
+<em class="property">class </em><tt class="descclassname">multi_uav.DroneStates.</tt><tt class="descname">CommunicationState</tt><big>(</big><em>_drone</em>, <em>drone_id</em><big>)</big><a class="reference internal" href="_modules/multi_uav/DroneStates.html#CommunicationState"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#multi_uav.DroneStates.CommunicationState" title="Permalink to this definition">¶</a></dt>
+<dd><p>ID = 0</p>
+<p>The state for when the drones are not verified as being in contact with the network.
+State entry requirements: -
+State purpose: to get drones communicating
+State exit: when drones are on and communicating</p>
+<dl class="docutils">
+<dt>State exit conditions:</dt>
+<dd>talking == True</dd>
+</dl>
+</dd></dl>
+
+<dl class="class">
+<dt id="multi_uav.DroneStates.ControlledState">
+<em class="property">class </em><tt class="descclassname">multi_uav.DroneStates.</tt><tt class="descname">ControlledState</tt><big>(</big><em>_drone</em>, <em>drone_id</em><big>)</big><a class="reference internal" href="_modules/multi_uav/DroneStates.html#ControlledState"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#multi_uav.DroneStates.ControlledState" title="Permalink to this definition">¶</a></dt>
+<dd><p>ID = 3</p>
+<p>The state for when the drones are stable in height.
+State entry requirements: drones are stable at altitude.
+State purpose: to get drones hovering stably over target marker, transitioning through marker transition vector to achieve this.
+State exit: when marker is stable over target marker.</p>
+<dl class="docutils">
+<dt>State exit conditions:</dt>
+<dd>completed marker transition</dd>
+</dl>
+</dd></dl>
+
+<dl class="class">
+<dt id="multi_uav.DroneStates.GroundState">
+<em class="property">class </em><tt class="descclassname">multi_uav.DroneStates.</tt><tt class="descname">GroundState</tt><big>(</big><em>_drone</em>, <em>drone_id</em><big>)</big><a class="reference internal" href="_modules/multi_uav/DroneStates.html#GroundState"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#multi_uav.DroneStates.GroundState" title="Permalink to this definition">¶</a></dt>
+<dd><p>ID = 1</p>
+<p>The state for when the drones are not airborne.
+State entry requirements: drones are on and able to communicate with the controller.
+State purpose: to get drones airborne
+State exit: when drones are airborne</p>
+<dl class="docutils">
+<dt>State exit conditions:</dt>
+<dd>airborne == True for all drones</dd>
+</dl>
+</dd></dl>
+
+<dl class="class">
+<dt id="multi_uav.DroneStates.State">
+<em class="property">class </em><tt class="descclassname">multi_uav.DroneStates.</tt><tt class="descname">State</tt><big>(</big><em>_drone</em>, <em>drone_id</em><big>)</big><a class="reference internal" href="_modules/multi_uav/DroneStates.html#State"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#multi_uav.DroneStates.State" title="Permalink to this definition">¶</a></dt>
+<dd><p>A class which determines states of a drone.
+This is the base class from which all states inherit.
+As status messages are received, the state machine determines the next state and changes it accordingly.</p>
+<p>Upon creation of a new state, the state is initialised and then runs action() which carries out further initialisation.</p>
+<dl class="method">
+<dt id="multi_uav.DroneStates.State.check_exit">
+<tt class="descname">check_exit</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/multi_uav/DroneStates.html#State.check_exit"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#multi_uav.DroneStates.State.check_exit" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check the exit conditions against the state_properties.
+If state requires changing, return the new state id.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="multi_uav.DroneStates.State.maintain">
+<tt class="descname">maintain</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/multi_uav/DroneStates.html#State.maintain"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#multi_uav.DroneStates.State.maintain" title="Permalink to this definition">¶</a></dt>
+<dd><p>Take action to maintain current state.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="multi_uav.DroneStates.State.transition">
+<tt class="descname">transition</tt><big>(</big><em>state_id</em><big>)</big><a class="reference internal" href="_modules/multi_uav/DroneStates.html#State.transition"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#multi_uav.DroneStates.State.transition" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="docutils">
+<dt>Take action to change drone&#8217;s state to that requested.</dt>
+<dd>Note - the state is merely allowed to transition (it does so automatically if allowed)</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<span class="target" id="module-multi_uav.SwarmControl"></span><dl class="class">
+<dt id="multi_uav.SwarmControl.SwarmControl">
+<em class="property">class </em><tt class="descclassname">multi_uav.SwarmControl.</tt><tt class="descname">SwarmControl</tt><big>(</big><em>drones</em>, <em>drone_controllers</em><big>)</big><a class="reference internal" href="_modules/multi_uav/SwarmControl.html#SwarmControl"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#multi_uav.SwarmControl.SwarmControl" title="Permalink to this definition">¶</a></dt>
+<dd><p>The base class for overseeing cooperative control of multiple drones.</p>
+<p>Uses navigation logic (from Navigator class) and task logic (from Swarm States) to decide on actions.
+Actions are sent to each drone&#8217;s Individual Controller.</p>
+<dl class="method">
+<dt id="multi_uav.SwarmControl.SwarmControl.action">
+<tt class="descname">action</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/multi_uav/SwarmControl.html#SwarmControl.action"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#multi_uav.SwarmControl.SwarmControl.action" title="Permalink to this definition">¶</a></dt>
+<dd><p>Decide what to do.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="multi_uav.SwarmControl.SwarmControl.change_state">
+<tt class="descname">change_state</tt><big>(</big><em>state</em><big>)</big><a class="reference internal" href="_modules/multi_uav/SwarmControl.html#SwarmControl.change_state"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#multi_uav.SwarmControl.SwarmControl.change_state" title="Permalink to this definition">¶</a></dt>
+<dd><p>Function called to update the state used by the SwarmController object</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="multi_uav.SwarmControl.SwarmControl.maintain_state">
+<tt class="descname">maintain_state</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/multi_uav/SwarmControl.html#SwarmControl.maintain_state"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#multi_uav.SwarmControl.SwarmControl.maintain_state" title="Permalink to this definition">¶</a></dt>
+<dd><p>Maintain current state.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="multi_uav.SwarmControl.SwarmControl.send_routes">
+<tt class="descname">send_routes</tt><big>(</big><em>routes</em>, <em>send_to</em><big>)</big><a class="reference internal" href="_modules/multi_uav/SwarmControl.html#SwarmControl.send_routes"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#multi_uav.SwarmControl.SwarmControl.send_routes" title="Permalink to this definition">¶</a></dt>
+<dd><p>Function which gives drones a route in the form of a list of marker ids.
+Only drone ids defined in the &#8216;send_to&#8217; parameter are sent to.</p>
+<p>send_to must be a list or tuple</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="multi_uav.SwarmControl.SwarmControl.transition_to_state">
+<tt class="descname">transition_to_state</tt><big>(</big><em>state_id</em><big>)</big><a class="reference internal" href="_modules/multi_uav/SwarmControl.html#SwarmControl.transition_to_state"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#multi_uav.SwarmControl.SwarmControl.transition_to_state" title="Permalink to this definition">¶</a></dt>
+<dd><p>Progress to new state.</p>
+</dd></dl>
+
+</dd></dl>
+
+<span class="target" id="module-multi_uav.SwarmStates"></span><dl class="class">
+<dt id="multi_uav.SwarmStates.SetupState">
+<em class="property">class </em><tt class="descclassname">multi_uav.SwarmStates.</tt><tt class="descname">SetupState</tt><big>(</big><em>_coop</em>, <em>drones</em>, <em>drone_controllers</em><big>)</big><a class="reference internal" href="_modules/multi_uav/SwarmStates.html#SetupState"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#multi_uav.SwarmStates.SetupState" title="Permalink to this definition">¶</a></dt>
+<dd><p>ID = 0</p>
+<p>The SetupState is for when the drones are not verified as being ready for operations.
+State entry requirements: none
+State purpose: to WAIT until drones are hovering stably</p>
+<p>State transition conditions:</p>
+<p>State 0:
+-</p>
+<p>State 1:
+height_stable == True for all drones</p>
+<p>State 2:
+-</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="multi_uav.SwarmStates.State">
+<em class="property">class </em><tt class="descclassname">multi_uav.SwarmStates.</tt><tt class="descname">State</tt><big>(</big><em>_coop</em>, <em>drones</em>, <em>drone_controllers</em><big>)</big><a class="reference internal" href="_modules/multi_uav/SwarmStates.html#State"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#multi_uav.SwarmStates.State" title="Permalink to this definition">¶</a></dt>
+<dd><p>A class which manages the state of the SwarmController object.
+This is the base class from which all states inherit.
+As status messages are received, the state machine determines the next state and changes it accordingly.</p>
+<dl class="method">
+<dt id="multi_uav.SwarmStates.State.check_exit">
+<tt class="descname">check_exit</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/multi_uav/SwarmStates.html#State.check_exit"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#multi_uav.SwarmStates.State.check_exit" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check the exit conditions against swarm status.
+If state requires changing then do so to the correct state.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="multi_uav.SwarmStates.State.maintain">
+<tt class="descname">maintain</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/multi_uav/SwarmStates.html#State.maintain"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#multi_uav.SwarmStates.State.maintain" title="Permalink to this definition">¶</a></dt>
+<dd><p>Carry out action to maintain state.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="multi_uav.SwarmStates.State.transition">
+<tt class="descname">transition</tt><big>(</big><em>state_id</em><big>)</big><a class="reference internal" href="_modules/multi_uav/SwarmStates.html#State.transition"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#multi_uav.SwarmStates.State.transition" title="Permalink to this definition">¶</a></dt>
+<dd><p>Carry out action to transition towards requested state.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="multi_uav.SwarmStates.TaskBad">
+<em class="property">class </em><tt class="descclassname">multi_uav.SwarmStates.</tt><tt class="descname">TaskBad</tt><big>(</big><em>_coop</em>, <em>drones</em>, <em>drone_controllers</em><big>)</big><a class="reference internal" href="_modules/multi_uav/SwarmStates.html#TaskBad"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#multi_uav.SwarmStates.TaskBad" title="Permalink to this definition">¶</a></dt>
+<dd><p>ID = 1</p>
+<p>The GroundState state for when task is not being achieved.
+State entry requirements: assets are ready.
+State purpose: to achieved the task.</p>
+<p>TASK - to move continuously around a loop without collision</p>
+<p>State transition conditions:</p>
+<p>State 0:
+-</p>
+<p>State 1:
+-</p>
+<p>State 2:
+airprox == False &amp;&amp; following_marker == True</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="multi_uav.SwarmStates.TaskGood">
+<em class="property">class </em><tt class="descclassname">multi_uav.SwarmStates.</tt><tt class="descname">TaskGood</tt><big>(</big><em>_coop</em>, <em>drones</em>, <em>drone_controllers</em><big>)</big><a class="reference internal" href="_modules/multi_uav/SwarmStates.html#TaskGood"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#multi_uav.SwarmStates.TaskGood" title="Permalink to this definition">¶</a></dt>
+<dd><p>ID = 2</p>
+<p>The CooperativeController state for when the task is being achieved.
+State entry requirements: task is being achieved.
+State purpose: watch over situation to detect danger to both task and assets.</p>
+<p>TASK - to move continuously around a loop without collision</p>
+<p>State transition conditions:</p>
+<p>State 0:
+-</p>
+<p>State 1:
+airprox == True || following_marker == False</p>
+<p>State 2:
+-</p>
+</dd></dl>
+
+<span class="target" id="module-multi_uav.StatusUpdater"></span><dl class="class">
+<dt id="multi_uav.StatusUpdater.StatusUpdater">
+<em class="property">class </em><tt class="descclassname">multi_uav.StatusUpdater.</tt><tt class="descname">StatusUpdater</tt><big>(</big><em>drones</em>, <em>drone_controllers</em>, <em>swarm_controller</em><big>)</big><a class="reference internal" href="_modules/multi_uav/StatusUpdater.html#StatusUpdater"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#multi_uav.StatusUpdater.StatusUpdater" title="Permalink to this definition">¶</a></dt>
+<dd><p>Updates statuses through code, parsing into the required format at each stage.</p>
+<dl class="docutils">
+<dt>Different levels of abstraction for statuses:</dt>
+<dd><ul class="first last simple">
+<li>swarm_status</li>
+<li>drone_status</li>
+<li>raw_status</li>
+</ul>
+</dd>
+</dl>
+<p>Expand documentation here - e.g. contents of statuses</p>
+<dl class="method">
+<dt id="multi_uav.StatusUpdater.StatusUpdater.parse_drone_for_swarm">
+<tt class="descname">parse_drone_for_swarm</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/multi_uav/StatusUpdater.html#StatusUpdater.parse_drone_for_swarm"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#multi_uav.StatusUpdater.StatusUpdater.parse_drone_for_swarm" title="Permalink to this definition">¶</a></dt>
+<dd><p>Parse drone status into format for swarm status.
+This takes the current swarm_status and updates it.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="multi_uav.StatusUpdater.StatusUpdater.parse_raw_for_drone">
+<tt class="descname">parse_raw_for_drone</tt><big>(</big><em>status</em><big>)</big><a class="reference internal" href="_modules/multi_uav/StatusUpdater.html#StatusUpdater.parse_raw_for_drone"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#multi_uav.StatusUpdater.StatusUpdater.parse_raw_for_drone" title="Permalink to this definition">¶</a></dt>
+<dd><p>Parse raw status into format for drone status</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="multi_uav.StatusUpdater.StatusUpdater.push_drone_status">
+<tt class="descname">push_drone_status</tt><big>(</big><em>status</em><big>)</big><a class="reference internal" href="_modules/multi_uav/StatusUpdater.html#StatusUpdater.push_drone_status"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#multi_uav.StatusUpdater.StatusUpdater.push_drone_status" title="Permalink to this definition">¶</a></dt>
+<dd><p>Pushes status message to appropriate DroneControl</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="multi_uav.StatusUpdater.StatusUpdater.push_swarm_status">
+<tt class="descname">push_swarm_status</tt><big>(</big><em>status</em><big>)</big><a class="reference internal" href="_modules/multi_uav/StatusUpdater.html#StatusUpdater.push_swarm_status"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#multi_uav.StatusUpdater.StatusUpdater.push_swarm_status" title="Permalink to this definition">¶</a></dt>
+<dd><p>Pushes status message to SwarmControl</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="multi_uav.StatusUpdater.StatusUpdater.update">
+<tt class="descname">update</tt><big>(</big><em>status</em><big>)</big><a class="reference internal" href="_modules/multi_uav/StatusUpdater.html#StatusUpdater.update"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#multi_uav.StatusUpdater.StatusUpdater.update" title="Permalink to this definition">¶</a></dt>
+<dd><p>Take status (dictionary structure) and parse given status to propagate up levels (raw-&gt;drone-&gt;swarm)
+Only raw statuses should be passed into the class - all others will be rejected</p>
+</dd></dl>
+
+</dd></dl>
+
+<span class="target" id="module-multi_uav.ImageProcessor"></span><span class="target" id="module-multi_uav.Navigator"></span><dl class="class">
+<dt id="multi_uav.Navigator.Navigator">
+<em class="property">class </em><tt class="descclassname">multi_uav.Navigator.</tt><tt class="descname">Navigator</tt><big>(</big><em>drones</em><big>)</big><a class="reference internal" href="_modules/multi_uav/Navigator.html#Navigator"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#multi_uav.Navigator.Navigator" title="Permalink to this definition">¶</a></dt>
+<dd><p>A class which works out safe routes for drones to follow.
+All functions are called with a list of the drones current positions (and possibly other parameters too)
+All &#8216;public&#8217; functions return one list of n lists, where n is the number of drones being controlled</p>
+<dl class="method">
+<dt id="multi_uav.Navigator.Navigator.check_deconflict">
+<tt class="descname">check_deconflict</tt><big>(</big><em>pos</em><big>)</big><a class="reference internal" href="_modules/multi_uav/Navigator.html#Navigator.check_deconflict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#multi_uav.Navigator.Navigator.check_deconflict" title="Permalink to this definition">¶</a></dt>
+<dd><p>A basic deconfliction algorithm which changes the routes of all drones that have unsafe routes
+Only guarantees deconfliction on maps with no junctions</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="multi_uav.Navigator.Navigator.check_rvp">
+<tt class="descname">check_rvp</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/multi_uav/Navigator.html#Navigator.check_rvp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#multi_uav.Navigator.Navigator.check_rvp" title="Permalink to this definition">¶</a></dt>
+<dd><p>Checks the routes of each drone with the current position of the other drones.
+A list containing bools is returned.
+If a drone&#8217;s route risks collision with another then False is returned for that drone.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="multi_uav.Navigator.Navigator.front_drone">
+<tt class="descname">front_drone</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/multi_uav/Navigator.html#Navigator.front_drone"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#multi_uav.Navigator.Navigator.front_drone" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns drone_id of the drone in front of loop.
+&#8216;Front&#8217; drone is determined by whichever drone has the most number of clear spaces in front of them.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="multi_uav.Navigator.Navigator.hold_position_route">
+<tt class="descname">hold_position_route</tt><big>(</big><em>pos</em><big>)</big><a class="reference internal" href="_modules/multi_uav/Navigator.html#Navigator.hold_position_route"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#multi_uav.Navigator.Navigator.hold_position_route" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a route which is the current positions passed</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="multi_uav.Navigator.Navigator.next">
+<tt class="descname">next</tt><big>(</big><em>pos</em><big>)</big><a class="reference internal" href="_modules/multi_uav/Navigator.html#Navigator.next"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#multi_uav.Navigator.Navigator.next" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns markers next to current marker in order [forward,backward]</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="multi_uav.Navigator.Navigator.route">
+<tt class="descname">route</tt><big>(</big><em>pos</em><big>)</big><a class="reference internal" href="_modules/multi_uav/Navigator.html#Navigator.route"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#multi_uav.Navigator.Navigator.route" title="Permalink to this definition">¶</a></dt>
+<dd><p>A basic algorithm for setting a looping route around a continuous path. Route is never longer than 6 markers ahead.</p>
+</dd></dl>
+
+</dd></dl>
+
+<span class="target" id="module-multi_uav.Controllers"></span><dl class="class">
+<dt id="multi_uav.Controllers.Controller">
+<em class="property">class </em><tt class="descclassname">multi_uav.Controllers.</tt><tt class="descname">Controller</tt><big>(</big><em>_control</em>, <em>feedback_type</em>, <em>output_type</em>, <em>update_key</em>, <em>reference</em>, <em>error_margin</em>, <em>hard_limit=1</em><big>)</big><a class="reference internal" href="_modules/multi_uav/Controllers.html#Controller"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#multi_uav.Controllers.Controller" title="Permalink to this definition">¶</a></dt>
+<dd><p>Class forming the base functionality of a controller</p>
+<dl class="method">
+<dt id="multi_uav.Controllers.Controller.check_error">
+<tt class="descname">check_error</tt><big>(</big><em>error</em><big>)</big><a class="reference internal" href="_modules/multi_uav/Controllers.html#Controller.check_error"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#multi_uav.Controllers.Controller.check_error" title="Permalink to this definition">¶</a></dt>
+<dd><p>Checks whether the error is within acceptable limits.
+If it is within limits then the controller has achieved its goal and posts this status to the network.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="multi_uav.Controllers.ControllerManager">
+<em class="property">class </em><tt class="descclassname">multi_uav.Controllers.</tt><tt class="descname">ControllerManager</tt><big>(</big><em>_control</em><big>)</big><a class="reference internal" href="_modules/multi_uav/Controllers.html#ControllerManager"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#multi_uav.Controllers.ControllerManager" title="Permalink to this definition">¶</a></dt>
+<dd><p>Class to manage all the controllers for one drone.
+Regulates the packets being sent to the drone so only one command is sent every heartbeat (otherwise we may overload the system).</p>
+<dl class="method">
+<dt id="multi_uav.Controllers.ControllerManager.create_lead_lag_2_controller">
+<tt class="descname">create_lead_lag_2_controller</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/multi_uav/Controllers.html#ControllerManager.create_lead_lag_2_controller"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#multi_uav.Controllers.ControllerManager.create_lead_lag_2_controller" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates a lead lag controller of type 2</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="multi_uav.Controllers.ControllerManager.create_lead_lag_controller">
+<tt class="descname">create_lead_lag_controller</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/multi_uav/Controllers.html#ControllerManager.create_lead_lag_controller"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#multi_uav.Controllers.ControllerManager.create_lead_lag_controller" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates a lead lag controller of type 1</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="multi_uav.Controllers.ControllerManager.create_proportional_controller">
+<tt class="descname">create_proportional_controller</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/multi_uav/Controllers.html#ControllerManager.create_proportional_controller"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#multi_uav.Controllers.ControllerManager.create_proportional_controller" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates a proportional controller</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="multi_uav.Controllers.ControllerManager.heartbeat">
+<tt class="descname">heartbeat</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/multi_uav/Controllers.html#ControllerManager.heartbeat"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#multi_uav.Controllers.ControllerManager.heartbeat" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get each controller to update its variables and then send them all to the drone at once.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="multi_uav.Controllers.ControllerManager.stop_control">
+<tt class="descname">stop_control</tt><big>(</big><em>output_type</em><big>)</big><a class="reference internal" href="_modules/multi_uav/Controllers.html#ControllerManager.stop_control"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#multi_uav.Controllers.ControllerManager.stop_control" title="Permalink to this definition">¶</a></dt>
+<dd><p>Removes the current controller for output_type passed.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="multi_uav.Controllers.LeadLagController">
+<em class="property">class </em><tt class="descclassname">multi_uav.Controllers.</tt><tt class="descname">LeadLagController</tt><big>(</big><em>_control</em>, <em>feedback_type</em>, <em>output_type</em>, <em>update_key</em>, <em>k</em>, <em>a</em>, <em>b</em>, <em>T</em>, <em>reference</em>, <em>error_margin</em>, <em>hard_limit=1</em><big>)</big><a class="reference internal" href="_modules/multi_uav/Controllers.html#LeadLagController"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#multi_uav.Controllers.LeadLagController" title="Permalink to this definition">¶</a></dt>
+<dd><p>Implementation of a lead-lag controller which takes a position and returns a correcting velocity
+Controller also pre-compensates by a value of K</p>
+<p>ANALOGUE CONTROLLER:
+G(s) = (as + 1) / (bs + 1)</p>
+<dl class="docutils">
+<dt>USE BACKWARD DIFFERENCE TRANSFORMATION:</dt>
+<dd>z - 1</dd>
+<dt>s = &#8212;&#8212;-</dt>
+<dd>zT</dd>
+<dt>DIGITAL CONTORLLER:</dt>
+<dd>zT + (z-1)a</dd>
+<dt>G(z) =  &#8212;&#8212;&#8212;&#8212;</dt>
+<dd>zT + (z-1)b</dd>
+<dt>DIFFERENCE EQUATION:</dt>
+<dd>1</dd>
+<dt>y[k] =  &#8212;&#8211;  { (y[k-1] * b) - (e[k-1] * a) + (e[k] * (T+a)) }</dt>
+<dd>(T+b)</dd>
+</dl>
+</dd></dl>
+
+<dl class="class">
+<dt id="multi_uav.Controllers.LeadLagController2">
+<em class="property">class </em><tt class="descclassname">multi_uav.Controllers.</tt><tt class="descname">LeadLagController2</tt><big>(</big><em>_control</em>, <em>feedback_type</em>, <em>output_type</em>, <em>update_key</em>, <em>k</em>, <em>a</em>, <em>b</em>, <em>T</em>, <em>reference</em>, <em>error_margin</em>, <em>hard_limit=1</em><big>)</big><a class="reference internal" href="_modules/multi_uav/Controllers.html#LeadLagController2"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#multi_uav.Controllers.LeadLagController2" title="Permalink to this definition">¶</a></dt>
+<dd><p>Implementation of a lead-lag controller using Tustin Transformation. Takes a position and returns a correcting velocity
+Controller also pre-compensates by a value of K</p>
+<p>ANALOGUE CONTROLLER:
+G(s) = (as + 1) / (bs + 1)</p>
+<dl class="docutils">
+<dt>USE TUSTIN TRANSFORMATION:</dt>
+<dd>2(z-1)</dd>
+<dt>s = &#8212;&#8212;&#8211;</dt>
+<dd>T(z+1)</dd>
+<dt>DIGITAL CONTORLLER:</dt>
+<dd>T(z+1) + 2(z-1)a</dd>
+<dt>G(z) =  &#8212;&#8212;&#8212;&#8212;&#8212;-</dt>
+<dd>T(z+1) + 2(z-1)b</dd>
+<dt>DIFFERENCE EQUATION:</dt>
+<dd>1</dd>
+<dt>y[k] =  &#8212;&#8212;  { - (y[k-1]*(T-2b)) + (e[k-1]*(T-2a)) + (e[k]*(T+2a)) }</dt>
+<dd>(T+2b)</dd>
+</dl>
+</dd></dl>
+
+<dl class="class">
+<dt id="multi_uav.Controllers.ProportionalController">
+<em class="property">class </em><tt class="descclassname">multi_uav.Controllers.</tt><tt class="descname">ProportionalController</tt><big>(</big><em>_control</em>, <em>feedback_type</em>, <em>output_type</em>, <em>update_key</em>, <em>k</em>, <em>reference</em>, <em>error_margin</em>, <em>hard_limit=1</em><big>)</big><a class="reference internal" href="_modules/multi_uav/Controllers.html#ProportionalController"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#multi_uav.Controllers.ProportionalController" title="Permalink to this definition">¶</a></dt>
+<dd><p>Implementation of a proportional controller which takes a position and returns a correcting velocity</p>
+<p>CONTROLLER:
+G(s) = K</p>
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/demonstrator.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" size="18" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="index.html">Developing a strategy for multiple UAVs to achieve a common objective v1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2012, Aaron Croucher, Rich Wareham, Christina Georgiou.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.7.
+    </div>
+  </body>
+</html>

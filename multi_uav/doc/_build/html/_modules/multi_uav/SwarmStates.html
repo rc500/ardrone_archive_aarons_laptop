@@ -1,0 +1,304 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>multi_uav.SwarmStates &mdash; Developing a strategy for multiple UAVs to achieve a common objective v1.0 documentation</title>
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="Developing a strategy for multiple UAVs to achieve a common objective v1.0 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">Developing a strategy for multiple UAVs to achieve a common objective v1.0 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for multi_uav.SwarmStates</h1><div class="highlight"><pre>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">json</span><span class="o">,</span> <span class="nn">socket</span><span class="o">,</span> <span class="nn">time</span>
+
+<span class="c"># This makes sure the path which python uses to find things when using import</span>
+<span class="c"># can find all our code.</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="s">&#39;..&#39;</span><span class="p">))</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">__file__</span><span class="p">),</span> <span class="s">&#39;..&#39;</span><span class="p">)))</span>
+
+<span class="c"># import qt modules (platform independant)</span>
+<span class="kn">import</span> <span class="nn">ardrone.util.qtcompat</span> <span class="kn">as</span> <span class="nn">qt</span>
+<span class="n">QtCore</span> <span class="o">=</span> <span class="n">qt</span><span class="o">.</span><span class="n">import_module</span><span class="p">(</span><span class="s">&#39;QtCore&#39;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="State"><a class="viewcode-back" href="../../demonstrator.html#multi_uav.SwarmStates.State">[docs]</a><span class="k">class</span> <span class="nc">State</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">	A class which manages the state of the SwarmController object.</span>
+<span class="sd">	This is the base class from which all states inherit.</span>
+<span class="sd">	As status messages are received, the state machine determines the next state and changes it accordingly.</span>
+<span class="sd">	</span>
+<span class="sd">	&quot;&quot;&quot;</span>
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">_coop</span><span class="p">,</span><span class="n">drones</span><span class="p">,</span><span class="n">drone_controllers</span><span class="p">):</span>
+		
+		<span class="c"># Variables</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">drones</span> <span class="o">=</span> <span class="n">drones</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">state_ids</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">)</span>
+
+		<span class="c"># Assign pointers</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">drone_controllers</span> <span class="o">=</span> <span class="n">drone_controllers</span> <span class="c"># NB - actually a tuple of pointers</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_coop</span> <span class="o">=</span> <span class="n">_coop</span>
+
+<div class="viewcode-block" id="State.transition"><a class="viewcode-back" href="../../demonstrator.html#multi_uav.SwarmStates.State.transition">[docs]</a>	<span class="k">def</span> <span class="nf">transition</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">state_id</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Carry out action to transition towards requested state.</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="k">pass</span>
+</div>
+<div class="viewcode-block" id="State.maintain"><a class="viewcode-back" href="../../demonstrator.html#multi_uav.SwarmStates.State.maintain">[docs]</a>	<span class="k">def</span> <span class="nf">maintain</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Carry out action to maintain state.</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="k">pass</span>
+</div>
+<div class="viewcode-block" id="State.check_exit"><a class="viewcode-back" href="../../demonstrator.html#multi_uav.SwarmStates.State.check_exit">[docs]</a>	<span class="k">def</span> <span class="nf">check_exit</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Check the exit conditions against swarm status.</span>
+<span class="sd">		If state requires changing then do so to the correct state.</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="c"># Count for conditions which have been met</span>
+		<span class="n">conditions_met_count</span> <span class="o">=</span> <span class="mi">0</span>
+
+		<span class="c"># Check exit condition for each state against all exit conditions for the respective state</span>
+		<span class="k">for</span> <span class="n">state</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">state_ids</span><span class="p">:</span>
+			<span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">exit_conditions</span><span class="p">[</span><span class="n">state</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+				<span class="c">#print (&quot;checking condition against: %s&quot; % key)</span>
+				<span class="c">#print (&quot;comparisson: %s&quot; % ([self.exit_conditions[state][key],self._coop.swarm_status[key]]))</span>
+				<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">exit_conditions</span><span class="p">[</span><span class="n">state</span><span class="p">][</span><span class="n">key</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">_coop</span><span class="o">.</span><span class="n">swarm_status</span><span class="p">[</span><span class="n">key</span><span class="p">]:</span>
+					<span class="n">conditions_met_count</span> <span class="o">=</span> <span class="n">conditions_met_count</span> <span class="o">+</span> <span class="mi">1</span>
+
+			<span class="c"># Check met conditions against total conditions, accept or reject exit as specified in state</span>
+			<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">exit_conditional</span><span class="p">[</span><span class="n">state</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;none&#39;</span><span class="p">:</span>
+				<span class="k">pass</span>
+			<span class="k">elif</span> <span class="n">conditions_met_count</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">exit_conditions</span><span class="p">[</span><span class="n">state</span><span class="p">]):</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">next_state</span><span class="p">(</span><span class="n">state</span><span class="p">)</span>
+			<span class="k">elif</span> <span class="n">conditions_met_count</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">exit_conditional</span><span class="p">[</span><span class="n">state</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;or&#39;</span><span class="p">:</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">next_state</span><span class="p">(</span><span class="n">state</span><span class="p">)</span>
+			<span class="k">elif</span> <span class="n">conditions_met_count</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">exit_conditional</span><span class="p">[</span><span class="n">state</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;and&#39;</span><span class="p">:</span>
+				<span class="k">pass</span>
+			<span class="k">else</span><span class="p">:</span> 
+				<span class="k">print</span><span class="p">(</span><span class="s">&quot;Unexpected condition grouping - check_exit - SwarmStates&quot;</span><span class="p">)</span>
+</div>
+	<span class="k">def</span> <span class="nf">next_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">state_id</span><span class="p">):</span>
+		<span class="k">if</span> <span class="n">state_id</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_coop</span><span class="o">.</span><span class="n">change_state</span><span class="p">((</span><span class="n">SetupState</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_coop</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">drones</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">drone_controllers</span><span class="p">),</span><span class="mi">0</span><span class="p">))</span>
+		<span class="k">elif</span> <span class="n">state_id</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_coop</span><span class="o">.</span><span class="n">change_state</span><span class="p">((</span><span class="n">TaskBad</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_coop</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">drones</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">drone_controllers</span><span class="p">),</span><span class="mi">1</span><span class="p">))</span>
+		<span class="k">elif</span> <span class="n">state_id</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_coop</span><span class="o">.</span><span class="n">change_state</span><span class="p">((</span><span class="n">TaskGood</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_coop</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">drones</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">drone_controllers</span><span class="p">),</span><span class="mi">2</span><span class="p">))</span>
+</div>
+<div class="viewcode-block" id="SetupState"><a class="viewcode-back" href="../../demonstrator.html#multi_uav.SwarmStates.SetupState">[docs]</a><span class="k">class</span> <span class="nc">SetupState</span><span class="p">(</span><span class="n">State</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">	ID = 0</span>
+<span class="sd">	</span>
+<span class="sd">	The SetupState is for when the drones are not verified as being ready for operations.</span>
+<span class="sd">	State entry requirements: none</span>
+<span class="sd">	State purpose: to WAIT until drones are hovering stably</span>
+<span class="sd">	</span>
+<span class="sd">	State transition conditions:</span>
+
+<span class="sd">	State 0:</span>
+<span class="sd">	-</span>
+
+<span class="sd">	State 1:</span>
+<span class="sd">	height_stable == True for all drones</span>
+
+<span class="sd">	State 2:</span>
+<span class="sd">	-</span>
+<span class="sd">	&quot;&quot;&quot;</span>
+		
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">_coop</span><span class="p">,</span><span class="n">drones</span><span class="p">,</span><span class="n">drone_controllers</span><span class="p">):</span>
+		<span class="c"># Initialise as per State base class</span>
+		<span class="n">State</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">_coop</span><span class="p">,</span><span class="n">drones</span><span class="p">,</span><span class="n">drone_controllers</span><span class="p">)</span>
+		
+		<span class="c"># Set exit conditions</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">exit_conditions</span> <span class="o">=</span> <span class="p">[{},</span> <span class="p">{</span><span class="s">&#39;height_stable&#39;</span><span class="p">:</span><span class="bp">True</span><span class="p">},</span> <span class="p">{}]</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">exit_conditional</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;none&#39;</span><span class="p">,</span><span class="s">&#39;and&#39;</span><span class="p">,</span><span class="s">&#39;none&#39;</span><span class="p">]</span>
+		<span class="k">print</span><span class="p">(</span><span class="s">&quot;======In Setup State======&quot;</span><span class="p">)</span>
+
+	<span class="k">def</span> <span class="nf">maintain</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="k">for</span> <span class="n">drone</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">drone_controllers</span><span class="p">:</span>
+			<span class="n">drone</span><span class="o">.</span><span class="n">request_state</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+
+	<span class="k">def</span> <span class="nf">transition</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">state_id</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">maintain</span><span class="p">()</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">check_exit</span><span class="p">()</span>
+			</div>
+<div class="viewcode-block" id="TaskBad"><a class="viewcode-back" href="../../demonstrator.html#multi_uav.SwarmStates.TaskBad">[docs]</a><span class="k">class</span> <span class="nc">TaskBad</span><span class="p">(</span><span class="n">State</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">	ID = 1</span>
+<span class="sd">	</span>
+<span class="sd">	The GroundState state for when task is not being achieved.</span>
+<span class="sd">	State entry requirements: assets are ready.</span>
+<span class="sd">	State purpose: to achieved the task.</span>
+
+<span class="sd">	TASK - to move continuously around a loop without collision</span>
+<span class="sd">	</span>
+<span class="sd">	State transition conditions:</span>
+
+<span class="sd">	State 0:</span>
+<span class="sd">	-</span>
+
+<span class="sd">	State 1:</span>
+<span class="sd">	-</span>
+
+<span class="sd">	State 2:</span>
+<span class="sd">	airprox == False &amp;&amp; following_marker == True</span>
+
+<span class="sd">	&quot;&quot;&quot;</span>
+	
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">_coop</span><span class="p">,</span><span class="n">drones</span><span class="p">,</span><span class="n">drone_controllers</span><span class="p">):</span>
+		<span class="c"># Initialise as per State base class</span>
+		<span class="n">State</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">_coop</span><span class="p">,</span><span class="n">drones</span><span class="p">,</span><span class="n">drone_controllers</span><span class="p">)</span>
+		
+		<span class="c"># Set exit conditions</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">exit_conditions</span> <span class="o">=</span> <span class="p">[{},</span> <span class="p">{},{</span><span class="s">&#39;airprox&#39;</span><span class="p">:</span><span class="bp">False</span><span class="p">,</span> <span class="s">&#39;following_marker&#39;</span><span class="p">:</span><span class="bp">True</span><span class="p">}]</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">exit_conditional</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;none&#39;</span><span class="p">,</span><span class="s">&#39;none&#39;</span><span class="p">,</span><span class="s">&#39;and&#39;</span><span class="p">]</span>
+
+		<span class="c"># Ask each drone to hold current position</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_coop</span><span class="o">.</span><span class="n">send_routes</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_coop</span><span class="o">.</span><span class="n">_navigator</span><span class="o">.</span><span class="n">hold_position_route</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_coop</span><span class="o">.</span><span class="n">swarm_status</span><span class="p">[</span><span class="s">&#39;position&#39;</span><span class="p">]),</span><span class="bp">self</span><span class="o">.</span><span class="n">drones</span><span class="p">)</span>
+
+		<span class="k">print</span><span class="p">(</span><span class="s">&quot;======Task not being achieved======&quot;</span><span class="p">)</span>
+	
+	<span class="k">def</span> <span class="nf">maintain</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">check_exit</span><span class="p">()</span>
+		<span class="k">pass</span> <span class="c"># It&#39;s not hard to carry on doing something badly!</span>
+
+	<span class="k">def</span> <span class="nf">transition</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">state_id</span><span class="p">):</span>
+		<span class="k">if</span> <span class="n">state_id</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">state_id</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+			<span class="k">print</span><span class="p">(</span><span class="s">&quot;Trying to change from TaskBad state into a SwarmState which isn&#39;t sensible. No action taken - SwarmState&quot;</span><span class="p">)</span>
+		
+		<span class="k">if</span> <span class="n">state_id</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+			<span class="c"># Continue route for front-most drone only to increase separation</span>
+			<span class="n">new_routes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_coop</span><span class="o">.</span><span class="n">_navigator</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_coop</span><span class="o">.</span><span class="n">swarm_status</span><span class="p">[</span><span class="s">&#39;position&#39;</span><span class="p">])</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_coop</span><span class="o">.</span><span class="n">send_routes</span><span class="p">(</span><span class="n">new_routes</span><span class="p">,[</span><span class="bp">self</span><span class="o">.</span><span class="n">_coop</span><span class="o">.</span><span class="n">_navigator</span><span class="o">.</span><span class="n">front_drone</span><span class="p">(),])</span>
+			<span class="c"># Request drones to move into a state able to follow markers</span>
+			<span class="k">for</span> <span class="n">drone</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">drone_controllers</span><span class="p">:</span>
+				<span class="n">drone</span><span class="o">.</span><span class="n">request_state</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+			<span class="c"># Check success</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">check_exit</span><span class="p">()</span>
+				</div>
+<div class="viewcode-block" id="TaskGood"><a class="viewcode-back" href="../../demonstrator.html#multi_uav.SwarmStates.TaskGood">[docs]</a><span class="k">class</span> <span class="nc">TaskGood</span><span class="p">(</span><span class="n">State</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">	ID = 2</span>
+<span class="sd">	</span>
+<span class="sd">	The CooperativeController state for when the task is being achieved.</span>
+<span class="sd">	State entry requirements: task is being achieved.</span>
+<span class="sd">	State purpose: watch over situation to detect danger to both task and assets.</span>
+<span class="sd">	</span>
+<span class="sd">	TASK - to move continuously around a loop without collision</span>
+<span class="sd">	</span>
+<span class="sd">	State transition conditions:</span>
+
+<span class="sd">	State 0:</span>
+<span class="sd">	-</span>
+
+<span class="sd">	State 1:</span>
+<span class="sd">	airprox == True || following_marker == False</span>
+
+<span class="sd">	State 2:</span>
+<span class="sd">	-</span>
+<span class="sd">	&quot;&quot;&quot;</span>
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">_coop</span><span class="p">,</span><span class="n">drones</span><span class="p">,</span><span class="n">drone_controllers</span><span class="p">):</span>
+		<span class="c"># Initialise as per State base class</span>
+		<span class="n">State</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">_coop</span><span class="p">,</span><span class="n">drones</span><span class="p">,</span><span class="n">drone_controllers</span><span class="p">)</span>
+		
+		<span class="c"># Set exit conditions</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">exit_conditions</span> <span class="o">=</span> <span class="p">[{},</span> <span class="p">{</span><span class="s">&#39;airprox&#39;</span><span class="p">:</span><span class="bp">True</span><span class="p">,</span><span class="s">&#39;following_marker&#39;</span><span class="p">:</span><span class="bp">False</span><span class="p">},</span> <span class="p">{}]</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">exit_conditional</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;none&#39;</span><span class="p">,</span><span class="s">&#39;or&#39;</span><span class="p">,</span><span class="s">&#39;none&#39;</span><span class="p">]</span>
+		<span class="k">print</span><span class="p">(</span><span class="s">&quot;======Task being achieved======&quot;</span><span class="p">)</span>
+
+	<span class="k">def</span> <span class="nf">maintain</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="c"># Continue route</span>
+		<span class="n">new_routes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_coop</span><span class="o">.</span><span class="n">_navigator</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_coop</span><span class="o">.</span><span class="n">swarm_status</span><span class="p">[</span><span class="s">&#39;position&#39;</span><span class="p">],</span><span class="bp">self</span><span class="o">.</span><span class="n">drones</span><span class="p">)</span>
+		<span class="k">print</span><span class="p">(</span><span class="s">&quot;new routes: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span><span class="n">new_routes</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_coop</span><span class="o">.</span><span class="n">send_routes</span><span class="p">(</span><span class="n">new_routes</span><span class="p">)</span>
+
+		<span class="c"># Check State</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">check_exit</span><span class="p">()</span>
+
+		<span class="c"># will want to control spacings here</span>
+
+	<span class="k">def</span> <span class="nf">transition</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">state_id</span><span class="p">):</span>
+		<span class="k">pass</span>
+		<span class="c"># nothing yet - or ever?</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" size="18" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">Developing a strategy for multiple UAVs to achieve a common objective v1.0 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2012, Aaron Croucher, Rich Wareham, Christina Georgiou.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.7.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,337 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>multi_uav.DroneStates &mdash; Developing a strategy for multiple UAVs to achieve a common objective v1.0 documentation</title>
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="Developing a strategy for multiple UAVs to achieve a common objective v1.0 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">Developing a strategy for multiple UAVs to achieve a common objective v1.0 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for multi_uav.DroneStates</h1><div class="highlight"><pre>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">json</span><span class="o">,</span> <span class="nn">socket</span><span class="o">,</span> <span class="nn">time</span>
+
+<span class="c"># This makes sure the path which python uses to find things when using import</span>
+<span class="c"># can find all our code.</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="s">&#39;..&#39;</span><span class="p">))</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">__file__</span><span class="p">),</span> <span class="s">&#39;..&#39;</span><span class="p">)))</span>
+
+<span class="c"># import qt modules (platform independant)</span>
+<span class="kn">import</span> <span class="nn">ardrone.util.qtcompat</span> <span class="kn">as</span> <span class="nn">qt</span>
+<span class="n">QtCore</span> <span class="o">=</span> <span class="n">qt</span><span class="o">.</span><span class="n">import_module</span><span class="p">(</span><span class="s">&#39;QtCore&#39;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="State"><a class="viewcode-back" href="../../demonstrator.html#multi_uav.DroneStates.State">[docs]</a><span class="k">class</span> <span class="nc">State</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">	A class which determines states of a drone.</span>
+<span class="sd">	This is the base class from which all states inherit.</span>
+<span class="sd">	As status messages are received, the state machine determines the next state and changes it accordingly.</span>
+
+<span class="sd">	Upon creation of a new state, the state is initialised and then runs action() which carries out further initialisation.</span>
+<span class="sd">	&quot;&quot;&quot;</span>
+
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">_drone</span><span class="p">,</span><span class="n">drone_id</span><span class="p">):</span>
+		<span class="c"># Variables</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">drone_id</span> <span class="o">=</span> <span class="n">drone_id</span>
+
+		<span class="c"># Assign pointers</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_drone</span> <span class="o">=</span> <span class="n">_drone</span>
+		
+<div class="viewcode-block" id="State.maintain"><a class="viewcode-back" href="../../demonstrator.html#multi_uav.DroneStates.State.maintain">[docs]</a>	<span class="k">def</span> <span class="nf">maintain</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Take action to maintain current state.</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="k">pass</span> <span class="c"># State will maintain itself in most states</span>
+	</div>
+<div class="viewcode-block" id="State.transition"><a class="viewcode-back" href="../../demonstrator.html#multi_uav.DroneStates.State.transition">[docs]</a>	<span class="k">def</span> <span class="nf">transition</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">state_id</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Take action to change drone&#39;s state to that requested.</span>
+<span class="sd">			Note - the state is merely allowed to transition (it does so automatically if allowed)</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">check_exit</span><span class="p">()</span> <span class="c"># State will transition automatically (if allowed sufficient time)</span>
+</div>
+<div class="viewcode-block" id="State.check_exit"><a class="viewcode-back" href="../../demonstrator.html#multi_uav.DroneStates.State.check_exit">[docs]</a>	<span class="k">def</span> <span class="nf">check_exit</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Check the exit conditions against the state_properties.</span>
+<span class="sd">		If state requires changing, return the new state id.</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">exit_state</span> <span class="o">=</span> <span class="p">[]</span>
+		<span class="c">#print (&quot;Checking exit conditions %s against drone status %s&quot; % (self.exit_conditions,self._drone.drone_status))</span>
+		<span class="c"># Check exit conditions</span>
+		<span class="n">exit_state</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">False</span><span class="p">)</span> <span class="c"># Initialise a bool for each drone</span>
+		<span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">exit_conditions</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+			<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">exit_conditions</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">_drone</span><span class="o">.</span><span class="n">drone_status</span><span class="p">[</span><span class="n">key</span><span class="p">]:</span>
+				<span class="n">exit_state</span> <span class="o">=</span> <span class="bp">True</span> <span class="c"># Set flag for respective drone</span>
+			<span class="k">else</span><span class="p">:</span>
+				<span class="n">exit_state</span> <span class="o">=</span> <span class="bp">False</span> <span class="c"># Set flag for respective drone	</span>
+					
+		<span class="c"># Only change state if all exit conditions have been met</span>
+		<span class="k">if</span> <span class="n">exit_state</span> <span class="o">==</span> <span class="bp">True</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_drone</span><span class="o">.</span><span class="n">change_state</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">next_state</span><span class="p">())</span>
+	</div>
+	<span class="k">def</span> <span class="nf">next_state</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="c"># Be sure to return tuple of pointer and id of next state</span>
+		<span class="k">pass</span>
+		</div>
+<div class="viewcode-block" id="CommunicationState"><a class="viewcode-back" href="../../demonstrator.html#multi_uav.DroneStates.CommunicationState">[docs]</a><span class="k">class</span> <span class="nc">CommunicationState</span><span class="p">(</span><span class="n">State</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">	ID = 0</span>
+<span class="sd">	</span>
+<span class="sd">	The state for when the drones are not verified as being in contact with the network.</span>
+<span class="sd">	State entry requirements: -</span>
+<span class="sd">	State purpose: to get drones communicating</span>
+<span class="sd">	State exit: when drones are on and communicating</span>
+<span class="sd">	</span>
+<span class="sd">	State exit conditions:</span>
+<span class="sd">		talking == True</span>
+<span class="sd">	&quot;&quot;&quot;</span>
+		
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">_drone</span><span class="p">,</span><span class="n">drone_id</span><span class="p">):</span>
+		<span class="c"># Initialise as per State base class</span>
+		<span class="n">State</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">_drone</span><span class="p">,</span><span class="n">drone_id</span><span class="p">)</span>
+
+		<span class="c"># Set exit conditions (same for each drones)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">exit_conditions</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">exit_conditions</span><span class="p">[</span><span class="s">&#39;talking&#39;</span><span class="p">]</span><span class="o">=</span><span class="bp">True</span>
+	
+		<span class="c"># Setup timer to enable repeated attempts to reset and take off the drones at given intervals</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">reset_timer</span> <span class="o">=</span> <span class="n">QtCore</span><span class="o">.</span><span class="n">QTimer</span><span class="p">()</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">reset_timer</span><span class="o">.</span><span class="n">setInterval</span><span class="p">(</span><span class="mi">4000</span><span class="p">)</span> <span class="c"># ms</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">reset_timer</span><span class="o">.</span><span class="n">timeout</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">restart</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">reset_timer</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>	
+		<span class="k">print</span><span class="p">(</span><span class="s">&quot;--</span><span class="si">%s</span><span class="s">--In Communication State--</span><span class="si">%s</span><span class="s">--&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">drone_id</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">drone_id</span><span class="p">))</span>
+
+	<span class="k">def</span> <span class="nf">restart</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="c"># Reset drone and request nav/video data again</span>
+		<span class="c">#print(&quot;--%s--beat-restart--%s--&quot; % (self.drone_id,self.drone_id))</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_drone</span><span class="o">.</span><span class="n">_control</span><span class="o">.</span><span class="n">start_navdata</span><span class="p">()</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_drone</span><span class="o">.</span><span class="n">_control</span><span class="o">.</span><span class="n">start_video</span><span class="p">()</span>
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_drone</span><span class="o">.</span><span class="n">raw_status</span><span class="p">[</span><span class="s">&#39;altitude&#39;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mf">30.0</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_drone</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+	
+	<span class="k">def</span> <span class="nf">next_state</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="c"># Create next state</span>
+		<span class="n">state</span> <span class="o">=</span> <span class="p">(</span><span class="n">GroundState</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_drone</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">drone_id</span><span class="p">),</span><span class="mi">1</span><span class="p">)</span>
+		<span class="k">return</span> <span class="n">state</span>
+</div>
+<div class="viewcode-block" id="GroundState"><a class="viewcode-back" href="../../demonstrator.html#multi_uav.DroneStates.GroundState">[docs]</a><span class="k">class</span> <span class="nc">GroundState</span><span class="p">(</span><span class="n">State</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">	ID = 1</span>
+<span class="sd">	</span>
+<span class="sd">	The state for when the drones are not airborne.</span>
+<span class="sd">	State entry requirements: drones are on and able to communicate with the controller.</span>
+<span class="sd">	State purpose: to get drones airborne</span>
+<span class="sd">	State exit: when drones are airborne</span>
+<span class="sd">	</span>
+<span class="sd">	State exit conditions:</span>
+<span class="sd">		airborne == True for all drones</span>
+<span class="sd">	&quot;&quot;&quot;</span>
+
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">_drone</span><span class="p">,</span><span class="n">drone_id</span><span class="p">):</span>
+		<span class="c"># Initialise as per State base class</span>
+		<span class="n">State</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">_drone</span><span class="p">,</span><span class="n">drone_id</span><span class="p">)</span>
+		
+		<span class="c"># Set exit conditions (same for each drones)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">exit_conditions</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">exit_conditions</span><span class="p">[</span><span class="s">&#39;airborne&#39;</span><span class="p">]</span><span class="o">=</span><span class="bp">True</span>
+
+		<span class="c"># Setup timer to enable repeated attempts to reset and take off the drones at given intervals</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">reset_timer</span> <span class="o">=</span> <span class="n">QtCore</span><span class="o">.</span><span class="n">QTimer</span><span class="p">()</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">reset_timer</span><span class="o">.</span><span class="n">setInterval</span><span class="p">(</span><span class="mi">7000</span><span class="p">)</span> <span class="c"># ms</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">reset_timer</span><span class="o">.</span><span class="n">timeout</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">reset</span><span class="p">)</span>
+		
+		<span class="bp">self</span><span class="o">.</span><span class="n">takeoff_timer</span> <span class="o">=</span> <span class="n">QtCore</span><span class="o">.</span><span class="n">QTimer</span><span class="p">()</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">takeoff_timer</span><span class="o">.</span><span class="n">setInterval</span><span class="p">(</span><span class="mi">2000</span><span class="p">)</span> <span class="c"># ms</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">takeoff_timer</span><span class="o">.</span><span class="n">timeout</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">take_off</span><span class="p">)</span>
+
+		<span class="k">print</span><span class="p">(</span><span class="s">&quot;--</span><span class="si">%s</span><span class="s">--In Ground State--</span><span class="si">%s</span><span class="s">--&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">drone_id</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">drone_id</span><span class="p">))</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_drone</span><span class="o">.</span><span class="n">flat_trim</span><span class="p">()</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">take_off</span><span class="p">()</span>
+
+	<span class="k">def</span> <span class="nf">next_state</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="c"># Create next state</span>
+		<span class="n">state</span> <span class="o">=</span> <span class="p">(</span><span class="n">AirborneState</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_drone</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">drone_id</span><span class="p">),</span><span class="mi">2</span><span class="p">)</span>
+		<span class="k">return</span> <span class="n">state</span>
+
+	<span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="c">#print(&quot;--%s--beat-reset--%s--&quot; %(self.drone_id,self.drone_id))</span>
+		<span class="c"># Reset then try to take off</span>
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_drone</span><span class="o">.</span><span class="n">raw_status</span><span class="p">[</span><span class="s">&#39;altitude&#39;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mf">30.0</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_drone</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">reset_timer</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">takeoff_timer</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+		
+	<span class="k">def</span> <span class="nf">take_off</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="c">#print(&quot;--%s--beat-takeoff--%s--&quot; %(self.drone_id,self.drone_id))</span>
+		<span class="c"># Try to take off then reset (should be enough delay before reset for state to exit if take off actually works)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_drone</span><span class="o">.</span><span class="n">take_off</span><span class="p">()</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">takeoff_timer</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">reset_timer</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="AirborneState"><a class="viewcode-back" href="../../demonstrator.html#multi_uav.DroneStates.AirborneState">[docs]</a><span class="k">class</span> <span class="nc">AirborneState</span><span class="p">(</span><span class="n">State</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">	ID = 2</span>
+<span class="sd">	</span>
+<span class="sd">	The state for when the drones are initially airborne.</span>
+<span class="sd">	State entry requirements: drones are airborne.</span>
+<span class="sd">	State purpose: to get drones hovering stably at height.</span>
+<span class="sd">	State exit: when drones are stable and ready to manoeuvre</span>
+<span class="sd">	</span>
+<span class="sd">	State exit conditions:</span>
+<span class="sd">		height_stable == True for all drones</span>
+<span class="sd">	&quot;&quot;&quot;</span>
+
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">_drone</span><span class="p">,</span><span class="n">drone_id</span><span class="p">):</span>
+		<span class="c"># Initialise as per State base class</span>
+		<span class="n">State</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">_drone</span><span class="p">,</span><span class="n">drone_id</span><span class="p">)</span>
+
+		<span class="c"># Set exit conditions (same for each drones)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">exit_conditions</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">exit_conditions</span><span class="p">[</span><span class="s">&#39;height_stable&#39;</span><span class="p">]</span><span class="o">=</span><span class="bp">True</span>
+
+		<span class="k">print</span><span class="p">(</span><span class="s">&quot;--</span><span class="si">%s</span><span class="s">--In Airborne State--</span><span class="si">%s</span><span class="s">--&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">drone_id</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">drone_id</span><span class="p">))</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_drone</span><span class="o">.</span><span class="n">set_altitude</span><span class="p">(</span><span class="mi">1000</span><span class="p">)</span>
+				
+	<span class="k">def</span> <span class="nf">next_state</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="c"># Create next state</span>
+		<span class="n">state</span> <span class="o">=</span> <span class="p">(</span><span class="n">ControlledState</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_drone</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">drone_id</span><span class="p">),</span><span class="mi">3</span><span class="p">)</span>
+		<span class="k">return</span> <span class="n">state</span>
+</div>
+<div class="viewcode-block" id="ControlledState"><a class="viewcode-back" href="../../demonstrator.html#multi_uav.DroneStates.ControlledState">[docs]</a><span class="k">class</span> <span class="nc">ControlledState</span><span class="p">(</span><span class="n">State</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">	ID = 3</span>
+<span class="sd">	</span>
+<span class="sd">	The state for when the drones are stable in height.</span>
+<span class="sd">	State entry requirements: drones are stable at altitude.</span>
+<span class="sd">	State purpose: to get drones hovering stably over target marker, transitioning through marker transition vector to achieve this.</span>
+<span class="sd">	State exit: when marker is stable over target marker.</span>
+<span class="sd">	</span>
+<span class="sd">	State exit conditions:</span>
+<span class="sd">		completed marker transition</span>
+<span class="sd">	&quot;&quot;&quot;</span>
+
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">_drone</span><span class="p">,</span><span class="n">drone_id</span><span class="p">):</span>
+		<span class="c"># Initialise as per State base class</span>
+		<span class="n">State</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">_drone</span><span class="p">,</span><span class="n">drone_id</span><span class="p">)</span>
+
+		<span class="c"># Set exit conditions (same for each drones)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">exit_conditions</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">exit_conditions</span><span class="p">[</span><span class="s">&#39;airborne&#39;</span><span class="p">]</span><span class="o">=</span><span class="bp">False</span>
+
+		<span class="k">print</span><span class="p">(</span><span class="s">&quot;--</span><span class="si">%s</span><span class="s">--In Controlled State--</span><span class="si">%s</span><span class="s">--&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">drone_id</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">drone_id</span><span class="p">))</span>
+
+	<span class="k">def</span> <span class="nf">next_state</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="c"># Create next state</span>
+		<span class="k">print</span> <span class="s">&quot;----Finished Marker Transition----&quot;</span>
+	
+	<span class="k">def</span> <span class="nf">hold_marker</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">marker_id</span><span class="p">):</span>
+		<span class="k">print</span> <span class="p">(</span><span class="s">&quot;--</span><span class="si">%s</span><span class="s">--holding marker: </span><span class="si">%s</span><span class="s"> --</span><span class="si">%s</span><span class="s">--&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">drone_id</span><span class="p">,</span><span class="n">marker_id</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">drone_id</span><span class="p">))</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_drone</span><span class="o">.</span><span class="n">hold_marker</span><span class="p">(</span><span class="n">marker_id</span><span class="p">)</span>
+
+	<span class="k">def</span> <span class="nf">maintain</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="c"># Carry out action if there is another marker in route</span>
+		<span class="k">if</span> <span class="ow">not</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_drone</span><span class="o">.</span><span class="n">route</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+			<span class="c"># Check to see whether drones can see their next marker</span>
+			<span class="n">marker_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pop_marker</span><span class="p">()</span>
+			<span class="k">print</span><span class="p">(</span><span class="s">&quot;--</span><span class="si">%s</span><span class="s">--next marker: </span><span class="si">%s</span><span class="s"> --</span><span class="si">%s</span><span class="s">--&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">drone_id</span><span class="p">,</span><span class="n">marker_id</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">drone_id</span><span class="p">))</span>
+
+			<span class="c"># If they can see their next marker then hold it</span>
+			<span class="k">if</span> <span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">marker_id</span><span class="p">)</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_drone</span><span class="o">.</span><span class="n">get_visible_markers</span><span class="p">()):</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">hold_marker</span><span class="p">(</span><span class="n">marker_id</span><span class="p">)</span>
+
+			<span class="c"># Otherwise revert the changes made and set status flag</span>
+			<span class="k">else</span><span class="p">:</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">add_marker</span><span class="p">(</span><span class="n">marker_id</span><span class="p">)</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">_drone</span><span class="o">.</span><span class="n">holding_marker</span><span class="o">=</span><span class="bp">False</span>
+	
+	<span class="k">def</span> <span class="nf">add_marker</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">marker_id</span><span class="p">):</span>
+		<span class="c"># Add a marker id into the transition vector</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_drone</span><span class="o">.</span><span class="n">route</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">marker_id</span><span class="p">)</span>
+
+	<span class="k">def</span> <span class="nf">pop_marker</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="c"># Pop the next marker from transition vector if such an element exists</span>
+		<span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_drone</span><span class="o">.</span><span class="n">route</span><span class="p">:</span>
+			<span class="k">print</span><span class="p">(</span><span class="s">&quot;No further markers in route, should not be trying to look for one! - DroneState&quot;</span><span class="p">)</span>
+		<span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_drone</span><span class="o">.</span><span class="n">route</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>			
+	</div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" size="18" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">Developing a strategy for multiple UAVs to achieve a common objective v1.0 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2012, Aaron Croucher, Rich Wareham, Christina Georgiou.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.7.
+    </div>
+  </body>
+</html>

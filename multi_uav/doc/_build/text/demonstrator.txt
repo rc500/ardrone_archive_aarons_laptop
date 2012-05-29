@@ -1,0 +1,496 @@
+
+Drone control and cooperation
+*****************************
+
+Contains code
+
+This package is made up of the following modules:
+
+   * DroneApp: Defines the configuration of drones in the swarm used
+     for task completion.
+
+   * AppController: Creates objects from the below modules from the
+     specification in the DroneApp module.
+
+   * DroneControl: Sends commands and listens to packets from a drone
+     via the controlloop module.
+
+   * DroneStates: Defines the state of an individual drone based on
+     status messages.
+
+   * SwarmControl: Manages multiple drone controllers to complete a
+     task using logic.
+
+   * SwarmStates: Defines the state of a group (or swarm) of drones in
+     relation to a set task based on status messages.
+
+   * StatusUpdater: Handles raw sensor readings pushed up from the
+     drone and parses them into formats which are useful for different
+     parts of the program. Statuses are then pushed out to
+     DroneControl and SwarmControl objects.
+
+   * ImageProcessor: Processes video frames direct from the drone,
+     pushes output to DroneControl and provides a video feed in an
+     external window. Utilises the aruco library to process reference
+     markers.
+
+   * Navigator: Handles all logic relating to routing over a known
+     mapped area.
+
+   * Controllers: Manages access to a range of controllers which use
+     the DroneControl module to push control inputs to the drone.
+
+class class multi_uav.AppController.AppController(drones, configs)
+
+   Initially sets up system in configuration provided. Routes
+   communication of status messages to status updater.
+
+   finish()
+
+      Finish app
+
+   start()
+
+      Start app
+
+   update(something)
+
+      Pipes statuses from DroneControl to StatusUpdate
+
+class class multi_uav.DroneControl.DroneControl(drone_id, _control, network_config, updater)
+
+   The base class for overseeing actions of an individual drone.
+
+   Acts upon messages from SwarmControl object by changing position
+   (using Controller object) or carrying out standard land, take off,
+   change camera actions (using ControlLoop object).
+
+   get_visible_markers()
+
+      Returns a list of currently visible marker ids
+
+   request_state(state_id)
+
+      Decide what to do based on a requested state_id
+         Either  maintain current state Or      request transition
+         towards requested state
+
+   update(status)
+
+      Merge status with local version and send to the status updater
+      with appropriate drone_id label.
+
+class class multi_uav.DroneControl.NetworkManager(_vid_decoder, _update, network_config)
+
+   A class which manages the sending and receiving of packets over the
+   network. It stores the relevant data of received packets and sends
+   packets when requested.
+
+   IP address of drone: config.['host'] Localhost: 127.0.0.1
+
+   readControlData()
+
+      Called when there is some interesting data to read on the
+      control socket
+
+   readVideoData()
+
+      Called when there is some interesting data to read on the video
+      socket.
+
+class class multi_uav.DroneStates.AirborneState(_drone, drone_id)
+
+   state_id = 2
+
+   The state for when the drones are initially airborne. State entry
+   requirements: drones are airborne. State purpose: to get drones
+   hovering stably at height. State exit: when drones are stable and
+   ready to manoeuvre relative to markers
+
+   State exit conditions:
+      height_stable == True for all drones
+
+class class multi_uav.DroneStates.CommunicationState(_drone, drone_id)
+
+   state_id = 0
+
+   The state for when the drones are not verified as being in contact
+   with the network. State entry requirements: - State purpose: to get
+   drones communicating State exit: when drones are on and
+   communicating
+
+   State exit conditions:
+      talking == True
+
+class class multi_uav.DroneStates.ControlledState(_drone, drone_id)
+
+   state_id = 3
+
+   The state for when the drones are stable in height. State entry
+   requirements: drones are stable at altitude. State purpose: to get
+   drones hovering stably over target marker. State exit: -
+
+class class multi_uav.DroneStates.GroundState(_drone, drone_id)
+
+   state_id = 1
+
+   The state for when the drones are not airborne. State entry
+   requirements: drones are on and able to communicate with the
+   controller. State purpose: to get drones airborne State exit: when
+   drones are airborne
+
+   State exit conditions:
+      airborne == True for all drones
+
+class class multi_uav.DroneStates.State(_drone, drone_id)
+
+   A class which determines states of a drone. This is the base class
+   from which all states inherit. When requested, the state machine
+   determines whether the current state is valid and changes it if
+   necessary.
+
+   State changes are checked by comparing state exit conditions
+   against the drone status.
+
+   check_exit()
+
+      Check the exit conditions against drone_status. If state
+      requires changing, return the new state id.
+
+   maintain()
+
+      Take action to maintain current state.
+
+   transition(state_id)
+
+      Take action to change drone's state to that requested.
+         Note - the state is merely allowed to transition (it does so
+         automatically if allowed)
+
+class class multi_uav.SwarmControl.SwarmControl(drones, drone_controllers)
+
+   The base class for overseeing cooperative control of multiple
+   drones.
+
+   Uses navigation logic (from Navigator class) and task logic (from
+   Swarm States) to decide on actions. Actions are sent to each
+   drone's Individual Controller.
+
+   action()
+
+      Called by local timer to decide what to do at regular intervals.
+      The general idea is to always aim for a better state. The
+      actions here are then propogated into SwarmStates and down to
+      individual drone controllers.
+
+      State id 0 = SetupState State id 1 = TaskBad (i.e. Task not
+      being achieved for some reason) State id 2 = TaskGood (i.e. Task
+      being achieved)
+
+      Only one state transition should occur every time action is
+      called.
+
+   change_state(state)
+
+      Function called so SwarmControl object knows which is the
+      current state
+
+   maintain_state()
+
+      Request the current state to maintain itself
+
+   send_routes(routes, send_to)
+
+      Function which pipes routes to drones in the form of a list of
+      marker ids. Only drone ids defined in the 'send_to' parameter
+      are sent to.
+
+      send_to must be a list or tuple.
+
+   transition_to_state(state_id)
+
+      Request the current state to progress to a new state
+
+class class multi_uav.SwarmStates.SetupState(_coop, drones, drone_controllers)
+
+   state_id = 0
+
+   The SetupState is for when the drones are not verified as being
+   ready for operations. State entry requirements: none State purpose:
+   to WAIT until drones are hovering stably
+
+   State transition conditions:
+
+   State 0: -
+
+   State 1: height_stable == True for all drones
+
+   State 2: -
+
+class class multi_uav.SwarmStates.State(_coop, drones, drone_controllers)
+
+   A class which manages the state of the SwarmController object. This
+   is the base class from which all states inherit.
+
+   A state can be requested to be maintained: >> maintain()
+
+   or a requested to try to transition to a new state: >>
+   transition(state_id)
+
+   When it is requested to do so, the state machine determines whether
+   it is in the correct state and changes it accordingly. State
+   changes are checked by comparing the current swarm_status against
+   the exit_conditions of the current state.
+
+   The state ids are: 0       - Setup State (i.e. setting up to a pre-
+   mission configuration) 1       - TaskBad (i.e. task not being
+   achieved) 2       - TaskGood (i.e. task being achieved)
+
+   check_exit()
+
+      Check the exit conditions against swarm status. If state
+      requires changing then do so to the correct state and inform
+      SwarmControl of this change.
+
+   maintain()
+
+      Carry out action to maintain state.
+
+   next_state(state_id)
+
+      Takes a state_id and changes the current state to the relevant
+      object.
+
+   transition(state_id)
+
+      Carry out action to transition towards requested state.
+
+class class multi_uav.SwarmStates.TaskBad(_coop, drones, drone_controllers)
+
+   state_id = 1
+
+   The TaskBad state is for when the task is not being achieved. State
+   entry requirements: drones are setup and ready for operations.
+   State purpose: to achieved the task.
+
+   TASK - to move continuously around a loop maintaining safe
+   separation.
+
+   State transition conditions:
+
+   State 0: -
+
+   State 1: -
+
+   State 2: airprox == False && following_marker == True
+
+class class multi_uav.SwarmStates.TaskGood(_coop, drones, drone_controllers)
+
+   ID = 2
+
+   The TaskGood state is for when the task is being achieved. State
+   entry requirements: task is being achieved. State purpose: watch
+   over situation to check for task not being achieved.
+
+   TASK - to move continuously around a loop without collision
+
+   State transition conditions:
+
+   State 0: -
+
+   State 1: airprox == True || following_marker == False
+
+   State 2: -
+
+class class multi_uav.StatusUpdater.StatusUpdater(drones, drone_controllers, swarm_controller)
+
+   Updates statuses through code, parsing into the required format at
+   each stage.
+
+   Different levels of abstraction for statuses:
+      * swarm_status
+
+      * drone_status
+
+      * raw_status
+
+   Expand documentation here - e.g. contents of statuses
+
+   parse_drone_for_swarm()
+
+      Parse drone status into format for swarm status. This takes the
+      current swarm_status and updates it.
+
+   parse_raw_for_drone(status)
+
+      Parse raw status into format for drone status
+
+   push_drone_status(status)
+
+      Pushes status message to appropriate DroneControl
+
+   push_swarm_status(status)
+
+      Pushes status message to SwarmControl
+
+   update(status)
+
+      Take status (dictionary structure) and parse given status to
+      propagate up levels (raw->drone->swarm) Only raw statuses should
+      be passed into the class - all others will be rejected
+
+class class multi_uav.ImageProcessor.ImageProcessor(_update, drone_id)
+
+   Class which processes images to detect and return information on
+   visible markers.
+
+   An edited aruco library is used to achieve this functionality.
+
+   process(data)
+
+      Function called to request processing of a frame
+
+class class multi_uav.ImageProcessor.ImageViewer(drone_id)
+
+   A class to output camera frames to a viewing window
+
+class class multi_uav.Navigator.Navigator(drones)
+
+   A class which takes drone positions and returns lists of drone
+   routes which are safe to take.
+
+   All functions are called with a list of the drones current
+   positions (and possibly other parameters too) All 'public'
+   functions return one list of n lists, where n is the number of
+   drones being controlled
+
+   check_deconflict(pos)
+
+      A basic deconfliction algorithm which changes the routes of all
+      drones that have unsafe routes Only guarantees deconfliction on
+      maps with no junctions
+
+   check_rvp()
+
+      Checks the routes of each drone with the current position of the
+      other drones. A list containing bools is returned. If a drone's
+      route risks collision with another then False is returned for
+      that drone.
+
+   front_drone()
+
+      Returns drone_id of the drone in front of loop. 'Front' drone is
+      determined by whichever drone has the most number of clear
+      spaces in front of them.
+
+   hold_position_route(pos)
+
+      Returns a route which is the same as current positions passed
+      (i.e. just turns a position into a route)
+
+   next(pos)
+
+      Returns a list of markers next to current marker in order
+      [marker in front of,marker behind]
+
+   route(pos)
+
+      A basic algorithm for returning a looping route around a
+      continuous path. Route is never longer than 6 markers ahead.
+
+class class multi_uav.Controllers.Controller(_control, feedback_type, output_type, update_key, reference, error_margin, hard_limit=1)
+
+   Class forming the base functionality of a controller
+
+   check_error(error)
+
+      Checks whether the error is within acceptable limits. If it is
+      within limits then the controller has achieved its goal and
+      updates the raw_status accordingly.
+
+class class multi_uav.Controllers.ControllerManager(_control)
+
+   Class to manage all the controllers for one drone. Regulates the
+   packets being sent to the drone so only one command is sent every
+   heartbeat (otherwise we may overload the system).
+
+   create_lead_lag_2_controller(*args, **kwargs)
+
+      Creates a lead lag controller of type 2
+
+   create_lead_lag_controller(*args, **kwargs)
+
+      Creates a lead lag controller of type 1
+
+   create_proportional_controller(*args, **kwargs)
+
+      Creates a proportional controller
+
+   heartbeat()
+
+      Get each controller to update its variables and then send them
+      all to the drone at once.
+
+   stop_control(output_type)
+
+      Removes the current controller for output_type passed.
+
+class class multi_uav.Controllers.LeadLagController(_control, feedback_type, output_type, update_key, k, a, b, T, reference, error_margin, hard_limit=1)
+
+   Implementation of a lead-lag controller which takes a position and
+   returns a correcting velocity Controller also pre-compensates by a
+   value of K
+
+   ANALOGUE CONTROLLER: G(s) = (as + 1) / (bs + 1)
+
+   USE BACKWARD DIFFERENCE TRANSFORMATION:
+      z - 1
+
+   s = -------
+      zT
+
+   DIGITAL CONTORLLER:
+      zT + (z-1)a
+
+   G(z) =  ------------
+      zT + (z-1)b
+
+   DIFFERENCE EQUATION:
+      1
+
+   y[k] =  -----  { (y[k-1] * b) - (e[k-1] * a) + (e[k] * (T+a)) }
+      (T+b)
+
+class class multi_uav.Controllers.LeadLagController2(_control, feedback_type, output_type, update_key, k, a, b, T, reference, error_margin, hard_limit=1)
+
+   Implementation of a lead-lag controller using Tustin
+   Transformation. Takes a position and returns a correcting velocity
+   Controller also pre-compensates by a value of K
+
+   ANALOGUE CONTROLLER: G(s) = (as + 1) / (bs + 1)
+
+   USE TUSTIN TRANSFORMATION:
+      2(z-1)
+
+   s = --------
+      T(z+1)
+
+   DIGITAL CONTORLLER:
+      T(z+1) + 2(z-1)a
+
+   G(z) =  ----------------
+      T(z+1) + 2(z-1)b
+
+   DIFFERENCE EQUATION:
+      1
+
+   y[k] =  ------  { - (y[k-1]*(T-2b)) + (e[k-1]*(T-2a)) +
+   (e[k]*(T+2a)) }
+      (T+2b)
+
+class class multi_uav.Controllers.ProportionalController(_control, feedback_type, output_type, update_key, k, reference, error_margin, hard_limit=1)
+
+   Implementation of a proportional controller which takes a position
+   and returns a correcting velocity
+
+   CONTROLLER: G(s) = K

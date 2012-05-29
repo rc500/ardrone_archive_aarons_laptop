@@ -1,0 +1,199 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>multi_uav.SwarmControl &mdash; Developing a strategy for multiple UAVs to achieve a common objective v1.0 documentation</title>
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="Developing a strategy for multiple UAVs to achieve a common objective v1.0 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">Developing a strategy for multiple UAVs to achieve a common objective v1.0 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for multi_uav.SwarmControl</h1><div class="highlight"><pre>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">socket</span><span class="o">,</span> <span class="nn">time</span>
+
+<span class="c"># This makes sure the path which python uses to find things when using import</span>
+<span class="c"># can find all our code.</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="s">&#39;..&#39;</span><span class="p">))</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">__file__</span><span class="p">),</span> <span class="s">&#39;..&#39;</span><span class="p">)))</span>
+
+<span class="c"># Import qt modules (platform independant)</span>
+<span class="kn">import</span> <span class="nn">ardrone.util.qtcompat</span> <span class="kn">as</span> <span class="nn">qt</span>
+<span class="n">QtCore</span> <span class="o">=</span> <span class="n">qt</span><span class="o">.</span><span class="n">import_module</span><span class="p">(</span><span class="s">&#39;QtCore&#39;</span><span class="p">)</span>
+<span class="n">QtNetwork</span> <span class="o">=</span> <span class="n">qt</span><span class="o">.</span><span class="n">import_module</span><span class="p">(</span><span class="s">&#39;QtNetwork&#39;</span><span class="p">)</span>
+
+<span class="c"># Import helpful classes</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">SwarmStates</span> <span class="k">as</span> <span class="n">State</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">Navigator</span>
+
+<div class="viewcode-block" id="SwarmControl"><a class="viewcode-back" href="../../demonstrator.html#multi_uav.SwarmControl.SwarmControl">[docs]</a><span class="k">class</span> <span class="nc">SwarmControl</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">	The base class for overseeing cooperative control of multiple drones.</span>
+
+<span class="sd">	Uses navigation logic (from Navigator class) and task logic (from Swarm States) to decide on actions.</span>
+<span class="sd">	Actions are sent to each drone&#39;s Individual Controller.</span>
+<span class="sd">	&quot;&quot;&quot;</span>
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">drones</span><span class="p">,</span><span class="n">drone_controllers</span><span class="p">):</span> <span class="c"># Will want to add in _drone2 in time</span>
+		<span class="c"># --- STORE VARIABLES ---</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">drones</span> <span class="o">=</span> <span class="n">drones</span> <span class="c"># tuple of drone ids</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">swarm_status</span> <span class="o">=</span> <span class="p">{};</span>		
+
+		<span class="c"># --- STORE POINTERS ---</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">drone_controllers</span> <span class="o">=</span> <span class="n">drone_controllers</span>
+
+		<span class="c"># --- INITIALISE APPLICATION OBJECTS ----</span>
+		<span class="c">#self._status_viewer = # add at some point</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_navigator</span> <span class="o">=</span> <span class="n">Navigator</span><span class="o">.</span><span class="n">Navigator</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">drones</span><span class="p">)</span>	
+
+		<span class="c"># Setup timer to detect for state changes</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">check_timer</span> <span class="o">=</span> <span class="n">QtCore</span><span class="o">.</span><span class="n">QTimer</span><span class="p">()</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">check_timer</span><span class="o">.</span><span class="n">setInterval</span><span class="p">(</span><span class="mi">1000</span><span class="p">)</span> <span class="c"># ms</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">check_timer</span><span class="o">.</span><span class="n">timeout</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">action</span><span class="p">)</span>
+
+		<span class="c"># States</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">state_id</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+		
+	<span class="k">def</span> <span class="nf">start_program</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="k">print</span><span class="p">(</span><span class="s">&quot;======Program started======&quot;</span><span class="p">)</span>
+		<span class="c"># Enter initial state</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">=</span> <span class="n">State</span><span class="o">.</span><span class="n">SetupState</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">drones</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">drone_controllers</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_state</span><span class="o">.</span><span class="n">next_state</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+		<span class="c"># Start SwarmControl timing loop	</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">check_timer</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+<div class="viewcode-block" id="SwarmControl.action"><a class="viewcode-back" href="../../demonstrator.html#multi_uav.SwarmControl.SwarmControl.action">[docs]</a>	<span class="k">def</span> <span class="nf">action</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Decide what to do.</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="c"># First, go into Setup State</span>
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">state_id</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">transition_to_state</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+		<span class="c"># If in Setup State, then transition to Bad State</span>
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">state_id</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">transition_to_state</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+		<span class="c"># If in Bad State, then transition to Good State</span>
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">state_id</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">transition_to_state</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+
+		<span class="c"># If in Good State, then maintain</span>
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">state_id</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">maintain_state</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="SwarmControl.send_routes"><a class="viewcode-back" href="../../demonstrator.html#multi_uav.SwarmControl.SwarmControl.send_routes">[docs]</a>	<span class="k">def</span> <span class="nf">send_routes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">routes</span><span class="p">,</span><span class="n">send_to</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Function which gives drones a route in the form of a list of marker ids.</span>
+<span class="sd">		Only drone ids defined in the &#39;send_to&#39; parameter are sent to.</span>
+
+<span class="sd">		send_to must be a list or tuple</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="k">for</span> <span class="n">drone</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">drones</span><span class="p">:</span>
+			<span class="k">if</span> <span class="n">drone</span> <span class="ow">in</span> <span class="n">send_to</span><span class="p">:</span>
+				<span class="k">print</span><span class="p">(</span><span class="s">&quot;update drone </span><span class="si">%s</span><span class="s"> with route </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">drone</span><span class="p">,</span><span class="n">routes</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">drones</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">drone</span><span class="p">)]))</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">drone_controllers</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">drones</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">drone</span><span class="p">)]</span><span class="o">.</span><span class="n">update_route</span><span class="p">(</span><span class="n">routes</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">drones</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">drone</span><span class="p">)])</span>
+</div>
+<div class="viewcode-block" id="SwarmControl.maintain_state"><a class="viewcode-back" href="../../demonstrator.html#multi_uav.SwarmControl.SwarmControl.maintain_state">[docs]</a>	<span class="k">def</span> <span class="nf">maintain_state</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Maintain current state.</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_state</span><span class="o">.</span><span class="n">maintain</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="SwarmControl.transition_to_state"><a class="viewcode-back" href="../../demonstrator.html#multi_uav.SwarmControl.SwarmControl.transition_to_state">[docs]</a>	<span class="k">def</span> <span class="nf">transition_to_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">state_id</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Progress to new state.</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_state</span><span class="o">.</span><span class="n">transition</span><span class="p">(</span><span class="n">state_id</span><span class="p">)</span>
+</div>
+	<span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">status</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">swarm_status</span> <span class="o">=</span> <span class="n">status</span>
+				
+<div class="viewcode-block" id="SwarmControl.change_state"><a class="viewcode-back" href="../../demonstrator.html#multi_uav.SwarmControl.SwarmControl.change_state">[docs]</a>	<span class="k">def</span> <span class="nf">change_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">state</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Function called to update the state used by the SwarmController object</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">=</span> <span class="n">state</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">state_id</span> <span class="o">=</span> <span class="n">state</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+</pre></div></div></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" size="18" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">Developing a strategy for multiple UAVs to achieve a common objective v1.0 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2012, Aaron Croucher, Rich Wareham, Christina Georgiou.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.7.
+    </div>
+  </body>
+</html>

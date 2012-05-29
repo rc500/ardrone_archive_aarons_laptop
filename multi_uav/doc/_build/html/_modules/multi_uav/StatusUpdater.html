@@ -1,0 +1,319 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>multi_uav.StatusUpdater &mdash; Developing a strategy for multiple UAVs to achieve a common objective v1.0 documentation</title>
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="Developing a strategy for multiple UAVs to achieve a common objective v1.0 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">Developing a strategy for multiple UAVs to achieve a common objective v1.0 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for multi_uav.StatusUpdater</h1><div class="highlight"><pre>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">socket</span><span class="o">,</span> <span class="nn">time</span>
+
+<span class="c"># This makes sure the path which python uses to find things when using import</span>
+<span class="c"># can find all our code.</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="s">&#39;..&#39;</span><span class="p">))</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">__file__</span><span class="p">),</span> <span class="s">&#39;..&#39;</span><span class="p">)))</span>
+
+<span class="c"># Import qt modules (platform independant)</span>
+<span class="kn">import</span> <span class="nn">ardrone.util.qtcompat</span> <span class="kn">as</span> <span class="nn">qt</span>
+<span class="n">QtCore</span> <span class="o">=</span> <span class="n">qt</span><span class="o">.</span><span class="n">import_module</span><span class="p">(</span><span class="s">&#39;QtCore&#39;</span><span class="p">)</span>
+<span class="n">QtNetwork</span> <span class="o">=</span> <span class="n">qt</span><span class="o">.</span><span class="n">import_module</span><span class="p">(</span><span class="s">&#39;QtNetwork&#39;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="StatusUpdater"><a class="viewcode-back" href="../../demonstrator.html#multi_uav.StatusUpdater.StatusUpdater">[docs]</a><span class="k">class</span> <span class="nc">StatusUpdater</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">	Updates statuses through code, parsing into the required format at each stage.</span>
+
+<span class="sd">	Different levels of abstraction for statuses:</span>
+<span class="sd">		- swarm_status </span>
+<span class="sd">		- drone_status</span>
+<span class="sd">		- raw_status</span>
+<span class="sd">	Expand documentation here - e.g. contents of statuses</span>
+<span class="sd">	&quot;&quot;&quot;</span>
+
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">drones</span><span class="p">,</span><span class="n">drone_controllers</span><span class="p">,</span><span class="n">swarm_controller</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Initialises the StatusUpdater with pointers to inidividual DroneController s and SwarmController</span>
+<span class="sd">		Pushes initial statuses to application</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="c"># Assign tuples and pointer</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">drones</span> <span class="o">=</span> <span class="n">drones</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">drone_controllers</span> <span class="o">=</span> <span class="n">drone_controllers</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_swarm_controller</span> <span class="o">=</span> <span class="n">swarm_controller</span>
+
+		<span class="c"># Push out initial statuses to objects</span>
+		<span class="n">initial_raw_status</span> <span class="o">=</span> <span class="p">{</span>
+					<span class="s">&#39;type&#39;</span><span class="p">:</span> <span class="s">&#39;raw&#39;</span><span class="p">,</span>
+					<span class="s">&#39;drone_id&#39;</span> <span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+					<span class="s">&#39;marker_id&#39;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span>
+					<span class="s">&#39;marker_distance_x&#39;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+					<span class="s">&#39;marker_distance_y&#39;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+					<span class="s">&#39;gas_stable&#39;</span> <span class="p">:</span> <span class="bp">False</span><span class="p">,</span>
+					<span class="s">&#39;roll_stable&#39;</span> <span class="p">:</span> <span class="bp">True</span><span class="p">,</span> <span class="c"># dirty</span>
+					<span class="s">&#39;pitch_stable&#39;</span> <span class="p">:</span> <span class="bp">True</span><span class="p">,</span> <span class="c"># dirty</span>
+					<span class="s">&#39;altitude&#39;</span> <span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+					<span class="p">};</span>
+
+		<span class="n">initial_drone_status</span> <span class="o">=</span> <span class="p">{</span>
+					<span class="s">&#39;type&#39;</span><span class="p">:</span> <span class="s">&#39;drone&#39;</span><span class="p">,</span>
+					<span class="s">&#39;talking&#39;</span><span class="p">:</span><span class="bp">False</span><span class="p">,</span>
+					<span class="s">&#39;airborne&#39;</span><span class="p">:</span><span class="bp">False</span><span class="p">,</span>
+					<span class="s">&#39;height_stable&#39;</span><span class="p">:</span><span class="bp">False</span><span class="p">,</span>
+					<span class="s">&#39;position&#39;</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span>
+					<span class="s">&#39;following_marker&#39;</span><span class="p">:</span><span class="bp">False</span><span class="p">,</span>
+					<span class="p">};</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">swarm_status</span> <span class="o">=</span> <span class="p">{</span>
+					<span class="s">&#39;type&#39;</span><span class="p">:</span> <span class="s">&#39;swarm&#39;</span><span class="p">,</span>
+					<span class="s">&#39;position&#39;</span><span class="p">:[],</span>
+					<span class="s">&#39;talking&#39;</span><span class="p">:</span><span class="bp">False</span><span class="p">,</span>
+					<span class="s">&#39;height_stable&#39;</span><span class="p">:</span><span class="bp">False</span><span class="p">,</span>
+					<span class="s">&#39;following_marker&#39;</span><span class="p">:</span><span class="bp">False</span><span class="p">,</span>
+					<span class="s">&#39;airprox&#39;</span><span class="p">:</span><span class="bp">False</span><span class="p">,</span>
+					<span class="p">};</span>		
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">drone_status</span> <span class="o">=</span> <span class="p">[]</span>
+		<span class="k">for</span> <span class="n">count</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">drones</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">drone_status</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">initial_drone_status</span><span class="p">)</span> 
+
+		<span class="c"># Push initial statuses</span>
+		<span class="k">for</span> <span class="n">drone</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">drones</span><span class="p">:</span>
+			<span class="n">initial_drone_status</span><span class="p">[</span><span class="s">&#39;drone_id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">drone</span>
+			<span class="n">initial_raw_status</span><span class="p">[</span><span class="s">&#39;drone_id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">drone</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">push_drone_status</span><span class="p">(</span><span class="n">initial_raw_status</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">push_drone_status</span><span class="p">(</span><span class="n">initial_drone_status</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">push_swarm_status</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">swarm_status</span><span class="p">)</span>
+
+<div class="viewcode-block" id="StatusUpdater.update"><a class="viewcode-back" href="../../demonstrator.html#multi_uav.StatusUpdater.StatusUpdater.update">[docs]</a>	<span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">status</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Take status (dictionary structure) and parse given status to propagate up levels (raw-&gt;drone-&gt;swarm)</span>
+<span class="sd">		Only raw statuses should be passed into the class - all others will be rejected</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+
+		<span class="c">#print(status)</span>
+
+		<span class="c"># Parse and push all raw and drone statuses to DroneControl</span>
+		<span class="k">if</span> <span class="n">status</span><span class="p">[</span><span class="s">&#39;type&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;raw&#39;</span><span class="p">:</span>
+			<span class="c"># Parse raw status</span>
+			<span class="n">_drone_status</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parse_raw_for_drone</span><span class="p">(</span><span class="n">status</span><span class="p">)</span>
+			<span class="c"># Update local version of drone_status</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">drone_status</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">drones</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">status</span><span class="p">[</span><span class="s">&#39;drone_id&#39;</span><span class="p">])]</span> <span class="o">=</span> <span class="n">_drone_status</span>
+			<span class="c"># Push out statuses</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">push_drone_status</span><span class="p">(</span><span class="n">_drone_status</span><span class="p">)</span>
+			<span class="c"># Update and push swarm status</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">parse_drone_for_swarm</span><span class="p">()</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">push_swarm_status</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">swarm_status</span><span class="p">)</span>
+
+		<span class="k">else</span><span class="p">:</span>
+			<span class="k">print</span><span class="p">(</span><span class="s">&quot;non-raw status passed - StatusUpdater&quot;</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="StatusUpdater.push_drone_status"><a class="viewcode-back" href="../../demonstrator.html#multi_uav.StatusUpdater.StatusUpdater.push_drone_status">[docs]</a>	<span class="k">def</span> <span class="nf">push_drone_status</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">status</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Pushes status message to appropriate DroneControl</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">drone_id</span> <span class="o">=</span> <span class="n">status</span><span class="p">[</span><span class="s">&#39;drone_id&#39;</span><span class="p">]</span>
+		<span class="k">if</span> <span class="n">status</span><span class="p">[</span><span class="s">&#39;type&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;raw&#39;</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">drone_controllers</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">drones</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">drone_id</span><span class="p">)]</span><span class="o">.</span><span class="n">update_raw</span><span class="p">(</span><span class="n">status</span><span class="p">)</span>
+		<span class="k">if</span> <span class="n">status</span><span class="p">[</span><span class="s">&#39;type&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;drone&#39;</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">drone_controllers</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">drones</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">drone_id</span><span class="p">)]</span><span class="o">.</span><span class="n">update_drone</span><span class="p">(</span><span class="n">status</span><span class="p">)</span>
+		<span class="k">if</span> <span class="n">status</span><span class="p">[</span><span class="s">&#39;type&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;swarm&#39;</span><span class="p">:</span>
+			<span class="k">print</span> <span class="p">(</span><span class="s">&quot;StatusUpdater - push_status error - status of given type should not be sent to given destination&quot;</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="StatusUpdater.push_swarm_status"><a class="viewcode-back" href="../../demonstrator.html#multi_uav.StatusUpdater.StatusUpdater.push_swarm_status">[docs]</a>	<span class="k">def</span> <span class="nf">push_swarm_status</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">status</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Pushes status message to SwarmControl</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="k">if</span> <span class="n">status</span><span class="p">[</span><span class="s">&#39;type&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;raw&#39;</span><span class="p">:</span>
+			<span class="k">print</span> <span class="p">(</span><span class="s">&quot;StatusUpdater - push_status error - status of given type should not be sent to given destination&quot;</span><span class="p">)</span>
+		<span class="k">if</span> <span class="n">status</span><span class="p">[</span><span class="s">&#39;type&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;drone&#39;</span><span class="p">:</span>
+			<span class="k">print</span> <span class="p">(</span><span class="s">&quot;StatusUpdater - push_status error - status of given type should not be sent to given destination&quot;</span><span class="p">)</span>
+		<span class="k">if</span> <span class="n">status</span><span class="p">[</span><span class="s">&#39;type&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;swarm&#39;</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">_swarm_controller</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">status</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="StatusUpdater.parse_drone_for_swarm"><a class="viewcode-back" href="../../demonstrator.html#multi_uav.StatusUpdater.StatusUpdater.parse_drone_for_swarm">[docs]</a>	<span class="k">def</span> <span class="nf">parse_drone_for_swarm</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Parse drone status into format for swarm status.</span>
+<span class="sd">		This takes the current swarm_status and updates it.</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="c"># talking - only True if True for all drones</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">swarm_status</span><span class="p">[</span><span class="s">&#39;talking&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">True</span>
+		<span class="k">for</span> <span class="n">drone</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">drones</span><span class="p">)):</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">swarm_status</span><span class="p">[</span><span class="s">&#39;talking&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">swarm_status</span><span class="p">[</span><span class="s">&#39;talking&#39;</span><span class="p">]</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">drone_status</span><span class="p">[</span><span class="n">drone</span><span class="p">][</span><span class="s">&#39;talking&#39;</span><span class="p">]</span>
+
+		<span class="c"># following_marker - only True if True for all drones</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">swarm_status</span><span class="p">[</span><span class="s">&#39;following_marker&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">True</span>
+		<span class="k">for</span> <span class="n">drone</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">drones</span><span class="p">)):</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">swarm_status</span><span class="p">[</span><span class="s">&#39;following_marker&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">swarm_status</span><span class="p">[</span><span class="s">&#39;following_marker&#39;</span><span class="p">]</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">drone_status</span><span class="p">[</span><span class="n">drone</span><span class="p">][</span><span class="s">&#39;following_marker&#39;</span><span class="p">]</span>
+
+		<span class="c"># height_stable - only True if True for all drones</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">swarm_status</span><span class="p">[</span><span class="s">&#39;height_stable&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">True</span>
+		<span class="k">for</span> <span class="n">drone</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">drones</span><span class="p">)):</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">swarm_status</span><span class="p">[</span><span class="s">&#39;height_stable&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">swarm_status</span><span class="p">[</span><span class="s">&#39;height_stable&#39;</span><span class="p">]</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">drone_status</span><span class="p">[</span><span class="n">drone</span><span class="p">][</span><span class="s">&#39;height_stable&#39;</span><span class="p">]</span>
+
+		<span class="c"># position - list of all drone positions</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">swarm_status</span><span class="p">[</span><span class="s">&#39;position&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+		<span class="k">for</span> <span class="n">drone</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">drones</span><span class="p">)):</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">swarm_status</span><span class="p">[</span><span class="s">&#39;position&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">drone_status</span><span class="p">[</span><span class="n">drone</span><span class="p">][</span><span class="s">&#39;position&#39;</span><span class="p">])</span>
+
+		<span class="c"># airprox - shortest distance between drones</span>
+		<span class="c"># work out shortest distance between drones</span>
+		<span class="n">closest_dist</span> <span class="o">=</span> <span class="mi">1000</span> <span class="c"># arbitrarily large</span>
+		<span class="n">drone_index</span> <span class="o">=</span> <span class="p">[]</span>
+		<span class="n">other_index</span> <span class="o">=</span> <span class="p">[]</span>
+		<span class="n">d_count</span> <span class="o">=</span> <span class="mi">0</span>
+		<span class="k">for</span> <span class="n">drone</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">drones</span><span class="p">:</span>
+			<span class="n">drone_index</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">d_count</span><span class="p">)</span>
+			<span class="n">other_index</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">d_count</span><span class="p">)</span>
+			<span class="n">d_count</span> <span class="o">=</span> <span class="n">d_count</span> <span class="o">+</span> <span class="mi">1</span>
+		<span class="k">for</span> <span class="n">drone</span> <span class="ow">in</span> <span class="n">drone_index</span><span class="p">:</span>
+			<span class="n">others</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">drones</span><span class="p">)</span>
+			<span class="n">other_index</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">others</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">drones</span><span class="p">[</span><span class="n">drone</span><span class="p">]))</span>
+			<span class="k">for</span> <span class="n">other</span> <span class="ow">in</span> <span class="n">other_index</span><span class="p">:</span>
+				<span class="n">diff_dist</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">swarm_status</span><span class="p">[</span><span class="s">&#39;position&#39;</span><span class="p">][</span><span class="n">drone</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">swarm_status</span><span class="p">[</span><span class="s">&#39;position&#39;</span><span class="p">][</span><span class="n">other</span><span class="p">]</span>
+				<span class="k">if</span> <span class="n">diff_dist</span> <span class="o">&lt;</span> <span class="n">closest_dist</span><span class="p">:</span>
+					<span class="n">closest_dist</span> <span class="o">=</span> <span class="n">diff_dist</span>
+			<span class="n">other_index</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">others</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">drones</span><span class="p">[</span><span class="n">drone</span><span class="p">]))</span>
+		<span class="c"># check distance with airprox</span>
+		<span class="k">if</span> <span class="n">closest_dist</span> <span class="o">&lt;</span> <span class="mi">9</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">swarm_status</span><span class="p">[</span><span class="s">&#39;airprox&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">True</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">swarm_status</span><span class="p">[</span><span class="s">&#39;airprox&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">False</span>
+
+		<span class="c"># separation</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">swarm_status</span><span class="p">[</span><span class="s">&#39;separation&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">closest_dist</span>
+
+		<span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">swarm_status</span>
+				</div>
+<div class="viewcode-block" id="StatusUpdater.parse_raw_for_drone"><a class="viewcode-back" href="../../demonstrator.html#multi_uav.StatusUpdater.StatusUpdater.parse_raw_for_drone">[docs]</a>	<span class="k">def</span> <span class="nf">parse_raw_for_drone</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">status</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Parse raw status into format for drone status</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+
+		<span class="c"># work out useful information</span>
+		<span class="n">drone_id</span> <span class="o">=</span> <span class="n">status</span><span class="p">[</span><span class="s">&#39;drone_id&#39;</span><span class="p">]</span>
+		<span class="n">drone_controller</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">drone_controllers</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">drones</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">drone_id</span><span class="p">)]</span>
+
+		<span class="c"># drone_id</span>
+		<span class="n">drone_status</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;drone_id&#39;</span><span class="p">:</span><span class="n">drone_id</span><span class="p">}</span>
+	
+		<span class="c"># assign type</span>
+		<span class="n">drone_status</span><span class="p">[</span><span class="s">&#39;type&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s">&#39;drone&#39;</span>
+
+		<span class="c"># talking</span>
+		<span class="n">drone_status</span><span class="p">[</span><span class="s">&#39;talking&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">drone_controller</span><span class="o">.</span><span class="n">control_network_activity_flag</span> <span class="ow">and</span> <span class="n">drone_controller</span><span class="o">.</span><span class="n">video_network_activity_flag</span>
+	
+		<span class="c"># airborne</span>
+		<span class="k">if</span> <span class="n">status</span><span class="p">[</span><span class="s">&#39;altitude&#39;</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="mf">270.0</span><span class="p">:</span>
+			<span class="n">drone_status</span><span class="p">[</span><span class="s">&#39;airborne&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">True</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="n">drone_status</span><span class="p">[</span><span class="s">&#39;airborne&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">False</span>
+		<span class="c">#print (self.status[&#39;altitude&#39;])</span>
+	
+		<span class="c"># height_stable</span>
+		<span class="n">drone_status</span><span class="p">[</span><span class="s">&#39;height_stable&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">drone_controller</span><span class="o">.</span><span class="n">stability_info</span><span class="p">[</span><span class="s">&#39;gas_stable&#39;</span><span class="p">]</span>
+
+		<span class="c"># following_marker</span>
+		<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">drone_controller</span><span class="o">.</span><span class="n">route</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span> <span class="c"># drone with routes of length 1 are not following a marker </span>
+			<span class="n">drone_status</span><span class="p">[</span><span class="s">&#39;following_marker&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">True</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="n">drone_status</span><span class="p">[</span><span class="s">&#39;following_marker&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">False</span>
+
+		<span class="c"># position (marker_id)</span>
+		<span class="c"># currently tracked marker</span>
+		<span class="k">if</span> <span class="n">status</span><span class="p">[</span><span class="s">&#39;marker_id&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+			<span class="n">visible</span> <span class="o">=</span> <span class="n">drone_controller</span><span class="o">.</span><span class="n">get_visible_markers</span><span class="p">()</span>
+			<span class="c">#print (&quot;visible: %s&quot; %visible)</span>
+			<span class="k">if</span> <span class="ow">not</span> <span class="n">visible</span><span class="p">:</span>
+				<span class="n">drone_status</span><span class="p">[</span><span class="s">&#39;position&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+			<span class="k">else</span><span class="p">:</span>	
+				<span class="n">drone_status</span><span class="p">[</span><span class="s">&#39;position&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">visible</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="n">drone_status</span><span class="p">[</span><span class="s">&#39;position&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">status</span><span class="p">[</span><span class="s">&#39;marker_id&#39;</span><span class="p">]</span>
+
+		<span class="c"># Update status</span>
+		<span class="c">#print (&quot;Sending state : %s&quot; % drone_status)</span>
+		<span class="k">return</span> <span class="n">drone_status</span></div></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" size="18" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">Developing a strategy for multiple UAVs to achieve a common objective v1.0 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2012, Aaron Croucher, Rich Wareham, Christina Georgiou.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.7.
+    </div>
+  </body>
+</html>
