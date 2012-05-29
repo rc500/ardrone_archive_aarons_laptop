@@ -55,30 +55,38 @@ class SwarmControl(object):
 
 	def action(self):
 		"""
-		Decide what to do.
+		Called by local timer to decide what to do at regular intervals.
+		The general idea is to always aim for a better state.
+		The actions here are then propogated into SwarmStates and down to individual drone controllers.
+
+		State id 0 = SetupState
+		State id 1 = TaskBad (i.e. Task not being achieved for some reason)
+		State id 2 = TaskGood (i.e. Task being achieved)
+
+		Only one state transition should occur every time action is called.
 		"""
 		# First, go into Setup State
 		if self.state_id == -1:
 			self.transition_to_state(0)
 
 		# If in Setup State, then transition to Bad State
-		if self.state_id == 0:
+		elif self.state_id == 0:
 			self.transition_to_state(1)
 
 		# If in Bad State, then transition to Good State
-		if self.state_id == 1:
+		elif self.state_id == 1:
 			self.transition_to_state(2)
 
 		# If in Good State, then maintain
-		if self.state_id == 2:
+		elif self.state_id == 2:
 			self.maintain_state()
 
 	def send_routes(self,routes,send_to):
 		"""
-		Function which gives drones a route in the form of a list of marker ids.
+		Function which pipes routes to drones in the form of a list of marker ids.
 		Only drone ids defined in the 'send_to' parameter are sent to.
 
-		send_to must be a list or tuple
+		send_to must be a list or tuple.
 		"""
 		for drone in self.drones:
 			if drone in send_to:
@@ -87,13 +95,13 @@ class SwarmControl(object):
 
 	def maintain_state(self):
 		"""
-		Maintain current state.
+		Request the current state to maintain itself
 		"""
 		self._state.maintain()
 
 	def transition_to_state(self,state_id):
 		"""
-		Progress to new state.
+		Request the current state to progress to a new state
 		"""
 		self._state.transition(state_id)
 
@@ -102,7 +110,7 @@ class SwarmControl(object):
 				
 	def change_state(self,state):
 		"""
-		Function called to update the state used by the SwarmController object
+		Function called so SwarmControl object knows which is the current state
 		"""
 		self._state = state[0]
 		self.state_id = state[1]

@@ -16,7 +16,8 @@ QtNetwork = qt.import_module('QtNetwork')
 
 class Navigator(object):
 	"""
-	A class which works out safe routes for drones to follow.
+	A class which takes drone positions and returns lists of drone routes which are safe to take.
+
 	All functions are called with a list of the drones current positions (and possibly other parameters too)
 	All 'public' functions return one list of n lists, where n is the number of drones being controlled
 	"""
@@ -26,7 +27,7 @@ class Navigator(object):
 		# define map
 		self.path = {
 			'type' : 'loop',
-			'markers' : (0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16)
+			'markers' : (0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24)
 			};
 
 		# setup variables
@@ -40,7 +41,7 @@ class Navigator(object):
 		
 	def route(self,pos):
 		"""
-		A basic algorithm for setting a looping route around a continuous path. Route is never longer than 6 markers ahead.
+		A basic algorithm for returning a looping route around a continuous path. Route is never longer than 6 markers ahead.
 		"""
 		self.positions = pos
 		print("Current positions: %s" % pos)
@@ -74,7 +75,7 @@ class Navigator(object):
 
 	def hold_position_route(self,pos):
 		"""
-		Returns a route which is the current positions passed
+		Returns a route which is the same as current positions passed (i.e. just turns a position into a route)
 		"""
 		self.positions = pos
 		for drone in range(0,len(self.drones)):
@@ -135,7 +136,7 @@ class Navigator(object):
 
 	def next(self,pos):
 		"""
-		Returns markers next to current marker in order [forward,backward]
+		Returns a list of markers next to current marker in order [marker in front of,marker behind]
 		"""
 		if self.path['type'] == 'loop':
 			local_path = list(self.path['markers'])

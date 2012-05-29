@@ -24,7 +24,7 @@ class DroneControl(object):
 	"""
 	The base class for overseeing actions of an individual drone.
 	
-	Acts upon messages from SwarmControl class by changing position (using Controller class) or carrying out standard land, take off, change camera actions (using ControlLoop class).
+	Acts upon messages from SwarmControl object by changing position (using Controller object) or carrying out standard land, take off, change camera actions (using ControlLoop object).
 	"""
 	
 	def __init__(self,drone_id,_control,network_config,updater):

@@ -15,8 +15,20 @@ class State(object):
 	"""
 	A class which manages the state of the SwarmController object.
 	This is the base class from which all states inherit.
-	As status messages are received, the state machine determines the next state and changes it accordingly.
 	
+	A state can be requested to be maintained:
+	>> maintain()
+
+	or a requested to try to transition to a new state:
+	>> transition(state_id)
+
+	When it is requested to do so, the state machine determines whether it is in the correct state and changes it accordingly.
+	State changes are checked by comparing the current swarm_status against the exit_conditions of the current state.
+
+	The state ids are:
+	0	- Setup State (i.e. setting up to a pre-mission configuration)
+	1	- TaskBad (i.e. task not being achieved)
+	2	- TaskGood (i.e. task being achieved)
 	"""
 	def __init__(self,_coop,drones,drone_controllers):
 		
@@ -43,7 +55,7 @@ class State(object):
 	def check_exit(self):
 		"""
 		Check the exit conditions against swarm status.
-		If state requires changing then do so to the correct state.
+		If state requires changing then do so to the correct state and inform SwarmControl of this change.
 		"""
 		# Count for conditions which have been met
 		conditions_met_count = 0
@@ -69,6 +81,9 @@ class State(object):
 				print("Unexpected condition grouping - check_exit - SwarmStates")
 
 	def next_state(self,state_id):
+		"""
+		Takes a state_id and changes the current state to the relevant object.
+		"""
 		if state_id == 0:
 			self._coop.change_state((SetupState(self._coop,self.drones,self.drone_controllers),0))
 		elif state_id == 1:
@@ -78,7 +93,7 @@ class State(object):
 
 class SetupState(State):
 	"""
-	ID = 0
+	state_id = 0
 	
 	The SetupState is for when the drones are not verified as being ready for operations.
 	State entry requirements: none
@@ -115,13 +130,13 @@ class SetupState(State):
 			
 class TaskBad(State):
 	"""
-	ID = 1
+	state_id = 1
 	
-	The GroundState state for when task is not being achieved.
-	State entry requirements: assets are ready.
+	The TaskBad state is for when the task is not being achieved.
+	State entry requirements: drones are setup and ready for operations.
 	State purpose: to achieved the task.
 
-	TASK - to move continuously around a loop without collision
+	TASK - to move continuously around a loop maintaining safe separation.
 	
 	State transition conditions:
 
@@ -171,9 +186,9 @@ class TaskGood(State):
 	"""
 	ID = 2
 	
-	The CooperativeController state for when the task is being achieved.
+	The TaskGood state is for when the task is being achieved.
 	State entry requirements: task is being achieved.
-	State purpose: watch over situation to detect danger to both task and assets.
+	State purpose: watch over situation to check for task not being achieved.
 	
 	TASK - to move continuously around a loop without collision
 	

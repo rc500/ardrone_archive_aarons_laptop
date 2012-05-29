@@ -121,7 +121,7 @@ class Controller(object):
 	def check_error(self,error):
 		"""
 		Checks whether the error is within acceptable limits.
-		If it is within limits then the controller has achieved its goal and posts this status to the network.
+		If it is within limits then the controller has achieved its goal and updates the raw_status accordingly.
 		"""
 		#print ("check_error: %s against error_margin: %s" % (error,self.error_margin))
 		# Check whether error is within limits
@@ -196,19 +196,19 @@ class LeadLagController(Controller):
 	G(s) = (as + 1) / (bs + 1)
 	
 	USE BACKWARD DIFFERENCE TRANSFORMATION:
-		 z - 1
+	     z - 1
 	s = -------
-		  zT
+	       zT
 
 	DIGITAL CONTORLLER:
-			zT + (z-1)a
+		 zT + (z-1)a
 	G(z) =  ------------
-			zT + (z-1)b
+	         zT + (z-1)b
 	
 	DIFFERENCE EQUATION:
-			  1
+		  1
 	y[k] =  -----  { (y[k-1] * b) - (e[k-1] * a) + (e[k] * (T+a)) }
-			(T+b)
+		(T+b)
 	"""
 
 	def __init__(self,_control,feedback_type,output_type,update_key,k,a,b,T,reference,error_margin,hard_limit=1):
@@ -255,19 +255,19 @@ class LeadLagController2(LeadLagController):
 	G(s) = (as + 1) / (bs + 1)
 	
 	USE TUSTIN TRANSFORMATION:
-		 2(z-1)
+	      2(z-1)
 	s = --------
-		 T(z+1)
+	      T(z+1)
 
 	DIGITAL CONTORLLER:
-			T(z+1) + 2(z-1)a
+		T(z+1) + 2(z-1)a
 	G(z) =  ----------------
-			T(z+1) + 2(z-1)b
+		T(z+1) + 2(z-1)b
 	
 	DIFFERENCE EQUATION:
-			  1
+		  1
 	y[k] =  ------  { - (y[k-1]*(T-2b)) + (e[k-1]*(T-2a)) + (e[k]*(T+2a)) }
-			(T+2b)
+		(T+2b)
 	"""
 
 def heartbeat(self):

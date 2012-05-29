@@ -59,6 +59,6 @@ class AppController(object):
 
 	def update(self,something):
 		"""
-		Passes on updates to status updater
+		Pipes statuses from DroneControl to StatusUpdate
 		"""
 		self._status_updater.update(something)

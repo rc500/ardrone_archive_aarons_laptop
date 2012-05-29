@@ -13,6 +13,11 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 from ardrone.aruco import detect_markers
 
 class ImageProcessor(object):
+	"""
+	Class which processes images to detect and return information on visible markers.
+
+	An edited aruco library is used to achieve this functionality.
+	"""
 	def __init__(self,_update,drone_id):
 	
 		# --- INITIALISE APPLICATION OBJECTS ----
@@ -20,7 +25,9 @@ class ImageProcessor(object):
 		self._im_viewer = ImageViewer(drone_id)
 
 	def process(self,data):
-
+		"""
+		Function called to request processing of a frame
+		"""
 		# --- OPEN_CV FORMAT ---
 		# Create OpenCV header and read in drone video data as RGB565
 		ipl_image = cv.CreateImageHeader((320,240), cv.IPL_DEPTH_8U, 2)		# Downward camera size is actually 176x144
@@ -46,7 +53,7 @@ class ImageProcessor(object):
 			relative_position = (marker_center[0] - CV_image_midpoint[0], marker_center[1] - CV_image_midpoint[1])
 			marker_dict[str(m.id())]=relative_position
 
-		# Update PositionalControl with info from processed image
+		# Update DroneControl with info from processed image
 		self._update.update_position(marker_dict)
 		# Show processed image
 		self._im_viewer.show(CV_image)
@@ -71,8 +78,9 @@ class ImageProcessor(object):
 		return a
 
 class ImageViewer(object):
-	
-
+	"""
+	A class to output camera frames to a viewing window
+	"""	
 	def __init__(self,drone_id):
 		self.win_title = "Drone " + str(drone_id) + " Video Stream"
 		cv.NamedWindow(self.win_title,cv.CV_WINDOW_AUTOSIZE)

@@ -15,9 +15,9 @@ class State(object):
 	"""
 	A class which determines states of a drone.
 	This is the base class from which all states inherit.
-	As status messages are received, the state machine determines the next state and changes it accordingly.
+	When requested, the state machine determines whether the current state is valid and changes it if necessary.
 
-	Upon creation of a new state, the state is initialised and then runs action() which carries out further initialisation.
+	State changes are checked by comparing state exit conditions against the drone status.
 	"""
 
 	def __init__(self,_drone,drone_id):
@@ -42,7 +42,7 @@ class State(object):
 
 	def check_exit(self):
 		"""
-		Check the exit conditions against the state_properties.
+		Check the exit conditions against drone_status.
 		If state requires changing, return the new state id.
 		"""
 		exit_state = []
@@ -65,7 +65,7 @@ class State(object):
 		
 class CommunicationState(State):
 	"""
-	ID = 0
+	state_id = 0
 	
 	The state for when the drones are not verified as being in contact with the network.
 	State entry requirements: -
@@ -106,7 +106,7 @@ class CommunicationState(State):
 
 class GroundState(State):
 	"""
-	ID = 1
+	state_id = 1
 	
 	The state for when the drones are not airborne.
 	State entry requirements: drones are on and able to communicate with the controller.
@@ -160,12 +160,12 @@ class GroundState(State):
 
 class AirborneState(State):
 	"""
-	ID = 2
+	state_id = 2
 	
 	The state for when the drones are initially airborne.
 	State entry requirements: drones are airborne.
 	State purpose: to get drones hovering stably at height.
-	State exit: when drones are stable and ready to manoeuvre
+	State exit: when drones are stable and ready to manoeuvre relative to markers
 	
 	State exit conditions:
 		height_stable == True for all drones
@@ -189,15 +189,12 @@ class AirborneState(State):
 
 class ControlledState(State):
 	"""
-	ID = 3
+	state_id = 3
 	
 	The state for when the drones are stable in height.
 	State entry requirements: drones are stable at altitude.
-	State purpose: to get drones hovering stably over target marker, transitioning through marker transition vector to achieve this.
-	State exit: when marker is stable over target marker.
-	
-	State exit conditions:
-		completed marker transition
+	State purpose: to get drones hovering stably over target marker.
+	State exit: - 
 	"""
 
 	def __init__(self,_drone,drone_id):
