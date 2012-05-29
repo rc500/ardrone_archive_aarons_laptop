@@ -2,7 +2,7 @@
 Contains the network configuration for each drone
 """
 drone1 = {
-				'host' : 						"192.168.1.82",	# NB - this is the IP which should be set on the drone
+				'host' : 						"192.168.1.1",	# NB - this is the IP which should be set on the drone
 				'control_host' :				 "127.0.0.1",
 				'at_port' : 						5556,
 				'nav_port' : 						5554,
