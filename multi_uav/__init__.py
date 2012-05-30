@@ -26,6 +26,8 @@ This package is made up of the following modules:
 
   - Controllers: Manages access to a range of controllers which use the DroneControl module to push control inputs to the drone.
 
+It also contains a network_config class where the connection IPs for each drone should be updated before running the application.
+
 .. automodule:: multi_uav.DroneApp
   :members:
 

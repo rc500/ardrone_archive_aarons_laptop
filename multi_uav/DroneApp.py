@@ -20,7 +20,12 @@ QtCore = qt.import_module('QtCore')
 QtNetwork = qt.import_module('QtNetwork')
 		
 class DroneApp(object):
+	"""
+	The DroneApp object is where the drones being used are defined.
 
+	self.drones is a tuple of drone IDs (these can be any identifier (int, string, ...)) - self.drones MUST be a tuple (not an integer)
+	self.configs is a tuple of drone configurations (grabbed from network_config class) - see network_config.py for more details
+	"""
 	def __init__(self):
 		# ---- SYSTEM CONFIGURATION ----
 		self.drones = (1,)

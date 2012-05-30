@@ -1,5 +1,10 @@
 """
-Contains the network configuration for each drone
+Contains the network configuration for each drone.
+
+Elements to update for each flight:
+
+'host' - This is the IP which should be set on the drone - this will only update when changing drone network information
+'bind_host' - This is the IP which is used by the network card/USB dongle to connect to the drone - this will change (probably) on each initialisation of the network card/USB dongle
 """
 drone1 = {
 				'host' : 						"192.168.1.1",	# NB - this is the IP which should be set on the drone
