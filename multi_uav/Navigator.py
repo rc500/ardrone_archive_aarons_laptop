@@ -18,8 +18,15 @@ class Navigator(object):
 	"""
 	A class which takes drone positions and returns lists of drone routes which are safe to take.
 
-	All functions are called with a list of the drones current positions (and possibly other parameters too)
-	All 'public' functions return one list of n lists, where n is the number of drones being controlled
+	When Navigating multiple drones at once:
+	All functions are called with a list of the drones' current positions (and possibly other parameters too)
+	All 'public' functions return one list of n lists, where n is the number of drones being controlled, and the list contains a route
+
+	When processing one drone:
+	All functions are called with an integer of the drone's current position and drone id (and possibly other parameters too)
+	All 'public' functions return a single list which is the route for that drone
+
+	Routes should not contain the present marker
 	"""
 
 # PUBLIC
@@ -27,7 +34,7 @@ class Navigator(object):
 		# define map
 		self.path = {
 			'type' : 'loop',
-			'markers' : (0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24)
+			'markers' : (0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,)
 			};
 
 		# setup variables
@@ -39,9 +46,51 @@ class Navigator(object):
 		self.targets = [] # 0 or 1  marker id for each drone giving the current target for the drone
 		self.drones = drones # tuple of drone ids
 		
+	def route(self,pos,tgt,drone_id):
+		"""
+		Returns a route from pos to tgt ground references for a single drone. This route is deconflicted with other drone locations and routes.
+		Current implementation only works for a straight line path.
+		"""
+		# store updated position
+		self.positions[self.drones.index(drone_id)] = pos
+		print("Current positions: %s" % pos)
+
+		# check position is known
+		if pos == -1:
+			return_value = [-1,]
+			return return_value
+
+		# check position is in current mapping
+		if pos is not in self.path:
+			print("Error: Drone has location not on known path. Originator: Navigator")
+
+		# check path is a line
+		if self.path['type'] == 'line':
+			# for the required drone, create a list with the route between pos and tgt
+			route = []
+			# assume the route will be in one direction and create a route as such
+			direction = 0
+			# check at each stage whether destination or end of line has been reached and discard or send route as appropriate
+			while not self.next(pos)[direction] == tgt:
+				# continue route
+				route.append(self.next(pos)[direction])
+
+				# check for end of path
+				if route[len(route)] == -1:
+					# reset route
+					route = []
+					# change direction
+					direction = 1
+				
+			# when next position is the target (i.e. when while loop exits) finish the route, check for deconfliction and return it
+			route.append(self.next(pos)[direction])
+			self.routes[self.drones.index(drone_id)] = route
+			return self.check_deconflict(self.positions)
+			
+
 	def route(self,pos):
 		"""
-		A basic algorithm for returning a looping route around a continuous path. Route is never longer than 6 markers ahead.
+		A basic algorithm for returning a looping route for all drones around a continuous path. Route is never longer than 6 markers ahead.
 		"""
 		self.positions = pos
 		print("Current positions: %s" % pos)
@@ -138,21 +187,27 @@ class Navigator(object):
 		"""
 		Returns a list of markers next to current marker in order [marker in front of,marker behind]
 		"""
-		if self.path['type'] == 'loop':
-			local_path = list(self.path['markers'])
-			if pos == local_path[len(local_path)-1]: # if current position is last position in markers tuple
-				backward = local_path[local_path.index(pos)-1]
+		local_path = list(self.path['markers'])
+
+		if pos == local_path[len(local_path)-1]: # if current position is last position in markers tuple
+			backward = local_path[local_path.index(pos)-1]
+			if self.path['type'] == 'loop':
 				local_path.reverse()
 				forward = local_path.pop()
-			elif pos == local_path[0]: # if current position is the first position in markers tuple
-				forward = local_path[1]
-				backward = local_path.pop()
-			elif pos == -1:
-				print "no markers visible"
-				forward = -1
-				backward = -1
 			else:
-				forward = local_path[local_path.index(pos)+1]
-				backward = local_path[local_path.index(pos)-1]
+				forward = -1
+		elif pos == local_path[0] and self.path['type'] == 'loop': # if current position is the first position in markers tuple
+			forward = local_path[1]
+			if self.path['type'] == 'loop':
+				backward = local_path.pop()
+			else:
+				backward = -1
+		elif pos == -1:
+			print "no markers visible"
+			forward = -1
+			backward = -1
+		else:
+			forward = local_path[local_path.index(pos)+1]
+			backward = local_path[local_path.index(pos)-1]
 			
 		return [forward,backward]
