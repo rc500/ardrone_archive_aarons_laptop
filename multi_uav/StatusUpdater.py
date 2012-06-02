@@ -243,7 +243,7 @@ class StatusUpdater(object):
 			drone_status['position'] = status['marker_id']
 
 		# battery
-		status['battery'] = stutus['vbat_flying_percentage']
+		drone_status['battery'] = status['vbat_flying_percentage']
 
 		# Update status
 		#print ("Sending state : %s" % drone_status)
