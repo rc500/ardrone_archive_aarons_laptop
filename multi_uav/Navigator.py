@@ -21,10 +21,9 @@ class Navigator(object):
 	When Navigating multiple drones at once:
 	All functions are called with a list of the drones' current positions (and possibly other parameters too)
 	All 'public' functions return one list of n lists, where n is the number of drones being controlled, and the list contains a route
-
-	When processing one drone:
-	All functions are called with an integer of the drone's current position and drone id (and possibly other parameters too)
-	All 'public' functions return a single list which is the route for that drone
+	The route list must be in the order:
+		element 0 in list = last marker on route
+		last element in list = next marker to go to
 
 	Routes should not contain the present marker
 	"""
@@ -33,8 +32,8 @@ class Navigator(object):
 	def __init__(self,drones):
 		# define map
 		self.path = {
-			'type' : 'loop',
-			'markers' : (0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,)
+			'type' : 'line',
+			'markers' : (20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,0,1,2,3,4,5,6,7,8,9,)
 			};
 
 		# setup variables
@@ -44,51 +43,66 @@ class Navigator(object):
 
 		self.positions = [] # one marker id for each drone giving last known position
 		self.targets = [] # 0 or 1  marker id for each drone giving the current target for the drone
+		for number in drones:	
+			self.positions.append(-1)
+			self.targets.append(-1)
+	
 		self.drones = drones # tuple of drone ids
-		
-	def route(self,pos,tgt,drone_id):
+
+	def route_to_target(self,pos,tgt,drone_id):
 		"""
 		Returns a route from pos to tgt ground references for a single drone. This route is deconflicted with other drone locations and routes.
 		Current implementation only works for a straight line path.
 		"""
 		# store updated position
 		self.positions[self.drones.index(drone_id)] = pos
-		print("Current positions: %s" % pos)
+		print("current position: %s" % pos)
 
 		# check not currently at target
 		if pos == tgt:
-			return_value = [-1,]
+			return_value = []
+			for count in self.positions:
+				return_value.append([-1])
+			return return_value 
 
 		# check position is known
-		if pos == -1:
-			return_value = [-1,]
-			return return_value
+		elif pos == -1:
+			return_value = []
+			for count in self.positions:
+				return_value.append([-1])
+			return return_value 
 
 		# check position is in current mapping
-		if pos is not in self.path:
+		elif pos not in self.path['markers']:
 			print("Error: Drone has location not on known path. Originator: Navigator")
 
 		# check path is a line
-		if self.path['type'] == 'line':
-			# for the required drone, create a list with the route between pos and tgt
-			route = []
+		elif self.path['type'] == 'line':
+			drone_index = self.drones.index(drone_id)
 			# assume the route will be in one direction and create a route as such
+			posi = pos
 			direction = 0
+			self.routes[drone_index] = []
 			# check at each stage whether destination or end of line has been reached and discard or send route as appropriate
-			while not self.next(pos)[direction] == tgt:
+			while not self.next(posi)[direction] == tgt:
 				# continue route
-				route.append(self.next(pos)[direction])
+				self.routes[drone_index].append(self.next(posi)[direction])
 
 				# check for end of path
-				if route[len(route)] == -1:
-					# reset route
-					route = []
+				if self.routes[drone_index][len(self.routes[drone_index])-1] == -1:
+					# reset route and position
+					self.routes[drone_index] = []
+					posi = pos
 					# change direction
 					direction = 1
-				
+				else:
+					# update posi
+					posi = self.next(posi)[direction]
 			# when next position is the target (i.e. when while loop exits) finish the route, check for deconfliction and return it
-			route.append(self.next(pos)[direction])
-			self.routes[self.drones.index(drone_id)] = route
+			self.routes[drone_index].append(self.next(posi)[direction])
+			# reverse route
+			self.routes[drone_index].reverse()
+
 			return self.check_deconflict(self.positions)
 			
 
@@ -97,7 +111,6 @@ class Navigator(object):
 		A basic algorithm for returning a looping route for all drones around a continuous path. Route is never longer than 6 markers ahead.
 		"""
 		self.positions = pos
-		print("Current positions: %s" % pos)
 		# check position is known
 		if -1 in pos:
 			return_value = []
@@ -158,7 +171,6 @@ class Navigator(object):
 		for drone in safe_routes:
 			if drone == False:
 				self.routes[drone] = [self.positions[drone],]
-		print("New routes: %s" % self.routes)
 		return self.routes
 
 # PRIVATE
@@ -190,6 +202,7 @@ class Navigator(object):
 	def next(self,pos):
 		"""
 		Returns a list of markers next to current marker in order [marker in front of,marker behind]
+		Returns -1 if end of non-looping path
 		"""
 		local_path = list(self.path['markers'])
 
