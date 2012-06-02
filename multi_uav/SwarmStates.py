@@ -116,17 +116,19 @@ class SetupState(State):
 		State.__init__(self,_coop,drones,drone_controllers)
 		
 		# Set exit conditions
-		self.exit_conditions = [{}, {'height_stable':True}, {}]
+		self.exit_conditions = [{}, {'talking':True}, {}]
 		self.exit_conditional = ['none','and','none']
 		print("======In Setup State======")
 
 	def maintain(self):
 		for drone in self.drone_controllers:
-			drone.request_state(1)
+			drone.request_state(0)
 
 	def transition(self,state_id):
 		self.maintain()
 		self.check_exit()
+		for drone in self.drone_controllers:
+			drone.request_state(0)
 			
 class TaskBad(State):
 	"""
@@ -159,6 +161,8 @@ class TaskBad(State):
 		self.exit_conditions = [{}, {},{'airprox':False, 'observing_target':True}]
 		self.exit_conditional = ['none','none','and']
 
+		# Ask each drone to hold current position
+		#self._coop.send_routes(self._coop._navigator.hold_position_route(self._coop.swarm_status['position']),self.drones)
 		print("======Task not being achieved======")
 	
 	def maintain(self):
@@ -183,8 +187,8 @@ class TaskBad(State):
 
 			# if position of drone is known, then request the drone follow a route to the target
 			# (NB this will only do something when the drone is in state 3)
-			new_route = self._coop._navigator.route(self._coop.swarm_status['position'][self.drones.index(_drone)],0,_drone)
-			self._coop.send_routes([new_route,],[_drone,])
+			new_routes = self._coop._navigator.route_to_target(self._coop.swarm_status['position'][self.drones.index(_drone)],0,_drone)
+			self._coop.send_routes(new_routes,[_drone,])
 
 			# Check success
 			self.check_exit()
