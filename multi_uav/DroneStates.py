@@ -205,6 +205,9 @@ class ControlledState(State):
 		self.exit_conditions = {}
 		self.exit_conditions['airborne']=False
 
+		# Hold current position
+		self.hold_marker(self._drone.drone_status['position'])
+
 		print("--%s--In Controlled State--%s--" % (self.drone_id,self.drone_id))
 
 	def next_state(self):
