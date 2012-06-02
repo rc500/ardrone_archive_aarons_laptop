@@ -27,8 +27,9 @@ class DroneControl(object):
 	Acts upon messages from SwarmControl object by changing position (using Controller object) or carrying out standard land, take off, change camera actions (using ControlLoop object).
 	"""
 	
-	def __init__(self,drone_id,_control,network_config,updater):
+	def __init__(self,drone_id,_control,network_config,updater,home):
 		# --- INITIALISE VARIABLES ---
+		self.home = home
 		self.raw_status = {};
 		self.drone_status = {};
 		self.drone_input = {
@@ -56,7 +57,7 @@ class DroneControl(object):
 		self.video_network_activity_flag = False
 
 		self.holding_marker = False
-		self.route = [-1,]
+		self.route = [home,]
 		self.drone_id = drone_id	
 		
 		# --- ASSIGN POINTERS ---

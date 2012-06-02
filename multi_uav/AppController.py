@@ -18,7 +18,7 @@ class AppController(object):
 	"""
 	Initially sets up system in configuration provided. Routes communication of status messages to status updater.
 	"""
-	def __init__(self,drones,configs):
+	def __init__(self,drones,configs,homes):
 		# ---- DRONES SETUP ----
 		# List of ControlLoop objects for use in interfacing with drones
 		control_loops = []
@@ -35,10 +35,10 @@ class AppController(object):
 		
 		# DroneControl
 		for index in range(0,len(drones)):
-			self.drone_controls.append(DroneControl.DroneControl(drones[index],control_loops[index],configs[index],self))
+			self.drone_controls.append(DroneControl.DroneControl(drones[index],control_loops[index],configs[index],self,homes[index]))
 
 		# SwarmControl
-		self._swarm_control = SwarmControl.SwarmControl(drones,tuple(self.drone_controls))
+		self._swarm_control = SwarmControl.SwarmControl(drones,tuple(self.drone_controls),homes)
 
 		# StatusUpdater
 		self._status_updater = StatusUpdater.StatusUpdater(drones,tuple(self.drone_controls),self._swarm_control)

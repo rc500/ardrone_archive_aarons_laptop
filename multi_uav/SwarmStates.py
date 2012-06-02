@@ -97,7 +97,7 @@ class SetupState(State):
 	
 	The SetupState is for when the drones are not verified as being ready for operations.
 	State entry requirements: none
-	State purpose: to WAIT until drones are hovering stably
+	State purpose: to WAIT until drones are communicating
 	
 	State transition conditions:
 
@@ -105,7 +105,7 @@ class SetupState(State):
 	-
 
 	State 1:
-	height_stable == True for all drones
+	talking == True for all drones
 
 	State 2:
 	-
@@ -122,7 +122,7 @@ class SetupState(State):
 
 	def maintain(self):
 		for drone in self.drone_controllers:
-			drone.request_state(2)
+			drone.request_state(1)
 
 	def transition(self,state_id):
 		self.maintain()
@@ -136,7 +136,7 @@ class TaskBad(State):
 	State entry requirements: drones are setup and ready for operations.
 	State purpose: to achieved the task.
 
-	TASK - to move continuously around a loop maintaining safe separation.
+	TASK - to observe marker 0.
 	
 	State transition conditions:
 
@@ -147,7 +147,7 @@ class TaskBad(State):
 	-
 
 	State 2:
-	airprox == False && following_marker == True
+	airprox == False && observing_target == True 
 
 	"""
 	
@@ -156,11 +156,8 @@ class TaskBad(State):
 		State.__init__(self,_coop,drones,drone_controllers)
 		
 		# Set exit conditions
-		self.exit_conditions = [{}, {},{'airprox':False, 'following_marker':True}]
+		self.exit_conditions = [{}, {},{'airprox':False, 'observing_target':True}]
 		self.exit_conditional = ['none','none','and']
-
-		# Ask each drone to hold current position
-		self._coop.send_routes(self._coop._navigator.hold_position_route(self._coop.swarm_status['position']),self.drones)
 
 		print("======Task not being achieved======")
 	
@@ -173,12 +170,22 @@ class TaskBad(State):
 			print("Trying to change from TaskBad state into a SwarmState which isn't sensible. No action taken - SwarmState")
 		
 		if state_id == 2:
-			# Continue route for front-most drone only to increase separation
-			new_routes = self._coop._navigator.route(self._coop.swarm_status['position'])
-			self._coop.send_routes(new_routes,[self._coop._navigator.front_drone(),])
-			# Request drones to move into a state able to follow markers
-			for drone in self.drone_controllers:
-				drone.request_state(3)
+			"""
+			To achieve the task, find the drone with highest battery percentage and navigate it to the target
+			"""
+			# set _drone to be drone_id of drone with highest battery
+			# and _drone_controller to be the corresponding controller
+			_drone = self.drones[self._coop.swarm_status['battery'].index(max(self._coop.swarm_status['battery']))]
+			_drone_controller = self.drone_controllers[self.drones.index(_drone)]
+
+			# request this drone to enter a state ready to follow markers
+			_drone_controller.request_state(3)
+
+			# if position of drone is known, then request the drone follow a route to the target
+			# (NB this will only do something when the drone is in state 3)
+			new_route = self._coop._navigator.route(self._coop.swarm_status['position'][self.drones.index(_drone)],0,_drone)
+			self._coop.send_routes([new_route,],[_drone,])
+
 			# Check success
 			self.check_exit()
 				
@@ -198,7 +205,7 @@ class TaskGood(State):
 	-
 
 	State 1:
-	airprox == True || following_marker == False
+	airprox == True || observing_target == False
 
 	State 2:
 	-
@@ -208,21 +215,16 @@ class TaskGood(State):
 		State.__init__(self,_coop,drones,drone_controllers)
 		
 		# Set exit conditions
-		self.exit_conditions = [{}, {'airprox':True,'following_marker':False}, {}]
+		self.exit_conditions = [{}, {'airprox':True,'observing_target':False}, {}]
 		self.exit_conditional = ['none','or','none']
 		print("======Task being achieved======")
 
 	def maintain(self):
-		# Continue route
-		new_routes = self._coop._navigator.route(self._coop.swarm_status['position'],self.drones)
-		print("new routes: %s" %new_routes)
-		self._coop.send_routes(new_routes)
+		# Don't have to do anything to maintain current state as observation is static
 
 		# Check State
 		self.check_exit()
 
-		# will want to control spacings here
-
 	def transition(self,state_id):
-		pass
-		# nothing yet - or ever?
+		# Check State
+		self.check_exit()

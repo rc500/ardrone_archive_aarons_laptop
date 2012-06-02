@@ -44,6 +44,7 @@ class StatusUpdater(object):
 					'roll_stable' : True, # dirty
 					'pitch_stable' : True, # dirty
 					'altitude' : 0.0,
+					'vbat_flying_percentage':0,
 					};
 
 		initial_drone_status = {
@@ -53,6 +54,7 @@ class StatusUpdater(object):
 					'height_stable':False,
 					'position':-1,
 					'following_marker':False,
+					'battery':0,
 					};
 
 		self.swarm_status = {
@@ -62,6 +64,8 @@ class StatusUpdater(object):
 					'height_stable':False,
 					'following_marker':False,
 					'airprox':False,
+					'observing_target':False,
+					'battery':[],
 					};		
 
 		self.drone_status = []
@@ -175,8 +179,23 @@ class StatusUpdater(object):
 		# separation
 		self.swarm_status['separation'] = closest_dist
 
-		return self.swarm_status
-				
+		# observing_target (target = marker 0)
+		self.swarm_status['observing_target'] = False
+		for drone in range(0,len(self.drones)):
+			if self.drone_status[drone]['position'] == 0:
+				self.swarm_status['observing_target'] = True
+
+		# observer (drone_id of drone who is over marker 0) (-1 if no drone is observing)
+		self.swarm_status['observer'] = -1
+		for drone in range(0,len(self.drones)):
+			if self.drone_status[drone]['position'] == 0:
+				self.swarm_status['observer'] = self.drones.index(drone)
+
+		# battery
+		self.swarm_status['battery'] = []
+		for drone in range(0,len(self.drones)):
+			self.swarm_status['battery'].append(self.drone_status[drone]['battery'])
+
 	def parse_raw_for_drone(self,status):
 		"""
 		Parse raw status into format for drone status
@@ -222,6 +241,9 @@ class StatusUpdater(object):
 				drone_status['position'] = int(visible[0])
 		else:
 			drone_status['position'] = status['marker_id']
+
+		# battery
+		status['battery'] = stutus['vbat_flying_percentage']
 
 		# Update status
 		#print ("Sending state : %s" % drone_status)

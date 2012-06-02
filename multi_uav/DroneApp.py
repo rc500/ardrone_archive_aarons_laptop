@@ -30,6 +30,7 @@ class DroneApp(object):
 		# ---- SYSTEM CONFIGURATION ----
 		self.drones = (1,2,)
 		self.configs = (config.drone1,config.drone2,)
+		self.homes = (9,15)
 
 		# Wire up Ctrl-C to safely land drones and end the application
 		signal.signal(signal.SIGINT, lambda *args: self.finish())
@@ -37,7 +38,7 @@ class DroneApp(object):
 		# ---- APPLICATION SETUP ----
 		# Create a QtCoreApplication loop (NB remember to use QApplication instead if wanting GUI features)
 		self.app = QtCore.QCoreApplication(sys.argv)
-		self.app_controller = AppController.AppController(self.drones,self.configs)
+		self.app_controller = AppController.AppController(self.drones,self.configs,self.homes)
 
 	def run(self):
 		self.app_controller.start()

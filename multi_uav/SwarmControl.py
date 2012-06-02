@@ -23,10 +23,11 @@ class SwarmControl(object):
 	Uses navigation logic (from Navigator class) and task logic (from Swarm States) to decide on actions.
 	Actions are sent to each drone's Individual Controller.
 	"""
-	def __init__(self,drones,drone_controllers): # Will want to add in _drone2 in time
+	def __init__(self,drones,drone_controllers,homes): # Will want to add in _drone2 in time
 		# --- STORE VARIABLES ---
 		self.drones = drones # tuple of drone ids
 		self.swarm_status = {};		
+		self.homes = homes
 
 		# --- STORE POINTERS ---
 		self.drone_controllers = drone_controllers
@@ -77,7 +78,9 @@ class SwarmControl(object):
 		elif self.state_id == 1:
 			self.transition_to_state(2)
 
-		# If in Good State, then maintain
+		# If in Good State, then maintain as long as the observing drone's battery is high enough
+		#elif self.state_id == 2 and self.swarm_status['battery'][self.drones.index(self.swarm_status['observer'])] < 30:
+					
 		elif self.state_id == 2:
 			self.maintain_state()
 

@@ -55,6 +55,10 @@ class Navigator(object):
 		self.positions[self.drones.index(drone_id)] = pos
 		print("Current positions: %s" % pos)
 
+		# check not currently at target
+		if pos == tgt:
+			return_value = [-1,]
+
 		# check position is known
 		if pos == -1:
 			return_value = [-1,]
