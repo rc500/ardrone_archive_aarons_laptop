@@ -56,7 +56,9 @@ class SwarmControl(object):
 
 		# Variables
 		self.min_separation = -1
-		
+		self.asset_drone = -1 # drone_id of drone allocated to perform task
+		self.asset_drone_controller = -2 # drone controller of drone allocated to perform task
+
 	def start_program(self):
 		print("======Program started======")
 		# Enter initial state
@@ -107,16 +109,7 @@ class SwarmControl(object):
 		elif self.state_id == 1:
 			self.transition_to_state(2)
 
-		# If in Good State, then maintain as long as the observing drone's battery is high enough
-		elif self.state_id == 2 and self.swarm_status['battery'][self.drones.index(self.swarm_status['observer'])] < 15:
-			print("BATTERY LOW - returning home")
-			# If observing drone's battery is too low, send it home and attempt to maintain Good State
-			# send home
-			observer_index = self.drones.index(self.swarm_status['observer'])
-			new_routes = self._navigator.route_to_target(self.swarm_status['positions'][observer_index],self.homes[observer_index])
-			self.send_routes(new_routes,[self.swarm_status['observer'],])
-			# attempt to maintain Good State
-			self.maintain_state()
+		# If in Good State, then maintain
 		elif self.state_id == 2:
 			self.maintain_state()
 
@@ -143,6 +136,44 @@ class SwarmControl(object):
 		Request the current state to progress to a new state
 		"""
 		self._state.transition(state_id)
+
+	def land_low_battery_drones(self):
+		"""
+		Send all drones with low battery back home to land.
+		Must ensure that there is always one drone still heading to complete/is completing the task before exiting.
+		"""				
+		for index in range(0,len(self.drones)):
+			# If drone's battery is too low, send it home
+			if self.swarm_status['battery'][index]<15:
+				print("drone detected with low battery")
+				new_routes = self._navigator.route_to_target(self.swarm_status['position'][index],self.homes[index],self.drones[index])
+				print("landing routes: %s" % new_routes)
+				self.send_routes(new_routes,[self.drones[index],])
+				
+				# If drone's battery is too low and it is at home position, land it 	
+				if self.swarm_status['position'][index]==self.homes[index]:
+					self.drone_controllers[index].land()
+
+				# If this drone was the asset, then unallocate it
+				if self.drones[index] == self.asset_drone:
+					self.remove_current_asset()
+
+	def allocate_new_asset(self):
+		"""
+		Designate the most suitable drone to carry out task.
+		Most suitable = highest battery.
+		"""				
+		# set _drone to be drone_id of drone with highest battery
+		# and _drone_controller to be the corresponding controller
+		self.asset_drone = self.drones[self.swarm_status['battery'].index(max(self.swarm_status['battery']))]
+		self.asset_drone_controller = self.drone_controllers[self.drones.index(self.asset_drone)]
+	
+	def remove_current_asset(self):
+		"""
+		Remove current asset
+		"""		
+		self.asset_drone = -1
+		self.asset_drone_controller = -1
 
 	def update(self,status):
 		self.swarm_status = status
