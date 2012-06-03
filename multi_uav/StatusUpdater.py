@@ -32,6 +32,7 @@ class StatusUpdater(object):
 		self.drones = drones
 		self.drone_controllers = drone_controllers
 		self._swarm_controller = swarm_controller
+		self.simulate_drone = -1
 
 		# Push out initial statuses to objects
 		initial_raw_status = {
@@ -59,7 +60,7 @@ class StatusUpdater(object):
 
 		self.swarm_status = {
 					'type': 'swarm',
-					'position':[],
+					'position':[-1,-1,], #dirty
 					'talking':False,
 					'height_stable':False,
 					'following_marker':False,
@@ -231,10 +232,14 @@ class StatusUpdater(object):
 			drone_status['position'] = status['marker_id']
 
 		# battery (if simulation is ON, and this drone is the observer, then set battery to a low %)
-		if self._swarm_controller.simulate_flag == False or not drone_id == self.swarm_status['observer']:
+		# If not already allocated, then allocate the drone for simulation
+		if self._swarm_controller.simulate_flag == True and self.simulate_drone == -1:
+			self.simulate_drone = self.swarm_status['observer']
+			print("simulate drone = %s " % self.simulate_drone)
+		if self._swarm_controller.simulate_flag == False or not drone_id == self.simulate_drone: 
 			drone_status['battery'] = status['vbat_flying_percentage']
 		else:
-			if drone_id == self.swarm_status['observer']:
+			if drone_id == self.simulate_drone:
 				drone_status['battery'] = 10
 
 		# Update status
