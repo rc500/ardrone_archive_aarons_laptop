@@ -182,13 +182,13 @@ class TaskBad(State):
 			if self._coop.asset_drone == -1:
 				self._coop.allocate_new_asset()
 
-			# request this drone to enter a state ready to follow markers
-			self._coop.asset_drone_controller.request_state(3)
-
 			# if position of drone is known, then request the drone follow a route to the target
 			# (NB this will only do something when the drone is in state 3)
 			new_routes = self._coop._navigator.route_to_target(self._coop.swarm_status['position'][self.drones.index(self._coop.asset_drone)],0,self._coop.asset_drone)
 			self._coop.send_routes(new_routes,[self._coop.asset_drone,])
+
+			# request this drone to enter a state ready to follow markers
+			self._coop.asset_drone_controller.request_state(3)
 
 			# Land drones in need
 			self._coop.land_low_battery_drones()
@@ -231,10 +231,23 @@ class TaskGood(State):
 		print("======Task being achieved======")
 
 	def maintain(self):
-		# Don't have to do anything to maintain current state as observation is static
+		# Ensure an asset is allocated
+		if self._coop.asset_drone == -1:
+			self._coop.allocate_new_asset()
 		
+		# Keep asset centered on target
+		new_routes = self._coop._navigator.route_to_target(self._coop.swarm_status['position'][self.drones.index(self._coop.asset_drone)],0,self._coop.asset_drone)
+		self._coop.send_routes(new_routes,[self._coop.asset_drone,])
+
+		# request this drone to enter a state ready to follow markers
+		self._coop.asset_drone_controller.request_state(3)
+
 		# Land drones in need
 		self._coop.land_low_battery_drones()
+
+		# Ensure an asset is allocated
+		if self._coop.asset_drone == -1:
+			self._coop.allocate_new_asset()
 
 		# Check State
 		self.check_exit()
@@ -242,6 +255,10 @@ class TaskGood(State):
 	def transition(self,state_id):
 		# Land drones in need
 		self._coop.land_low_battery_drones()
+
+		# Ensure an asset is allocated
+		if self._coop.asset_drone == -1:
+			self._coop.allocate_new_asset()
 
 		# Check State
 		self.check_exit()

@@ -145,9 +145,8 @@ class SwarmControl(object):
 		for index in range(0,len(self.drones)):
 			# If drone's battery is too low, send it home
 			if self.swarm_status['battery'][index]<15:
-				print("drone detected with low battery")
+				self.drone_controllers[index].request_state(3)
 				new_routes = self._navigator.route_to_target(self.swarm_status['position'][index],self.homes[index],self.drones[index])
-				print("landing routes: %s" % new_routes)
 				self.send_routes(new_routes,[self.drones[index],])
 				
 				# If drone's battery is too low and it is at home position, land it 	
@@ -167,6 +166,7 @@ class SwarmControl(object):
 		# and _drone_controller to be the corresponding controller
 		self.asset_drone = self.drones[self.swarm_status['battery'].index(max(self.swarm_status['battery']))]
 		self.asset_drone_controller = self.drone_controllers[self.drones.index(self.asset_drone)]
+		print("allocating new asset: %s" % self.asset_drone)
 	
 	def remove_current_asset(self):
 		"""
@@ -174,6 +174,7 @@ class SwarmControl(object):
 		"""		
 		self.asset_drone = -1
 		self.asset_drone_controller = -1
+		print("removing current asset")
 
 	def update(self,status):
 		self.swarm_status = status
