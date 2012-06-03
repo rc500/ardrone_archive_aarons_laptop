@@ -84,9 +84,9 @@ class CommunicationState(State):
 		self.exit_conditions = {}
 		self.exit_conditions['talking']=True
 	
-		# Setup timer to enable repeated attempts to reset and take off the drones at given intervals
+		# Setup timer to enable repeated attempts to reset 
 		self.reset_timer = QtCore.QTimer()
-		self.reset_timer.setInterval(4000) # ms
+		self.reset_timer.setInterval(2500) # ms
 		self.reset_timer.timeout.connect(self.restart)
 		self.reset_timer.start()
 
