@@ -96,7 +96,7 @@ class CommunicationState(State):
 		# Reset drone and request nav/video data again
 		#print("--%s--beat-restart--%s--" % (self.drone_id,self.drone_id))
 		if self._drone.raw_status['altitude'] < 30.0:
-			self._drone.bootstrap()
+			self._drone.reset()
 
 	def next_state(self):
 		# Create next state
@@ -214,7 +214,7 @@ class ControlledState(State):
 		print "----Finished Marker Transition----"
 	
 	def hold_marker(self,marker_id):
-		print ("--%s--holding marker: %s --%s--" % (self.drone_id,marker_id,self.drone_id))
+		#print ("--%s--holding marker: %s --%s--" % (self.drone_id,marker_id,self.drone_id))
 		self._drone.hold_marker(marker_id)
 
 	def maintain(self):
@@ -222,7 +222,7 @@ class ControlledState(State):
 		if not len(self._drone.route) == 0:
 			# Check to see whether drones can see their next marker
 			marker_id = self.pop_marker()
-			print("--%s--next marker: %s --%s--" % (self.drone_id,marker_id,self.drone_id))
+			#print("--%s--next marker: %s --%s--" % (self.drone_id,marker_id,self.drone_id))
 
 			# If they can see their next marker then hold it
 			if (str(marker_id) in self._drone.get_visible_markers()):
