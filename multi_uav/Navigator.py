@@ -29,11 +29,11 @@ class Navigator(object):
 	"""
 
 # PUBLIC
-	def __init__(self,drones):
+	def __init__(self,drones,initial_positions):
 		# define map
 		self.path = {
 			'type' : 'line',
-			'markers' : (20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,0,1,2,3,4,5,6,7,8,9,)
+			'markers' : (15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0,30,29,28,27,26,25,24,23,22,21,20,19,18,17,16)
 			};
 
 		# setup variables
@@ -41,10 +41,9 @@ class Navigator(object):
 		for number in drones:
 			self.routes.append([])
 
-		self.positions = [] # one marker id for each drone giving last known position
+		self.positions = initial_positions # one marker id for each drone giving last known position
 		self.targets = [] # 0 or 1  marker id for each drone giving the current target for the drone
 		for number in drones:	
-			self.positions.append(-1)
 			self.targets.append(-1)
 	
 		self.drones = drones # tuple of drone ids
@@ -56,7 +55,7 @@ class Navigator(object):
 		"""
 		# store updated position
 		self.positions[self.drones.index(drone_id)] = pos
-		print("current position: %s" % pos)
+		#print("current position: %s" % pos)
 
 		# check not currently at target
 		if pos == tgt:
@@ -142,6 +141,7 @@ class Navigator(object):
 	def hold_position_route(self,pos):
 		"""
 		Returns a route which is the same as current positions passed (i.e. just turns a position into a route)
+
 		"""
 		self.positions = pos
 		for drone in range(0,len(self.drones)):
@@ -173,6 +173,36 @@ class Navigator(object):
 				self.routes[drone] = [self.positions[drone],]
 		return self.routes
 
+	def min_separation(self,pos):
+		"""
+		Returns integer which is the minimum separation between all positions provided
+		Simple (inefficient) algorithm counts one way until reaching end of the line or another position, then does the same the other direction. Then do both these for every position. It takes the minimum value between positions.
+		Algorithm could be optimized but for low number of drones it is sufficient.
+		"""	
+		self.positions = pos
+		if self.path['type'] == 'line':
+			# initial direction and starting position
+			direction = 0
+			separation = -1 
+
+			# for each drone's position
+			for index in range(0,len(self.drones)):
+				# and for each direction
+				for direction in range(0, 2):
+					l_separation = 0
+					posi = self.next(pos[index])[direction]
+					# keep counting until reach another position or end of the line
+					while posi not in pos and not posi == -1:
+						posi = self.next(posi)[direction]
+						l_separation = l_separation + 1
+					# if reach end of line first, then do nothing
+					if posi == -1:
+						pass
+					# if reach another position first, compare it to the current separation and replace if smaller (or the first)
+					else:
+						if l_separation < separation or separation == -1:
+							separation = l_separation
+			return separation
 # PRIVATE
 	def check_rvp(self):
 		"""
@@ -183,6 +213,8 @@ class Navigator(object):
 		safe_route = []
 		drone_index = []
 		d_count = 0
+
+		# generate drone_index and other_index list
 		for drone in self.drones:
 			safe_route.append(True)
 			others = list(self.drones)
@@ -190,6 +222,8 @@ class Navigator(object):
 			drone_index.append(d_count)
 			d_count = d_count + 1
 		other_index = drone_index
+
+		# for each drone, check against all other drones
 		for drone in drone_index:
 			other_index.remove(drone)
 			for other in other_index:
@@ -201,6 +235,7 @@ class Navigator(object):
 
 	def next(self,pos):
 		"""
+		Must be passed an integer position
 		Returns a list of markers next to current marker in order [marker in front of,marker behind]
 		Returns -1 if end of non-looping path
 		"""
@@ -213,14 +248,14 @@ class Navigator(object):
 				forward = local_path.pop()
 			else:
 				forward = -1
-		elif pos == local_path[0] and self.path['type'] == 'loop': # if current position is the first position in markers tuple
+		elif pos == local_path[0]: # if current position is the first position in markers tuple
 			forward = local_path[1]
 			if self.path['type'] == 'loop':
 				backward = local_path.pop()
 			else:
 				backward = -1
 		elif pos == -1:
-			print "no markers visible"
+			#print "no markers visible"
 			forward = -1
 			backward = -1
 		else:
