@@ -18,6 +18,7 @@ from . import AppController
 import ardrone.util.qtcompat as qt
 QtCore = qt.import_module('QtCore')
 QtNetwork = qt.import_module('QtNetwork')
+QtGui = qt.import_module('QtGui')
 		
 class DroneApp(object):
 	"""
@@ -30,7 +31,7 @@ class DroneApp(object):
 		# ---- SYSTEM CONFIGURATION ----
 		self.drones = (1,2,)
 		self.configs = (config.drone1,config.drone2,)
-		self.homes = (9,15)
+		self.homes = (19,12,)
 
 		# Wire up Ctrl-C to safely land drones and end the application
 		signal.signal(signal.SIGINT, lambda *args: self.finish())
