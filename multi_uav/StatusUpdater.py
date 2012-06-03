@@ -65,6 +65,7 @@ class StatusUpdater(object):
 					'following_marker':False,
 					'airprox':False,
 					'observing_target':False,
+					'observer':-1,
 					'battery':[],
 					};		
 
@@ -147,29 +148,14 @@ class StatusUpdater(object):
 		for drone in range(0,len(self.drones)):
 			self.swarm_status['height_stable'] = self.swarm_status['height_stable'] and self.drone_status[drone]['height_stable']
 
-		# position - list of all drone positions
+		# position - list of all drone positions. 
 		self.swarm_status['position'] = []
 		for drone in range(0,len(self.drones)):
 			self.swarm_status['position'].append(self.drone_status[drone]['position'])
 
 		# airprox - shortest distance between drones
 		# work out shortest distance between drones
-		closest_dist = 1000 # arbitrarily large
-		drone_index = []
-		other_index = []
-		d_count = 0
-		for drone in self.drones:
-			drone_index.append(d_count)
-			other_index.append(d_count)
-			d_count = d_count + 1
-		for drone in drone_index:
-			others = list(self.drones)
-			other_index.remove(others.index(self.drones[drone]))
-			for other in other_index:
-				diff_dist = self.swarm_status['position'][drone] - self.swarm_status['position'][other]
-				if diff_dist < closest_dist:
-					closest_dist = diff_dist
-			other_index.append(others.index(self.drones[drone]))
+		closest_dist = self._swarm_controller.min_separation
 		# check distance with airprox
 		if closest_dist < 9:
 			self.swarm_status['airprox'] = True
@@ -189,7 +175,7 @@ class StatusUpdater(object):
 		self.swarm_status['observer'] = -1
 		for drone in range(0,len(self.drones)):
 			if self.drone_status[drone]['position'] == 0:
-				self.swarm_status['observer'] = self.drones.index(drone)
+				self.swarm_status['observer'] = self.drones[drone]
 
 		# battery
 		self.swarm_status['battery'] = []
@@ -231,19 +217,25 @@ class StatusUpdater(object):
 			drone_status['following_marker'] = False
 
 		# position (marker_id)
-		# currently tracked marker
+		# currently tracked marker. If position is -1 and drone is not airborne, take its position to be its home position
 		if status['marker_id'] == -1:
 			visible = drone_controller.get_visible_markers()
 			#print ("visible: %s" %visible)
-			if not visible:
+			if not visible and self.drone_controllers[self.drones.index(drone_id)].state_id < 1:
+				drone_status['position'] = self.drone_controllers[self.drones.index(drone_id)].home
+			elif not visible:
 				drone_status['position'] = -1
 			else:	
 				drone_status['position'] = int(visible[0])
 		else:
 			drone_status['position'] = status['marker_id']
 
-		# battery
-		drone_status['battery'] = status['vbat_flying_percentage']
+		# battery (if simulation is ON, and this drone is the observer, then set battery to a low %)
+		if self._swarm_controller.simulate_flag == False or not drone_id == self.swarm_status['observer']:
+			drone_status['battery'] = status['vbat_flying_percentage']
+		else:
+			if drone_id == self.swarm_status['observer']:
+				drone_status['battery'] = 10
 
 		# Update status
 		#print ("Sending state : %s" % drone_status)

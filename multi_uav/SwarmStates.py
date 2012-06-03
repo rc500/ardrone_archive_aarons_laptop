@@ -161,8 +161,11 @@ class TaskBad(State):
 		self.exit_conditions = [{}, {},{'airprox':False, 'observing_target':True}]
 		self.exit_conditional = ['none','none','and']
 
-		# Ask each drone to hold current position
-		#self._coop.send_routes(self._coop._navigator.hold_position_route(self._coop.swarm_status['position']),self.drones)
+		# set _drone to be drone_id of drone with highest battery
+		# and _drone_controller to be the corresponding controller
+		self._drone = self.drones[self._coop.swarm_status['battery'].index(max(self._coop.swarm_status['battery']))]
+		self._drone_controller = self.drone_controllers[self.drones.index(self._drone)]
+
 		print("======Task not being achieved======")
 	
 	def maintain(self):
@@ -175,20 +178,15 @@ class TaskBad(State):
 		
 		if state_id == 2:
 			"""
-			To achieve the task, find the drone with highest battery percentage and navigate it to the target
+			To achieve the task, use the drone with highest battery percentage (when this state was created) and navigate it to the target
 			"""
-			# set _drone to be drone_id of drone with highest battery
-			# and _drone_controller to be the corresponding controller
-			_drone = self.drones[self._coop.swarm_status['battery'].index(max(self._coop.swarm_status['battery']))]
-			_drone_controller = self.drone_controllers[self.drones.index(_drone)]
-
 			# request this drone to enter a state ready to follow markers
-			_drone_controller.request_state(3)
+			self._drone_controller.request_state(3)
 
 			# if position of drone is known, then request the drone follow a route to the target
 			# (NB this will only do something when the drone is in state 3)
-			new_routes = self._coop._navigator.route_to_target(self._coop.swarm_status['position'][self.drones.index(_drone)],0,_drone)
-			self._coop.send_routes(new_routes,[_drone,])
+			new_routes = self._coop._navigator.route_to_target(self._coop.swarm_status['position'][self.drones.index(self._drone)],0,self._drone)
+			self._coop.send_routes(new_routes,[self._drone,])
 
 			# Check success
 			self.check_exit()
