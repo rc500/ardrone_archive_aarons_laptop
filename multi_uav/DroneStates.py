@@ -88,17 +88,16 @@ class CommunicationState(State):
 		self.reset_timer = QtCore.QTimer()
 		self.reset_timer.setInterval(4000) # ms
 		self.reset_timer.timeout.connect(self.restart)
-		self.reset_timer.start()	
+		self.reset_timer.start()
+
 		print("--%s--In Communication State--%s--" % (self.drone_id,self.drone_id))
 
 	def restart(self):
 		# Reset drone and request nav/video data again
 		#print("--%s--beat-restart--%s--" % (self.drone_id,self.drone_id))
-		self._drone._control.start_navdata()
-		self._drone._control.start_video()
 		if self._drone.raw_status['altitude'] < 30.0:
-			self._drone.reset()
-	
+			self._drone.bootstrap()
+
 	def next_state(self):
 		# Create next state
 		state = (GroundState(self._drone,self.drone_id),1)

@@ -78,7 +78,7 @@ class DroneControl(object):
 		self._control.start_video()
 				
 		# Reset drone
-		self._control.reset()
+		self.reset()
 	
 		# Configure drone camera - again! Just to make sure it happens.
 		self._control.view_camera(1) # channel 1 = downward facing camera
@@ -110,7 +110,7 @@ class DroneControl(object):
 		self.state_id = state[1]
 
 	def reset(self):
-		self._control.reset()
+		self._control.bootstrap()
 
 	def flat_trim(self):
 		self._control.flat_trim()
