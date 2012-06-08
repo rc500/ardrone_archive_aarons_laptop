@@ -53,6 +53,7 @@ class AppController(object):
 		"""
 		Finish app
 		"""
+		print("Final battery values are: %s" % self._status_updater.swarm_status['battery'])
 		# NB - Currently Drones are landed in an unconfirmed way (i.e. commands are sent and being on the ground is not confirmed - this should be done via states)
 		for drone in self.drone_controls:
 			drone.land()

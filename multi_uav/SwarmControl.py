@@ -43,7 +43,7 @@ class SwarmControl(object):
 
 		# Setup timer to start simulated battery low after event
 		self.simulate_timer = QtCore.QTimer()
-		self.simulate_timer.setInterval(3000) # ms
+		self.simulate_timer.setInterval(5000) # ms
 		self.simulate_timer.timeout.connect(self.simulate)
 
 		# States
@@ -58,6 +58,7 @@ class SwarmControl(object):
 		self.min_separation = -1
 		self.asset_drone = -1 # drone_id of drone allocated to perform task
 		self.asset_drone_controller = -2 # drone controller of drone allocated to perform task
+		self.low_battery_drones = []
 
 	def start_program(self):
 		print("======Program started======")
@@ -90,25 +91,20 @@ class SwarmControl(object):
 		"""
 		# Update separation
 		self.min_separation = self._navigator.min_separation(self.swarm_status['position'])
-
 		# Check whether simulation required
 		#print("drone batteries are: %s" % self.swarm_status['battery'])
 		if not self.swarm_status['observer'] == -1 and self.timer_flag == False:
 			self.timer_flag = True
 			self.simulate_timer.start()
-
 		# First, go into Setup State
 		if self.state_id == -1:
 			self.transition_to_state(0)
-
 		# If in Setup State, then transition to Bad State
 		elif self.state_id == 0:
 			self.transition_to_state(1)
-
 		# If in Bad State, then transition to Good State
 		elif self.state_id == 1:
 			self.transition_to_state(2)
-
 		# If in Good State, then maintain
 		elif self.state_id == 2:
 			self.maintain_state()
@@ -143,8 +139,13 @@ class SwarmControl(object):
 		Must ensure that there is always one drone still heading to complete/is completing the task before exiting.
 		"""				
 		for index in range(0,len(self.drones)):
-			# If drone's battery is too low, send it home
+			# If drone's battery is too low, send it home and add it to the list of low battery drones
 			if self.swarm_status['battery'][index]<15:
+				# Add to list if not already present
+				if self.drones[index] not in self.low_battery_drones:
+					self.low_battery_drones.append(self.drones[index])
+
+				# New routes home
 				self.drone_controllers[index].request_state(3)
 				new_routes = self._navigator.route_to_target(self.swarm_status['position'][index],self.homes[index],self.drones[index])
 				self.send_routes(new_routes,[self.drones[index],])
@@ -157,16 +158,26 @@ class SwarmControl(object):
 				if self.drones[index] == self.asset_drone:
 					self.remove_current_asset()
 
-	def allocate_new_asset(self):
+	def allocate_asset(self):
 		"""
-		Designate the most suitable drone to carry out task.
+		If there is no current asset, designate the most suitable drone to carry out task.
 		Most suitable = highest battery.
+		Do not allocate drones which are low on battery.
+		Return True if asset is available, False if not.
 		"""				
-		# set _drone to be drone_id of drone with highest battery
-		# and _drone_controller to be the corresponding controller
-		self.asset_drone = self.drones[self.swarm_status['battery'].index(max(self.swarm_status['battery']))]
-		self.asset_drone_controller = self.drone_controllers[self.drones.index(self.asset_drone)]
-		print("allocating new asset: %s" % self.asset_drone)
+		if self.asset_drone == -1:
+			# set _drone to be drone_id of drone with highest battery
+			# and _drone_controller to be the corresponding controller
+			self.asset_drone = self.drones[self.swarm_status['battery'].index(max(self.swarm_status['battery']))]
+			if self.asset_drone in self.low_battery_drones:
+				self.asset_drone = -1
+				return False
+			else:
+				self.asset_drone_controller = self.drone_controllers[self.drones.index(self.asset_drone)]
+				return True
+		else:
+			return True
+		#print("allocating new asset: %s" % self.asset_drone)
 	
 	def remove_current_asset(self):
 		"""
@@ -174,7 +185,7 @@ class SwarmControl(object):
 		"""		
 		self.asset_drone = -1
 		self.asset_drone_controller = -1
-		print("removing current asset")
+		#print("removing current asset")
 
 	def update(self,status):
 		self.swarm_status = status

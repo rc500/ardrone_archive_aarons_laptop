@@ -33,7 +33,7 @@ class Navigator(object):
 		# define map
 		self.path = {
 			'type' : 'line',
-			'markers' : (15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0,30,29,28,27,26,25,24,23,22,21,20,19,18,17,16)
+			'markers' : (20,19,18,17,16,15,14,13,12,11,0,)
 			};
 
 		# setup variables
@@ -82,6 +82,9 @@ class Navigator(object):
 			posi = pos
 			direction = 0
 			self.routes[drone_index] = []
+			# check that tgt is in path
+			if tgt not in self.path['markers']:
+				print("Error - requested target is not in known path. Originator: Navigator")
 			# check at each stage whether destination or end of line has been reached and discard or send route as appropriate
 			while not self.next(posi)[direction] == tgt:
 				# continue route

@@ -29,9 +29,9 @@ class DroneApp(object):
 	"""
 	def __init__(self):
 		# ---- SYSTEM CONFIGURATION ----
-		self.drones = (1,2,)
-		self.configs = (config.drone1,config.drone2,)
-		self.homes = (19,12,)
+		self.drones = (1,)
+		self.configs = (config.drone1,)
+		self.homes = (20,)
 
 		# Wire up Ctrl-C to safely land drones and end the application
 		signal.signal(signal.SIGINT, lambda *args: self.finish())

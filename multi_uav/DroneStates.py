@@ -90,13 +90,23 @@ class CommunicationState(State):
 		self.reset_timer.timeout.connect(self.restart)
 		self.reset_timer.start()
 
-		print("--%s--In Communication State--%s--" % (self.drone_id,self.drone_id))
+		# Tick timer which calls controlloop 
+		self.tick_timer = QtCore.QTimer()
+		self.tick_timer.setInterval(30) # ms
+		self.tick_timer.timeout.connect(self.tick)
+		self.tick_timer.start()
+
+		#print("--%s--In Communication State--%s--" % (self.drone_id,self.drone_id))
 
 	def restart(self):
 		# Reset drone and request nav/video data again
 		#print("--%s--beat-restart--%s--" % (self.drone_id,self.drone_id))
 		if self._drone.raw_status['altitude'] < 30.0:
 			self._drone.reset()
+
+	def tick(self):
+		# Send tick to control loop whatever
+		self._drone.tick()
 
 	def next_state(self):
 		# Create next state
@@ -130,12 +140,19 @@ class GroundState(State):
 		self.reset_timer.timeout.connect(self.reset)
 		
 		self.takeoff_timer = QtCore.QTimer()
-		self.takeoff_timer.setInterval(2000) # ms
+		self.takeoff_timer.setInterval(4000) # ms
 		self.takeoff_timer.timeout.connect(self.take_off)
 
-		print("--%s--In Ground State--%s--" % (self.drone_id,self.drone_id))
+		# Tick timer which calls controlloop 
+		self.tick_timer = QtCore.QTimer()
+		self.tick_timer.setInterval(30) # ms
+		self.tick_timer.timeout.connect(self.tick)
+		self.tick_timer.start()
+
+		#print("--%s--In Ground State--%s--" % (self.drone_id,self.drone_id))
 		self._drone.flat_trim()
-		self.take_off()
+		self._drone.reset()
+		self.takeoff_timer.start()
 
 	def next_state(self):
 		# Create next state
@@ -156,6 +173,10 @@ class GroundState(State):
 		self._drone.take_off()
 		self.takeoff_timer.stop()
 		self.reset_timer.start()
+
+	def tick(self):
+		# Send tick to control loop whatever
+		self._drone.tick()
 
 class AirborneState(State):
 	"""
@@ -178,7 +199,7 @@ class AirborneState(State):
 		self.exit_conditions = {}
 		self.exit_conditions['height_stable']=True
 
-		print("--%s--In Airborne State--%s--" % (self.drone_id,self.drone_id))
+		#print("--%s--In Airborne State--%s--" % (self.drone_id,self.drone_id))
 		self._drone.set_altitude(1000)
 				
 	def next_state(self):
@@ -207,7 +228,7 @@ class ControlledState(State):
 		# Hold current position
 		self.hold_marker(self._drone.drone_status['position'])
 
-		print("--%s--In Controlled State--%s--" % (self.drone_id,self.drone_id))
+		#print("--%s--In Controlled State--%s--" % (self.drone_id,self.drone_id))
 
 	def next_state(self):
 		# Create next state

@@ -96,7 +96,6 @@ class DroneControl(object):
 			Either  maintain current state
 			Or 	request transition towards requested state
 		"""
-
 		if state_id == self.state_id:
 			self._state.maintain()
 		else:
@@ -121,6 +120,9 @@ class DroneControl(object):
 	def land(self):
 		self._control.land()
 		
+	def tick(self):
+		self._control.tick()
+
 	def set_altitude(self,r):
 		self._height_control = self._controller_manager.create_proportional_controller(self,'altitude','gas','gas_stable',0.02,r,0.2)
 
