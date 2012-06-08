@@ -33,7 +33,7 @@ class Navigator(object):
 		# define map
 		self.path = {
 			'type' : 'line',
-			'markers' : (20,19,18,17,16,15,14,13,12,11,0,)
+			'markers' : (25,26,27,28,29,30,31,32,33,34,35,0,)
 			};
 
 		# setup variables
