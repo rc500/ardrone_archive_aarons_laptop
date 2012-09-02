@@ -31,7 +31,7 @@ class DroneApp(object):
 		# ---- SYSTEM CONFIGURATION ----
 		self.drones = (1,)
 		self.configs = (config.drone1,)
-		self.homes = (20,)
+		self.homes = (26,)
 
 		# Wire up Ctrl-C to safely land drones and end the application
 		signal.signal(signal.SIGINT, lambda *args: self.finish())
